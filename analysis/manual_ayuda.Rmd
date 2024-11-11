@@ -24,8 +24,6 @@ Guardar datos
 
 ```{r}
 save_data(data, "prueba_csv", type = "raw", format = "csv")
-save_data(data, "prueba_xlsx", type = "raw", format = "xlsx")
-
 ```
 ```{r}
 save_data(data, "prueba_excel", type = "raw", format = "xlsx")

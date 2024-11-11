@@ -16,11 +16,14 @@ load_data <- function(file_name, type = "raw", ...) {
   
   # Definir ruta del directorio base
   data_dir <- file.path("data", type)
-  #print(data_dir)
+  
+  path <- dirname(getwd())
+  if(sub(".*/", "", path) != "Proyecto-Orquideas"){
+    path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
+  }
   
   # Crear la ruta completa al archivo
-  file_path <- file.path(here(),data_dir, file_name)
-  print(file_path)
+  file_path <- file.path(path, data_dir, file_name)
   
   # Verificar si el archivo existe
   if (!file.exists(file_path)) {
@@ -56,8 +59,15 @@ save_data <- function(data, file_name, type = "processed", format = "rds") {
     stop("El formato debe ser 'csv', 'xlsx', 'rds' o 'txt'")
   }
   
+  path <- dirname(getwd())
+  if(sub(".*/", "", path) != "Proyecto-Orquideas"){
+    path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
+  }
+  
+  # # Crear la ruta completa al archivo
+  # file_path <- file.path(path, data_dir, file_name)
   # Definir ruta del directorio base
-  data_dir <- file.path(here(),"data", type)
+  data_dir <- file.path(path, "data", type)
   
   # Crear el directorio si no existe
   if (!dir.exists(data_dir)) {
