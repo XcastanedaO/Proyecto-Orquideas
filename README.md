@@ -26,6 +26,7 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 │
 ├── analysis  
 │   └── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
+│   └── manual_ayuda.Rmd   <- Archivo con explicación de funciones o acciones nesarias para el buen funcionamiento del código
 │
 ├── data
 │   ├── raw             <- Conjuntos de datos originales.
