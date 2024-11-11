@@ -16,9 +16,11 @@ load_data <- function(file_name, type = "raw", ...) {
   
   # Definir ruta del directorio base
   data_dir <- file.path("data", type)
+  #print(data_dir)
   
   # Crear la ruta completa al archivo
-  file_path <- file.path(data_dir, file_name)
+  file_path <- file.path(here(),data_dir, file_name)
+  print(file_path)
   
   # Verificar si el archivo existe
   if (!file.exists(file_path)) {
@@ -55,7 +57,7 @@ save_data <- function(data, file_name, type = "processed", format = "rds") {
   }
   
   # Definir ruta del directorio base
-  data_dir <- file.path("data", type)
+  data_dir <- file.path(here(),"data", type)
   
   # Crear el directorio si no existe
   if (!dir.exists(data_dir)) {
