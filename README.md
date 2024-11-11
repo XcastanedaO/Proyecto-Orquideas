@@ -1,12 +1,12 @@
 # Proyecto orquídeas
 
-<div style="text-align: justify;">
+
 Este repositorio contiene recursos, código y documentación para el desarrollo del proyecto titulado 
 "Implementación de herramientas analíticas para el estudio de la violencia de género y su impacto en la salud 
 mental de mujeres y niñas en Colombia", seleccionado en la 
 [convocatoria Orquídeas: Mujeres en la Ciencia 2024](https://minciencias.gov.co/convocatorias/convocatoria-orquideas-mujeres-en-la-ciencia-2024) del Ministerio de Ciencia, Tecnología e Innovación de Colombia (MinCiencias). 
 El objetivo del proyecto es implementar metodologías estadísticas avanzadas y de aprendizaje automático para evaluar el efecto de los factores que influyen en la incidencia de la violencia de género contra las mujeres y niñas en Colombia e identificar el impacto de este tipo de violencia en su salud mental.
-</div>
+
 
 ## Autores :pencil2:
 
