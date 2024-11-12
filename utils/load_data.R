@@ -1,12 +1,12 @@
-# The following script contains functions to perform basic and necessary actions
-# for running the code, such as loading and saving data.
+# El siguiente script contiene funciones para realizar acciones básicas y necesarias
+# para ejecutar el código, como leer y guardar datos
 
-## Loading libraries
+## Cargar librerías
 library(readxl)
 library(writexl)
 
 
-## Function to upload necessary files in .xlsx, .txt and .csc formats
+## Función para cargar archivos en formatos .xlsx, .txt y .csv 
 
 load_data <- function(file_name, type = "raw", ...) {
   # Validación del tipo de archivo
@@ -46,9 +46,9 @@ load_data <- function(file_name, type = "raw", ...) {
   return(data)
 }
 
-# utils/save_data.R
+# Función para guardar conjunto de datos en formatos .csv, .txt, .rds y .xlsx
 
-save_data <- function(data, file_name, type = "processed", format = "rds") {
+save_data <- function(data, file_name, type = "processed", format = "csv") {
   # Validación del tipo de directorio
   if (!type %in% c("raw", "interim", "processed")) {
     stop("El tipo de directorio debe ser 'raw', 'interim' o 'processed'")
@@ -64,8 +64,6 @@ save_data <- function(data, file_name, type = "processed", format = "rds") {
     path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
   }
   
-  # # Crear la ruta completa al archivo
-  # file_path <- file.path(path, data_dir, file_name)
   # Definir ruta del directorio base
   data_dir <- file.path(path, "data", type)
   
@@ -88,6 +86,6 @@ save_data <- function(data, file_name, type = "processed", format = "rds") {
     write.table(data, file_path, row.names = FALSE, sep = "\t")
   }
   
-  message(paste("Archivo guardado exitosamente en:", file_path))
+  message(paste("Archivo guardado exitosamente en:\n", file_path))
 }
 
