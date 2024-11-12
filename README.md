@@ -15,7 +15,7 @@ El objetivo del proyecto es implementar metodologías estadísticas avanzadas y 
 ## Instalación :wrench:
 Las siguientes son configuraciones/librerías/lenguajes necesarios para el correcto funcionamiento del código:
 
-## Manual de ayuda :book:
+## Manual :book:
 [Este manual](analysis/manual_ayuda.Rmd) explica acciones necesarias para la ejecución del código como: cargue y guardado de conjunto de datos, etc.
 
 
