@@ -9,7 +9,7 @@ El objetivo del proyecto es implementar metodologías estadísticas avanzadas y 
 - **Verónica Seguro Varela** - *Joven investigadora* - [GitHub](https://github.com/vseguro)
 - **Johnatan Cardona Jiménez** - *Experto* - [GitHub](https://github.com/)
 - **Simón Ruiz Martínez** - *Experto* - [GitHub](https://github.com/simonruizm)
-- **Mariana Hernádez Giraldo** - *Estudiante auxiliar* - [GitHub](https://github.com/)
+- **Mariana Hernádez Giraldo** - *Estudiante auxiliar* - [GitHub](https://github.com/MarianaHernandezG)
 - **Ximena Castañeda Ochoa** - *Estudiante auxiliar* - [GitHub](https://github.com/XcastanedaO)
 
 ## Instalación :wrench:
