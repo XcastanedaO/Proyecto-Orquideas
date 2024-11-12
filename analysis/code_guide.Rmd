@@ -1,0 +1,51 @@
+---
+title: "Manual código"
+output: pdf_document
+date: "2024-11-11"
+---
+
+El siguiente código muestra cómo leer y guardar datos con las funciones *load_data()* y *save_data()* que se encuentran en utils/load_data.R
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("../utils/load_data.R")
+```
+
+# Cargar de datos
+
+Esta función lee un conjunto de datos en formatos .xlsx, .txt, .rds o .csv. Los argumentos principales son:
+
+- **file_name:** nombre del archivo, incluyendo la extensión (obligatorio).
+- **type:** subcarpeta donde se encuentra el archivo. Su valor predeterminado es "raw", pero también puede ser "processed" o "interim".
+
+```{r}
+data <- load_data("datos_abiertos_2015_2023.csv", type = "raw")
+```
+
+Sin embargo, pueden indicarse otros argumentos que tienen las funciones *read.table()*, *read.csv()*, *read_xlsx()* y *readRDS* dependiendo del formato del archivo que se quiere leer. Por ejemplo,para archivos .csv y .txt:
+
+```{r, eval = FALSE}
+data <- load_data("", type = "raw", header = FALSE, sep = ";")
+```
+
+# Guardar datos
+
+Esta función guarda un conjunto de datos en formato .xlsx, .txt, .rds y .csv. Tiene cuatro argumentos:
+
+- **data:** objeto de R que contiene el conjunto de datos a guardar.
+- **file_name:** nombre con que se guardará el archivo.
+- **type:** subcarpeta donde se guardará el archivo. Su valor predeterminado es "processed", pero también puede ser "raw" o "interim".
+- **format:** extensión del archivo que se guardará. Su valor es "csv" pero también puede ser "rds","xlsx" y "txt".
+
+Si el archivo se guardó correctamente, se muestra un mensaje de confirmación.
+
+```{r}
+save_data(data, "prueba_csv", type = "raw", format = "csv")
+```
+
+```{r}
+save_data(data, "prueba_excel", type = "raw", format = "xlsx")
+```

@@ -26,10 +26,11 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 │
 ├── analysis  
 │   ├── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
-│   └── manual_ayuda.Rmd   <- Archivo con explicación de funciones o acciones nesarias para el buen funcionamiento del código
+│   └── code_guide.Rmd   <- Archivo con explicación de funciones o acciones nesarias para el buen funcionamiento del código
 │
 ├── data
 │   ├── raw             <- Conjuntos de datos originales.
+│       └── datos_abiertos_2015_2023.csv <- Datos orginales a nivel nacional del 2015-2023 provenientes del portal de Datos Abiertos. 
 │   ├── interim         <- Conjuntos de datos intermedios, que han sido transformados.
 │   └── processed       <- Conjuntos de datos finales para la modelación.
 │
