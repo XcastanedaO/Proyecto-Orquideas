@@ -39,6 +39,7 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 │
 ├── renv               <- Ambiente virtual donde se almacenarán las librerías implementadas.
 │
-└── utils              <- Archivos auxiliares
+└── utils
+    └── load_data.R       <- Funciones para lectura y guardado de conjuntos de datos 
 
 ```
