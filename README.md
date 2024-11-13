@@ -16,7 +16,7 @@ El objetivo del proyecto es implementar metodologías estadísticas avanzadas y 
 Las siguientes son configuraciones/librerías/lenguajes necesarios para el correcto funcionamiento del código:
 
 ## Manual :book:
-[Este manual](analysis/manual_ayuda.Rmd) explica acciones necesarias para la ejecución del código como: cargue y guardado de conjunto de datos, etc.
+[Este manual](analysis/code_guide.Rmd) explica acciones necesarias para la ejecución del código como: cargue y guardado de conjunto de datos, etc.
 
 
 ## Estructura del repositorio :file_folder:
@@ -26,7 +26,8 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 │
 ├── analysis  
 │   ├── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
-│   └── code_guide.Rmd   <- Archivo con explicación de funciones o acciones nesarias para el buen funcionamiento del código
+│       └── datos_abiertos.R     <- Análisis descriptivo de los datos provenientes del portal de Datos Abiertos.
+│    └── code_guide.Rmd   <- Archivo con explicación de funciones o acciones necesarias para el buen funcionamiento del código
 │
 ├── data
 │   ├── raw             <- Conjuntos de datos originales.
