@@ -14,17 +14,19 @@ load_data <- function(file_name, type = "raw", ...) {
     stop("El tipo de archivo debe ser 'raw', 'interim' o 'processed'")
   }
   
-  # Definir ruta del directorio base
-  data_dir <- file.path("data", type)
-  
-  path <- dirname(getwd())
-  if(sub(".*/", "", path) != "Proyecto-Orquideas"){
-    path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
-  }
+  # Definir ruta relativa con base en el directorio raíz 
+  #data_dir <- file.path("data", type)
+  data_dir <- here("data", type)
+
+  # path <- dirname(getwd())
+  # if(sub(".*/", "", path) != "Proyecto-Orquideas"){
+  #   path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
+  # }
   
   # Crear la ruta completa al archivo
-  file_path <- file.path(path, data_dir, file_name)
-  
+  # file_path <- file.path(path, data_dir, file_name)
+  file_path <- file.path(data_dir, file_name)
+
   # Verificar si el archivo existe
   if (!file.exists(file_path)) {
     stop(paste("El archivo", file_path, "no existe."))
