@@ -43,7 +43,7 @@ Esta función guarda un conjunto de datos en formato .xlsx, .txt, .rds y .csv. T
 Si el archivo se guardó correctamente, se muestra un mensaje de confirmación.
 
 ```{r}
-save_data(data, "prueba_csv", type = "raw", format = "csv")
+save_data(data, "prueba_csv", type = "processed", format = "csv")
 ```
 
 ```{r}
