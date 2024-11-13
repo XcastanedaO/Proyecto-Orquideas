@@ -26,7 +26,7 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 │
 ├── analysis  
 │   ├── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
-│       └── datos_abiertos.R     <- Análisis descriptivo de los datos provenientes del portal de Datos Abiertos.
+│       └── datos_abiertos.R     <- Depuración y análisis descriptivo de los datos provenientes del portal de Datos Abiertos.
 │    └── code_guide.Rmd   <- Archivo con explicación de funciones o acciones necesarias para el buen funcionamiento del código
 │
 ├── data
