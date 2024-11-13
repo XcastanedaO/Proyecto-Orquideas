@@ -77,4 +77,14 @@ data <- load_data("datos_abiertos_2015_2023.csv", type = "raw")
 # Verificar datos atipicos
 ```
 
+```{r}
+# Guardar base de datos resultante 
+```
+
+
 # Análisis descriptivo
+
+```{r}
+# Leer base de datos depurada
+```
+
