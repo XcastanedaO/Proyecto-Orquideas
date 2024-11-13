@@ -1,5 +1,80 @@
+---
+title: "Análisis descriptivo de casos de violencia de género en Colombia (2015-2023) según información del portal de Datos Abiertos"
+date: "2024-11-13"
+output:
+   pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: false
+---
 
-```{r}
-data <- debugging_dataset()
+\newpage
+
+# Información de la base de datos
+
+La base de datos, titulada *04. Violencia de Género e Intrafamiliar de enero 2015 a marzo 2023 - Semana Epidemiológica 12*, está alojada en el portal de Datos Abiertos de Colombia [(Ver)](https://www.datos.gov.co/Salud-y-Protecci-n-Social/04-Violencia-de-G-nero-e-intrafamiliar-de-enero-20/sq8q-pnf5/about_data). Este recurso recopila información sobre los casos de violencia de género atendidos en instituciones prestadoras de salud (IPS) entre 2015 y 2023.
+
+-   **Fuente:** Secretaría de Salud y Ambiente de Bucaramanga.
+
+-   **Entidad responsable del alojamiento en el portal:** Alcaldía de Bucaramanga.
+
+-   **Frecuencia de actualización:** Semestral.
+
+-   **Última actualización:** 25 de marzo de 2023.
+
+Además de la base de datos, en el anterior enlace se encuentran los siguientes recursos:
+
+-   Tablero interactivo desarrollado por el Centro de Analítica de la Alcaldía de Bucaramanga, con el objetivo de analizar los casos de violencia de género en la ciudad [(Ver)](https://app.powerbi.com/view?r=eyJrIjoiNzJhMmNiOWYtNzk1YS00MTcyLTk5OTAtMDMwYzc4YTRhNjNkIiwidCI6Ijc4NjgzZmYyLTBjMjAtNGJkYS1iYzc3LWQ0YjJhODdmMmE2YSIsImMiOjR9).
+
+-   Calendario epidemiológico del año 2023
+
+# Diccionario de datos
+
+La base de datos cuenta con un total de 12.161 registros y 32 columnas que se describen a continuación:
+
+# Lectura
+
+```{r, message=FALSE}
+source("../../utils/load_data.R")
+library(here)
 ```
 
+```{r}
+data <- load_data("datos_abiertos_2015_2023.csv", type = "raw")
+```
+
+# Depuración
+
+```{r}
+# Verificar que los tipos de datos si se hayan leído correctamente
+```
+
+```{r}
+# Verificar el signo de decimal 
+```
+
+```{r}
+# Estandarizar los niveles de las variables categoricas
+```
+
+```{r}
+# Verificar los rangos de las variables numéricas
+```
+
+```{r}
+# Verificar la escala de medición de las variables numéricas
+```
+
+```{r}
+# Verificar que no haya valores faltantes
+```
+
+```{r}
+# Verificar registros duplicados
+```
+
+```{r}
+# Verificar datos atipicos
+```
+
+# Análisis descriptivo
