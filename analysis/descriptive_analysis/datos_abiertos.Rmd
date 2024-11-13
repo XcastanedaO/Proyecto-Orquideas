@@ -46,15 +46,15 @@ data <- load_data("datos_abiertos_2015_2023.csv", type = "raw")
 # Depuración
 
 ```{r}
-# Verificar que los tipos de datos si se hayan leído correctamente
+# Verificar tipo de dato de cada columna
 ```
 
 ```{r}
-# Verificar el signo de decimal 
+# Verificar signo decimal
 ```
 
 ```{r}
-# Estandarizar los niveles de las variables categoricas
+# Estandarizar los niveles de las variables categóricas y formato fecha 
 ```
 
 ```{r}
@@ -62,19 +62,20 @@ data <- load_data("datos_abiertos_2015_2023.csv", type = "raw")
 ```
 
 ```{r}
-# Verificar la escala de medición de las variables numéricas
+# Verificar fechas y escala de medición de las variables numéricas
 ```
 
 ```{r}
-# Verificar que no haya valores faltantes
+# Buscar registros duplicados
 ```
 
 ```{r}
-# Verificar registros duplicados
+# Buscar valores faltantes
 ```
 
+
 ```{r}
-# Verificar datos atipicos
+# Verificar datos atípicos
 ```
 
 ```{r}
