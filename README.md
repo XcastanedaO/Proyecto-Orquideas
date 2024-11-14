@@ -7,7 +7,7 @@ El objetivo del proyecto es implementar metodologías estadísticas avanzadas y 
 
 - **Alejandra Estefania Patiño Hoyos** - *Doctora investigadora* - [GitHub](https://github.com/alejandraeph)
 - **Verónica Seguro Varela** - *Joven investigadora* - [GitHub](https://github.com/vseguro)
-- **Johnatan Cardona Jiménez** - *Experto* - [GitHub](https://github.com/)
+- **Johnatan Cardona Jiménez** - *Experto* - [GitHub]([https://github.com/](https://github.com/JohnatanLAB))
 - **Simón Ruiz Martínez** - *Experto* - [GitHub](https://github.com/simonruizm)
 - **Mariana Hernádez Giraldo** - *Estudiante auxiliar* - [GitHub](https://github.com/MarianaHernandezG)
 - **Ximena Castañeda Ochoa** - *Estudiante auxiliar* - [GitHub](https://github.com/XcastanedaO)
