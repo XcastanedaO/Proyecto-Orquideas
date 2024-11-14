@@ -28,58 +28,224 @@ Además de la base de datos, en el anterior enlace se encuentran los siguientes 
 
 -   Calendario epidemiológico del año 2023
 
-# Diccionario de datos
-
-La base de datos cuenta con un total de 12.161 registros y 32 columnas que se describen a continuación:
-
 # Lectura
 
 ```{r, message=FALSE}
 source("../../utils/load_data.R")
 library(here)
+library(hms)
+library(dplyr)
 ```
 
 ```{r}
 data <- load_data("datos_abiertos_2015_2023.csv", type = "raw")
 ```
 
-# Depuración
-
 ```{r}
-# Verificar tipo de dato de cada columna
+# Estructura de la base de datos
+str(data)
 ```
 
-```{r}
-# Verificar signo decimal
-```
+# Depuración de la base de datos
+
+
+## Variable orden
+
+La variable orden no aporta información útil al estudio, solo es de identificación.
 
 ```{r}
-# Estandarizar los niveles de las variables categóricas y formato fecha 
+data <- data %>%
+  select(-Orden)
 ```
 
-```{r}
-# Verificar los rangos de las variables numéricas
-```
+## Variables de tipo factor
+
+Las variables como "Tipo de Paciente", "Condición al egresar", "Naturaleza", "Actividad", "Presencia de sustancias", "Escenario" y "Zona de exposición" son categóricas y representan distintas categorías sin un orden específico. Esta conversión facilita el análisis estadístico y la interpretación de los resultados futuros, para cuando se desee estudiar estas variables categóricas. 
 
 ```{r}
-# Verificar fechas y escala de medición de las variables numéricas
+data <- data %>%
+  mutate(across(c(sexo_, Grupo.edad, Ciclo.de.vida, area_, Tipo.de.Seguridad.Social, pac_hos_, con_fin_, naturaleza, actividad, parentezco_vict, sust_vict, escenario, zona_conf), as.factor))
 ```
+
+## Variable departamento
+
+```{r}
+unique(data$Departamento)
+```
+
+La variable departamento presenta algunas inconsistencias en la escritura de los nombres, por lo que se han corregido los errores ortográficos en aquellos casos que pertenecen al mismo departamento. Además, se ha asignado a las ciudades de Barranquilla y Bogotá sus respectivos departamentos, para evitar que se consideren como departamentos diferentes.
+
+Por otro lado, se han identificado algunas filas que contenían nombres que no coinciden con departamentos de Colombia, y dado que esta columna corresponde al lugar en el que residía la víctima al momento de la notificación y tras investigar, se determinó que correspondían a estados de Venezuela, algunos de los cuales no están en la frontera con Colombia. Estos registros se han clasificado solamente como "VENEZUELA". También se ha encontrado una categoría denominada "Departamentos desconocidos", que se asume que son filas NA para esta columna.
+
+```{r}
+data <- data %>%
+  mutate(Departamento = recode(Departamento,
+                               "BOLIVAR" = "BOLÍVAR",  # "BOLIVAR" a "BOLÍVAR"
+                               "STA MARTA D.E." = "SANTA MARTA",  # "STA MARTA D.E." a "SANTA MARTA"
+                               "NORTE SANTANDER" = "NORTE DE SANTANDER",  # "NORTE SANTANDER" a "NORTE DE SANTANDER"
+                               "BARRANQUILLA" = "ATLANTICO",  # Asignar "ATLANTICO" a "BARRANQUILLA"
+                               "BOGOTÁ" = "CUNDINAMARCA",  # Asignar "CUNDINAMARCA" a "BOGOTÁ"
+                               "ARAGUA" = "EXTERIOR",
+                               "VARGAS" = "EXTERIOR", 
+                               "APURE" = "EXTERIOR",  
+                               "CARABOBO" = "EXTERIOR", 
+                               "PORTUGUESA" = "EXTERIOR", 
+                               "ZULIA" = "EXTERIOR", 
+                               "YARACUY" = "EXTERIOR",  
+                               "TACHIRA" = "EXTERIOR"
+  ))
+
+```
+
+
+## Variable tipo de seguridad social
+
+```{r}
+unique(data$Tipo.de.Seguridad.Social)
+```
+
+Para esta variable, existen inconsistencias en la escritura de las categorías. Por ejemplo, hay variaciones en el uso de mayúsculas y minúsculas, lo que genera duplicados, como "No asegurado", "No Asegurado" y "no asegurado". La categoría "No afiliado", se recodifica a "No asegurado", y así disminuye el número de niveles en esta variable.
+
+
+```{r}
+data <- data %>%
+  mutate(Tipo.de.Seguridad.Social = recode(Tipo.de.Seguridad.Social,
+                                           "no asegurado" = "No asegurado",
+                                           "No Asegurado" = "No asegurado",
+                                           "subsidiado" = "Subsidiado",
+                                           "No Afiliado" = "No asegurado",
+                                           "Excepción" = "Excepción",
+                                           "Indeterminado" = "Indeterminado",
+                                           "Especial" = "Especial"))
+```
+
+
+## Variable def_naturaleza****
+
+Se refiere a cualquier acción o conducta violenta desarrollada a partir de relaciones de poder basadas en el género.
+
+```{r}
+unique(data$def_naturaleza)
+```
+
+¿abuso sexual y acoso sexual se puede unificar?
+
+Se realizaron ajustes en la variable def_naturaleza para mejorar la calidad de los datos, corrigiendo inconsistencias y estandarizando categorías. Se reemplazaron valores erróneos o faltantes, como "Sin Informacion" y "ERROR: #N/A", por NA para tratarlos como datos faltantes. Además, se unificaron categorías similares, como "Otros actos sexuales" y "Actos sexuales violencia", bajo una sola etiqueta ("Actos sexuales") para simplificar el análisis. Estas modificaciones permiten una mejor interpretación y manejo de los datos, facilitando su análisis posterior.
+
+```{r}
+# Limpiar y estandarizar la variable def_naturaleza
+
+data <- data %>%
+  mutate(def_naturaleza = as.character(def_naturaleza)) %>%  # Aseguramos que sea tipo carácter
+  mutate(def_naturaleza = recode(def_naturaleza,
+                                 "Sin Informacion" = NA_character_,
+                                 "ERROR: #N/A" = NA_character_,
+                                 "Sin informacion" = NA_character_,
+                                 "Otros actos sexuales" = "Actos sexuales",  # Unificar categorías
+                                 "Actos sexuales violencia" = "Actos sexuales",  # Unificar categorías
+                                 "Explotacion sexual, comercial niños, adolescentes" = "Explotación sexual comercial"))
+
+# Verificar los cambios
+unique(data$def_naturaleza)
+```
+
+
+## Variable parentezco****
+
+```{r}
+unique(data$parentezco_vict)
+```
+
+El cambio de valores como "Novio(a)" a "Pareja", "Ex - amante" a "Ex pareja" y "Pareja" a "Amante" permite agrupar las distintas relaciones de parentesco o afectivas bajo un formato más consistente. Estas modificaciones ayudan a mejorar la precisión de las categorías, asegurando que las relaciones similares sean tratadas de manera coherente.
+
+
+```{r}
+data <- data %>%
+  mutate(parentezco_vict = recode(parentezco_vict,
+                                           "Novio(a)" = "Pareja",
+                                           "Ex - amante" = "Ex pareja",
+                                            "Pareja" = "Amante"))
+```
+
+
+## Variable hora hecho
+
+Se realizó una transformación en la variable hora_hecho para extraer únicamente la hora de la cadena de texto, la cual está en formato de 24 horas y se convirtió en un objeto de tipo hms, lo que permite un manejo más eficiente de los tiempos. Este proceso garantiza que la variable esté en un formato uniforme y adecuado para su análisis. 
+
+
+```{r}
+data <- data %>%
+  # Extraer solo la hora y convertirla a formato de tiempo con hms
+  mutate(hora_hecho = hora_hecho %>%
+           sub(".*T(\\d{2}:\\d{2}:\\d{2}).*", "\\1", .) %>%
+           as.POSIXct(format = "%H:%M:%S") %>%
+           format(format = "%H:%M:%S") %>%
+           as_hms())
+data$hora_hecho
+```
+
+
+## Variable fecha 
+
+El formato de fecha inicial es dd/mm/yyyy pero al convertir el objeto se cambia al formato por defecto: yyyy-mm-dd.
+
+```{r}
+# Cambiar tipo de dato a Date
+data$fec_hecho <- as.Date(data$fec_hecho, format = "%d/%m/%Y")
+```
+
+
+## Rangos de las variables numéricas, de fecha y hora
+
+```{r}
+# Verificar que las horas estén entre el rango 00:00:00 24:00:00
+data %>%
+  filter(!between(hms(hora_hecho), hms("00:00:00"), hms("24:00:00"))) %>%
+  nrow()
+
+
+# Verificar fecha
+```
+
+## Valores faltantes
+
+```{r}
+# Buscar valores faltantes y celdas vacias ("")
+na_empty <- data.frame(
+  Column = names(data),
+  total_na = sapply(data, function(col) sum(is.na(col))),
+  total_empty = sapply(data, function(col) sum(col == "", na.rm = TRUE)),
+  row.names = NULL
+)
+```
+
+De acuerdo a lo anterior son 4831 celdas NA y 14533 celdas que fueron definidas como vacías poniendo ""
+
+```{r}
+# Filtrar filas con uno o más valores faltantes o celdas vacias
+row_na_empty <- data %>%
+  filter(if_any(everything(), ~ is.na(.) | . == "")) %>%
+  nrow()
+```
+
+
+## Registros duplicados
 
 ```{r}
 # Buscar registros duplicados
+data %>%
+  filter(duplicated(data)) %>%
+  nrow()
 ```
 
+## Datos atípicos
 ```{r}
-# Buscar valores faltantes
+
 ```
 
+## Base de datos depurada
 
 ```{r}
-# Verificar datos atípicos
-```
-
-```{r}
-# Guardar base de datos resultante 
 ```
 
 
@@ -89,3 +255,4 @@ data <- load_data("datos_abiertos_2015_2023.csv", type = "raw")
 # Leer base de datos depurada
 ```
 
+# Conlusiones
