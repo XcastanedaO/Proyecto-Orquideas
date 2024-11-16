@@ -4,7 +4,6 @@ date: "2024-11-13"
 output:
    pdf_document:
     toc: true
-    toc_depth: 2
     number_sections: false
 ---
 
@@ -76,7 +75,7 @@ data <- data %>%
   mutate(across(c(Departamento, Municipio, sexo_, Grupo.edad, Ciclo.de.vida, area_, Tipo.de.Seguridad.Social, pac_hos_, con_fin_, naturaleza, actividad, parentezco_vict, sust_vict, escenario, zona_conf,Barrio, Comuna, ndep_resi,nmun_resi, nom_actividad,parentezco_vict,nom_upgd), as.factor))
 ```
 
-### Variable departamento
+### Variable Departamento
 
 ```{r}
 unique(data$Departamento)
@@ -110,7 +109,7 @@ data <- data %>%
 
 **NUEVO**
 
-### Variable municipio
+### Variable Municipio
 
 Dado que no se conoce el municipio se cambia a NA las siguientes categorías. 
 ```{r}
@@ -123,7 +122,7 @@ data <- data %>%
 
 **NUEVO**
 
-### Variable grupo de edad
+### Variable Grupo de edad
 
 Se modifica la escritura de algunos niveles. 
 
@@ -137,7 +136,7 @@ data <- data %>%
 
 **NUEVO**
 
-### Variable ciclo de vida
+### Variable Ciclo de vida
 
 Se modifica la escritura de algunos niveles. 
 
@@ -148,7 +147,7 @@ data <- data %>%
   ))
 ```
 
-### Variable barrio 
+### Variable Barrio 
 
 Se convirtieron los niveles "SIN INFORMACIÓN" a NA. Además, para los casos con barrio "GRON" se asume que es un error tipográfico y se refiere es a Giron, municipio del área metropolitana de Bucaramanga.
 
@@ -159,7 +158,7 @@ data <- data %>%
                               "GRON" = "GIRON"))
 ```
 
-### Variable comuna
+### Variable Comuna
 
 Se convirtieron los niveles "SIN INFORMACIÓN" a NA.
 
@@ -169,7 +168,7 @@ data <- data %>%
                               "SIN INFORMACION" = NA_character_))
 ```
 
-### Variable tipo de seguridad social
+### Variable Tipo de Seguridad Social
 
 ```{r}
 unique(data$Tipo.de.Seguridad.Social)
@@ -188,8 +187,7 @@ data <- data %>%
                                            "Especial" = "Especial"))
 ```
 
-
-### Variable def_naturaleza****
+### Variable def_naturaleza
 
 Se refiere a cualquier acción o conducta violenta desarrollada a partir de relaciones de poder basadas en el género.
 
@@ -197,24 +195,24 @@ Se refiere a cualquier acción o conducta violenta desarrollada a partir de rela
 unique(data$def_naturaleza)
 ```
 
-**¿abuso sexual y acoso sexual se puede unificar?**
+**Nuevo: ¿abuso sexual y acoso sexual se puede unificar?**
 
-Se realizaron ajustes en la variable def_naturaleza para mejorar la calidad de los datos, corrigiendo inconsistencias y estandarizando categorías. Se reemplazaron valores erróneos o faltantes, como "Sin Informacion" y "ERROR: #N/A", por NA para tratarlos como datos faltantes. Además, se unificaron categorías similares, como "Otros actos sexuales" y "Actos sexuales violencia", bajo una sola etiqueta ("Actos sexuales") para simplificar el análisis. Estas modificaciones permiten una mejor interpretación y manejo de los datos, facilitando su análisis posterior.
+Se realizaron ajustes en la variable def_naturaleza para mejorar la calidad de los datos, corrigiendo inconsistencias y estandarizando categorías. Se reemplazaron valores erróneos o faltantes, como "Sin Informacion" y "ERROR: #N/A", por NA para tratarlos como datos faltantes. Además, se unificaron categorías similares, como "Otros actos sexuales" y "Otras violencias sexuales", bajo una sola etiqueta ("Otras violencias sexuales") para simplificar el análisis. Estas modificaciones permiten una mejor interpretación y manejo de los datos, facilitando su análisis posterior. De igual forma, se unificaron las categorías "Violacion" y "Abuso sexual" en "Acceso carnal".
 
 ```{r}
 # Limpiar y estandarizar la variable def_naturaleza
 
-sum(is.na(data$def_naturaleza) | data$def_naturaleza == "")
 data <- data %>%
   mutate(def_naturaleza = as.character(def_naturaleza)) %>%  # Aseguramos que sea tipo carácter
   mutate(def_naturaleza = recode(def_naturaleza,
                                  "Sin Informacion" = NA_character_,
                                  "ERROR: #N/A" = NA_character_,
                                  "Sin informacion" = NA_character_,
-                                 "Violencia fisica" = "Violencia física",
-                                 "Violacion" = "Violación",
-                                 "Violencia psicologica" = "Violencia psicológica",
-                                 "Otros actos sexuales" = "Actos sexuales",  # Unificar categorías
+                                 "Violencia fisica" = "Física",
+                                 "Violacion" = "Acceso carnal",
+                                 "Abuso sexual" = "Acceso carnal",
+                                 "Violencia psicologica" = "Psicológica",
+                                 "Otros actos sexuales" = "Otras violencias sexuales",  # Unificar categorías
                                  "Actos sexuales violencia" = "Actos sexuales",  # Unificar categorías
                                  "Explotacion sexual, comercial niños, adolescentes" = "Explotación sexual comercial"))
 
@@ -224,16 +222,63 @@ data$def_naturaleza <- as.factor(data$def_naturaleza)
 ```
 **NUEVO**
 ### Variable naturaleza
-Esta variable está tomando un valor de 99 en algunos registros, de acuerdo a las fichas de notificación encontradas en ninguna versión hay una naturaleza/modalidad de violencia idenficada con este valor. Por lo tanto, se convierte en NA
+Por lo anterior, se buscó unificar también los indicativos de esas categorías. En el caso de la categoría "4" (abuso sexual) se pasó a "6" acceso carnal. Para las categorías "violacion", "Otros actos sexuales" y "Actos sexuales violencia" coincidía su indicativo con el indicativo de la categoría a la que se cambió. Además, esta variable está tomando un valor de 99 en algunos registros, de acuerdo a las fichas encontradas con las que se notifican los casos de violencia, en ninguna versión hay una naturaleza/modalidad de violencia identificada con este valor. Por lo tanto, se convierte en NA.
 
 ```{r}
 data <- data %>%
   mutate(naturaleza = recode(naturaleza,
-                              "99" = NA_character_))
+                              "99" = NA_character_,
+                               "4" = "6"))
 ```
 
 
-### Variable parentezco****
+**Nuevo**
+
+### Variable nom_actividad
+
+Esta variable indica la actividad a la que se dedica la víctima, tiene niveles como "Reciclador", "Maestro", "Servidor publico" y "Fuerza publica". 
+
+```{r}
+ data %>% filter(nom_actividad %in% c("Reciclador","Maestro","Servidor publico","Fuerza publica"))
+```
+Teniendo en cuenta que son pocos los registros y a partir de la [ficha de notificación del SIVIGILA 2018](https://www.hosdenar.gov.co/dependencias/iamii/wp-content/uploads/2019/01/VIOLENCIA_875_2018.pdf) estas categorías no son incluidas, se decide pasarlas a la categoría "Otro".
+
+```{r}
+data <- data %>%
+  mutate(nom_actividad = recode(nom_actividad,
+                                           "Trabajadora domestica" = "Trabajador(a) doméstico(a)",
+                                           "Maestro" = "Otro",
+                                           "Servidor publico" = "Otro",
+                                           "Fuerza publica" = "Otro",
+                                           "Reciclador" = "Otro"
+                                ))
+```
+
+### Variable actividad
+
+Esta variable es un indicativo para la variable anterior, por lo tanto, se realiza el cambio para las 4 categorías.
+
+```{r}
+data <- data %>%
+  mutate(actividad = recode(actividad,
+                                  "8" = "26",
+                                  "15" = "26",
+                                  "16" = "26",
+                                  "17" = "26",
+                            ))
+```
+
+**Nuevo**
+### Variable edad
+
+Se cambia a NA los casos en que la edad es de 0 años.
+```{r}
+data <- data %>%
+  mutate(edad_agre = na_if(edad_agre, 0))
+```
+
+
+### Variable parentezco_vict****
 
 ```{r}
 unique(data$parentezco_vict)
@@ -250,7 +295,7 @@ data <- data %>%
 ```
 
 
-### Variable departamento de residencia víctima
+### Variable ndep_resi
 
 Se modifica la escritura de algunos niveles.
 
@@ -264,7 +309,7 @@ data <- data %>%
   ))
 ```
 
-### Variable municipio de residencia víctima
+### Variable nmun_resi
 
 Se cambiaron los niveles que indicaban desconocimiento del municipio por NA, al igual que "CONTRATACIÓN" y "Colombia" por no tener relación con la variable. Además, el nivel "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" se cambió a "Exterior", dado que en estos registros el departamento se registra como "Exterior".
 
@@ -282,7 +327,7 @@ data <- data %>%
   ))
 ```
 
-## Variable hora hecho
+## Variable hora del hecho
 
 Se realizó una transformación en la variable hora_hecho para extraer únicamente la hora de la cadena de texto, la cual está en formato de 24 horas y se convirtió en un objeto de tipo hms, lo que permite un manejo más eficiente de los tiempos. Este proceso garantiza que la variable esté en un formato uniforme y adecuado para su análisis. 
 
@@ -297,7 +342,7 @@ data <- data %>%
            as_hms())
 ```
 
-## Variable fecha 
+## Variable fecha del hecho
 
 El formato de fecha inicial es dd/mm/yyyy pero al convertir el objeto se cambia al formato por defecto: yyyy-mm-dd.
 
@@ -327,7 +372,7 @@ na_empty <- data.frame(
 )
 ```
 
-De acuerdo a lo anterior son 10435 celdas NA y 5723 celdas que fueron definidas como vacías poniendo ""
+De acuerdo a lo anterior son `r sum(na_empty$total_na)` celdas NA y `r sum(na_empty$total_empty)` celdas que fueron definidas como vacías poniendo "".
 
 ```{r}
 # Filtrar filas con uno o más valores faltantes o celdas vacias
@@ -335,9 +380,10 @@ row_na_empty <- data %>%
   filter(if_any(everything(), ~ is.na(.) | . == "")) 
   #%>%  nrow()
 ```
-Para un total de 6076 filas con NA. Sin embargo, como hay columnas relacionadas hay celdas de una columna que se les puede asignar un valor a partir de la otra columna. 
 
-## Relacionar información para rellenar campos
+Para un total de `r nrow(row_na_empty)` registros con celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)` % de la base de datos. Sin embargo, como hay columnas relacionadas, algunas celdas de una columna pueden recibir un valor a partir de otra columna.
+
+### Relacionar información para rellenar campos
 
 ```{r}
 # Variable Comuna a partir de barrio
@@ -374,6 +420,61 @@ data <- data %>%
   ))
 ```
 
+
+```{r}
+# Variable nombre de actividad (nom_actividad) a partir del indicativo de actividad
+row_na_empty %>% filter((!is.na(actividad) | actividad != "") & (is.na(nom_actividad) | nom_actividad == ""))
+```
+
+```{r}
+data <- data %>%
+  mutate(nom_actividad = case_when(
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "13" ~ "Líderes(as) cívicos",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "24"~ "Estudiante",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "26"~ "Otro",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "28"~ "Trabajador(a) doméstico(a)",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "29" ~ "Persona en situación de prostitución",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "30"~ "Campesino/a",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "31"~ "Persona dedicada al cuidado del hogar",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "32"~ "Persona que cuida a otras",
+    (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "33" ~ "Ninguna",
+    TRUE ~ nom_actividad
+  ))
+```
+
+
+```{r}
+# Volver a analizar celdas vacías
+na_empty <- data.frame(
+  Column = names(data),
+  total_na = sapply(data, function(col) sum(is.na(col))),
+  total_empty = sapply(data, function(col) sum(col == "", na.rm = TRUE)),
+  row.names = NULL
+)
+```
+
+Se puede observar que disminuyó la cantidad de celdas vacías. 
+
+```{r}
+# Filtrar filas con uno o más valores faltantes o celdas vacias
+row_na_empty <- data %>%
+  filter(if_any(everything(), ~ is.na(.) | . == "")) 
+  #%>%  nrow()
+```
+
+Entonces luego de rellenar las celdas vacías a partir de información relacionada queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)` % de la base de datos. Es decir, se pueden utilizar `r nrow(data) - nrow(row_na_empty)` registros.
+
+Sin embargo, variables como edad agresor y hora del hecho no se encuentran en todas las fichas de notificación del SIVIGILA, lo que puede ser la razón por la cual hay tantas celdas vacías en sus columnas. Según lo investigado desde la ficha 2018 no se pide estas variables. 
+
+```{r}
+NA_without_columns <- data %>%
+  select(-edad_agre, -hora_hecho) %>%
+  filter(if_any(everything(), ~ is.na(.) | . == "")) %>%
+  nrow()
+```
+
+Si no se consideran, se tendrían `r nrow(data) - NA_without_columns` registros completos para utilizar. 
+
 ## Registros duplicados
 
 ```{r}
@@ -400,4 +501,4 @@ data %>%
 # Leer base de datos depurada
 ```
 
-# ConClusiones
+# Conclusiones
