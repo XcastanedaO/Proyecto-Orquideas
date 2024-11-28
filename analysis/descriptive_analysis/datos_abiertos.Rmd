@@ -82,7 +82,7 @@ unique(data$Departamento)
 ```
 La variable departamento presenta algunas inconsistencias en la escritura de los nombres, por lo que se han corregido los errores ortográficos en aquellos casos que pertenecen al mismo departamento. Además, se ha asignado a las ciudades de Barranquilla y Bogotá sus respectivos departamentos, para evitar que se consideren como departamentos diferentes.
 
-Por otro lado, se han identificado algunas filas que contenían nombres que no coinciden con departamentos de Colombia, y dado que esta columna corresponde al lugar en el que residía la víctima al momento de la notificación y tras investigar, se determinó que correspondían a estados de Venezuela, algunos de los cuales no están en la frontera con Colombia. Estos registros se han clasificado solamente como "Venezuela". También se ha encontrado una categoría denominada "Departamentos desconocidos", que se asume que son filas NA para esta columna.
+Por otro lado, se han identificado algunas filas que contenían nombres que no coinciden con departamentos de Colombia, y dado que esta columna corresponde al lugar de procedencia/ocurrencia del hecho y tras investigar, se determinó que correspondían a estados de Venezuela, algunos de los cuales no están en la frontera con Colombia. Estos registros se han clasificado solamente como "Venezuela". También se ha encontrado una categoría denominada "Departamentos desconocidos", que se asume que son filas NA para esta columna.
 
 ```{r}
 data <- data %>%
@@ -97,7 +97,7 @@ data <- data %>%
                                "APURE" = "EXTERIOR",  
                                "CARABOBO" = "EXTERIOR", 
                                "PORTUGUESA" = "EXTERIOR", 
-                               "ZULIA" = "EXTERIOR", 
+                               "ZULIA" = "Depto[Venezuela]", 
                                "YARACUY" = "EXTERIOR",  
                                "TACHIRA" = "EXTERIOR",
                                "ATLANTICO" = "ATLÁNTICO",
@@ -209,8 +209,8 @@ data <- data %>%
                                  "ERROR: #N/A" = NA_character_,
                                  "Sin informacion" = NA_character_,
                                  "Violencia fisica" = "Física",
-                                 "Violacion" = "Acceso carnal",
-                                 "Abuso sexual" = "Acceso carnal",
+                                 #"Violacion" = "Acceso carnal",
+                                 #"Abuso sexual" = "Acceso carnal",
                                  "Violencia psicologica" = "Psicológica",
                                  "Otros actos sexuales" = "Otras violencias sexuales",  # Unificar categorías
                                  "Actos sexuales violencia" = "Actos sexuales",  # Unificar categorías
@@ -220,15 +220,16 @@ data <- data %>%
 unique(data$def_naturaleza)
 data$def_naturaleza <- as.factor(data$def_naturaleza)
 ```
-**NUEVO**
+**HAY QUE CAMBIAR**
 ### Variable naturaleza
 Por lo anterior, se buscó unificar también los indicativos de esas categorías. En el caso de la categoría "4" (abuso sexual) se pasó a "6" acceso carnal. Para las categorías "violacion", "Otros actos sexuales" y "Actos sexuales violencia" coincidía su indicativo con el indicativo de la categoría a la que se cambió. Además, esta variable está tomando un valor de 99 en algunos registros, de acuerdo a las fichas encontradas con las que se notifican los casos de violencia, en ninguna versión hay una naturaleza/modalidad de violencia identificada con este valor. Por lo tanto, se convierte en NA.
 
 ```{r}
 data <- data %>%
   mutate(naturaleza = recode(naturaleza,
-                              "99" = NA_character_,
-                               "4" = "6"))
+                              "99" = NA_character_
+                               #"4" = "6"
+                             ))
 ```
 
 
@@ -240,6 +241,7 @@ Esta variable indica la actividad a la que se dedica la víctima, tiene niveles 
 
 ```{r}
  data %>% filter(nom_actividad %in% c("Reciclador","Maestro","Servidor publico","Fuerza publica"))
+unique(data$nom_actividad)
 ```
 Teniendo en cuenta que son pocos los registros y a partir de la [ficha de notificación del SIVIGILA 2018](https://www.hosdenar.gov.co/dependencias/iamii/wp-content/uploads/2019/01/VIOLENCIA_875_2018.pdf) estas categorías no son incluidas, se decide pasarlas a la categoría "Otro".
 
