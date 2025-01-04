@@ -10,7 +10,6 @@ output:
 \newpage
 
 # Información de la base de datos
-
 La base de datos, titulada *04. Violencia de Género e Intrafamiliar de enero 2015 a marzo 2023 - Semana Epidemiológica 12*, está alojada en el portal de Datos Abiertos de Colombia [(Ver)](https://www.datos.gov.co/Salud-y-Protecci-n-Social/04-Violencia-de-G-nero-e-intrafamiliar-de-enero-20/sq8q-pnf5/about_data). Este recurso recopila información sobre los casos de violencia de género atendidos en instituciones prestadoras de salud (IPS) entre 2015 y 2023.
 
 -   **Fuente:** Secretaría de Salud y Ambiente de Bucaramanga.
@@ -28,7 +27,6 @@ Además de la base de datos, en el anterior enlace se encuentran los siguientes 
 -   Calendario epidemiológico del año 2023
 
 # Lectura
-
 ```{r, message=FALSE}
 source("../../utils/load_data.R")
 library(here)
@@ -36,6 +34,8 @@ library(hms)
 library(dplyr)
 library(forcats)
 library(lubridate)
+library(stringr)
+library(stringi)
 ```
 
 ```{r}
@@ -50,15 +50,14 @@ str(data)
 # Depuración de la base de datos
 
 ## Selección casos de mujeres
-
 ```{r}
 data <- data %>% filter(sexo_ == "Femenino")
 ```
 
 La base de datos tiene un total de 12161 casos de violencia de género donde 8406 corresponden a mujeres. De aquí adelante se trabaja solo con estos casos.
 
-## Variable orden
 
+## Variable orden
 La variable orden no aporta información útil al estudio, solo es de identificación.
 
 ```{r}
@@ -67,39 +66,40 @@ data <- data %>%
 ```
 
 ## Variables de tipo factor
-
-Las variables como "Tipo de Paciente", "Condición al egresar", "Naturaleza", "Actividad", "Presencia de sustancias", "Escenario" y "Zona de exposición" son categóricas y representan distintas categorías sin un orden específico. Esta conversión facilita el análisis estadístico y la interpretación de los resultados futuros, para cuando se desee estudiar estas variables categóricas. 
+Las variables como "Hospitalización", "Condición al egresar","Presencia de sustancias", "Escenario" y "Zona de exposición" son categóricas y representan distintas categorías sin un orden específico. Esta conversión facilita el análisis estadístico y la interpretación de los resultados futuros, para cuando se desee estudiar estas variables categóricas. 
 
 ```{r}
 data <- data %>%
-  mutate(across(c(Departamento, Municipio, sexo_, Grupo.edad, Ciclo.de.vida, area_, Tipo.de.Seguridad.Social, pac_hos_, con_fin_, naturaleza, actividad, parentezco_vict, sust_vict, escenario, zona_conf,Barrio, Comuna, ndep_resi,nmun_resi, nom_actividad,parentezco_vict,nom_upgd), as.factor))
+  mutate(across(
+    c(
+      pac_hos_,
+      con_fin_,
+      sust_vict,
+      escenario,
+      zona_conf,
+      año,
+      area_,
+      nom_upgd,
+      nom_eve
+    ),
+    as.factor
+  ))
 ```
 
 ### Variable Departamento
-
 ```{r}
 unique(data$Departamento)
 ```
 La variable departamento presenta algunas inconsistencias en la escritura de los nombres, por lo que se han corregido los errores ortográficos en aquellos casos que pertenecen al mismo departamento. Además, se ha asignado a las ciudades de Barranquilla y Bogotá sus respectivos departamentos, para evitar que se consideren como departamentos diferentes.
 
-Por otro lado, se han identificado algunas filas que contenían nombres que no coinciden con departamentos de Colombia, y dado que esta columna corresponde al lugar de procedencia/ocurrencia del hecho y tras investigar, se determinó que correspondían a estados de Venezuela, algunos de los cuales no están en la frontera con Colombia. Estos registros se han clasificado solamente como "Venezuela". También se ha encontrado una categoría denominada "Departamentos desconocidos", que se asume que son filas NA para esta columna.
-
 ```{r}
 data <- data %>%
   mutate(Departamento = recode(Departamento,
                                "BOLIVAR" = "BOLÍVAR",  # "BOLIVAR" a "BOLÍVAR"
-                               "STA MARTA D.E." = "SANTA MARTA",  # "STA MARTA D.E." a "SANTA MARTA"
+                               "STA MARTA D.E." = "MAGDALENA",  
                                "NORTE SANTANDER" = "NORTE DE SANTANDER",  # "NORTE SANTANDER" a "NORTE DE SANTANDER"
-                               "BARRANQUILLA" = "ATLANTICO",  # Asignar "ATLANTICO" a "BARRANQUILLA"
-                               "BOGOTÁ" = "CUNDINAMARCA",  # Asignar "CUNDINAMARCA" a "BOGOTÁ"
-                               "ARAGUA" = "EXTERIOR",
-                               "VARGAS" = "EXTERIOR", 
-                               "APURE" = "EXTERIOR",  
-                               "CARABOBO" = "EXTERIOR", 
-                               "PORTUGUESA" = "EXTERIOR", 
-                               "ZULIA" = "Depto[Venezuela]", 
-                               "YARACUY" = "EXTERIOR",  
-                               "TACHIRA" = "EXTERIOR",
+                               "BARRANQUILLA" = "ATLÁNTICO",  # Asignar "ATLANTICO" a "BARRANQUILLA"
+                               "BOGOTA" = "CUNDINAMARCA",  # Asignar "CUNDINAMARCA" a "BOGOTÁ"
                                "ATLANTICO" = "ATLÁNTICO",
                                "CORDOBA" = "CÓRDOBA",
                                "CAQUETA" = "CAQUETÁ",
@@ -107,23 +107,91 @@ data <- data %>%
   ))
 ```
 
-**NUEVO**
+Por otro lado, se han identificado algunas filas que contenían nombres que no coinciden con departamentos de Colombia, y dado que esta columna corresponde al lugar de procedencia/ocurrencia del hecho y tras investigar, se determinó que algunos correspondían a estados de Venezuela, que no están en la frontera con Colombia. Estos registros se han clasificado solamente como "Depto[Venezuela]". Lo mismo para departamentos de otros países. También,hay una categoría denominada "DEPTO DESCONOCIDO", que relacionada con la columna Municipio se encontró que corresponde a departamentos de otros países. Por lo tanto, se renombra estos casos como "Depto[País]".
 
-### Variable Municipio
-
-Dado que no se conoce el municipio se cambia a NA las siguientes categorías. 
 ```{r}
 data <- data %>%
-  mutate(Municipio = recode(Municipio,
-                               "* CAQUETA. MUNICIPIO DESCONOCIDO" = NA_character_,
-                               "* SANTANDER. MUNICIPIO DESCONOCIDO" = NA_character_
-  ))
+  mutate(
+    # Arreglar formato mayúsculas:
+    Departamento = str_to_title(Departamento),
+    Municipio = str_to_title(Municipio),
+    
+    # Quitar asteriscos de nombres de países
+    Municipio = str_replace(Municipio, "\\*", ""),
+    
+    # Cambiar "DEPTO DESCONOCIDO" por "Depto[País]" de acuerdo al valor que se tiene en Municipio
+    Departamento = ifelse(
+      Departamento == "Depto Desconocido",
+      paste0("Depto[", str_extract(Municipio, "^[^ -]+"), "]"),
+      Departamento),
+    
+    # Arreglar a Depto[Estados Unidos] manualmente
+    Departamento = ifelse(
+      Departamento == "Depto[Estados]",
+      paste0("Depto[Estados Unidos]"),
+      Departamento),
+    
+    # Modificar el departamento en los casos donde el municipio indica que no es de Colombia
+    Municipio = stri_trans_general(Municipio, "NFKD"), # Normalizar caracteres Unicode
+    Departamento = ifelse(
+      Municipio %in% c("Caroní (Ciudad Guayana).","Sucre (Cumaná)."),
+      "Depto[Venezuela]",
+      Departamento
+    ),
+
+    # Identificar departamentos que no son de Colombia y cambiar por Depto[País]
+    Departamento = case_when(
+      Departamento %in% c("Zulia", "Apure", "Aragua","Carabobo","Tachira","Yaracuy","Vargas","Portuguesa") ~ "Depto[Venezuela]",
+      TRUE ~ Departamento)
+)
+
+# Convertir a factor
+data$Departamento <- as.factor(data$Departamento)
 ```
 
-**NUEVO**
+### Variable Municipio
+Los registros que tenían como valor el nombre de algún país se cambia por "Mun[País]". Además,los registros que indican que no se conocía el municipio se asignó NA.
+
+```{r}
+data <- data %>%
+  mutate(
+    Municipio = case_when(
+      # Cambiar por NA los casos donde no se conoce el municipio
+      str_detect(Municipio, "Municipio Desconocido") ~ NA_character_,
+
+      # Asignar a casos con Depto[País] un valor de Mun[País] para esta variable
+      str_detect(Departamento, "^Depto\\[(.*)\\]$") ~ str_replace(Departamento, "Depto\\[(.*)\\]", "Mun[\\1]"),
+      
+      # Corrección de nombres de municipios
+      Municipio == "Ocana" ~ "Ocaña",
+      Municipio == "Abrego" ~ "Ábrego",
+      Municipio == "Abriaqui" ~ "Abriaquí",
+      Municipio == "Charala" ~ "Charalá",
+      Municipio == "Curumani" ~ "Curumaní",
+      Municipio == "El Carmen De Chucuri" ~ "El Carmen De Chucurí",
+      Municipio == "El Playon" ~ "El Playón",
+      Municipio == "Fundacion" ~ "Fundación",
+      Municipio == "Monteria" ~ "Montería",
+      Municipio == "Samaca" ~ "Samacá",
+      Municipio == "San Vicente De Chucuri" ~ "San Vicente De Chucurí",
+      Municipio == "Santa Helena Del Opon" ~ "Santa Helena del Opón",
+      Municipio == "Velez" ~ "Vélez",
+      Municipio == "Chia" ~ "Chía",
+      Municipio == "Ibague" ~ "Ibagué",
+      Municipio == "Cucuta" ~ "Cúcuta",
+      Municipio == "Bogota" ~ "Bogotá",
+      Municipio == "Medellin" ~ "Medellín",
+      Municipio == "Tibu" ~ "Tibú",
+      Municipio == "Giron" ~ "Girón",
+      TRUE ~ Municipio
+    )
+  )
+
+# Convertir a factor
+data$Municipio <- as.factor(data$Municipio)
+```
 
 ### Variable Grupo de edad
-
 Se modifica la escritura de algunos niveles. 
 
 ```{r}
@@ -132,12 +200,12 @@ data <- data %>%
                                "7  a 11" = "7 a 11", 
                                "60 y mas" = "60 y más"
   ))
+
+# Convertir a factor
+data$Grupo.edad <- as.factor(data$Grupo.edad)
 ```
 
-**NUEVO**
-
 ### Variable Ciclo de vida
-
 Se modifica la escritura de algunos niveles. 
 
 ```{r}
@@ -145,31 +213,49 @@ data <- data %>%
   mutate(Ciclo.de.vida = recode(Ciclo.de.vida,
                                "Jovenes" = "Jóvenes"
   ))
+
+# Convertir a factor
+data$Ciclo.de.vida <- as.factor(data$Ciclo.de.vida)
 ```
 
 ### Variable Barrio 
-
-Se convirtieron los niveles "SIN INFORMACIÓN" a NA. Además, para los casos con barrio "GRON" se asume que es un error tipográfico y se refiere es a Giron, municipio del área metropolitana de Bucaramanga.
+Se convirtieron los niveles "SIN INFORMACIÓN" a NA y se estandarizaron los niveles a minúsculas para evitar niveles repetidos. Además, para los casos con barrio "GRON" se encuentra que es un error tipográfico y se refiere es a Girón, municipio del área metropolitana de Bucaramanga.
 
 ```{r}
 data <- data %>%
   mutate(Barrio = recode(Barrio,
-                                "SIN INFORMACION"  = NA_character_,
-                              "GRON" = "GIRON"))
+                              "SIN INFORMACION"  = NA_character_,
+                              "GRON" = "GIRÓN",
+                              "GIRON" = "GIRÓN"),
+         Barrio = tools::toTitleCase(tolower(Barrio))
+  )
+
+# Convertir a factor
+data$Barrio <- as.factor(data$Barrio)
 ```
 
 ### Variable Comuna
 
-Se convirtieron los niveles "SIN INFORMACIÓN" a NA.
+Algunos niveles de esta variables corresponde a municipios y otros inician con un número indicativo. Por lo tanto, se remueve el indicativo y Se convirtieron los niveles "SIN INFORMACIÓN","MONTE CRUZ" y "SANTOS BAJOS" a NA. Los últimos niveles debido a que no corresponden a una comuna ni a un municipio de Colombia. 
+
+```{r}
+unique(data$Comuna)
+```
 
 ```{r}
 data <- data %>%
-  mutate(Comuna = recode(Comuna,
-                              "SIN INFORMACION" = NA_character_))
+  mutate(
+    Comuna = str_remove(Comuna, "^[0-9]+\\.\\s*"),  
+    Comuna = tools::toTitleCase(tolower(Comuna)),
+    Comuna = case_when(
+      Comuna %in% c("Sin Informacion", "Monte Cruz", "Santos Bajos") ~ NA_character_,  #
+      Comuna == "Giron" ~ "Girón",  
+      TRUE ~ Comuna  
+    )
+  )
 ```
 
-### Variable Tipo de Seguridad Social
-
+### Variable Tipo de seguridad social
 ```{r}
 unique(data$Tipo.de.Seguridad.Social)
 ```
@@ -185,62 +271,59 @@ data <- data %>%
                                            "Excepción" = "Excepción",
                                            "Indeterminado" = "Indeterminado",
                                            "Especial" = "Especial"))
+
+# Convertir a factor
+data$Tipo.de.Seguridad.Social <- as.factor(data$Tipo.de.Seguridad.Social)
 ```
 
-### Variable def_naturaleza
 
+### Variable def_naturaleza (Modalidad de la violencia)
 Se refiere a cualquier acción o conducta violenta desarrollada a partir de relaciones de poder basadas en el género.
 
 ```{r}
 unique(data$def_naturaleza)
 ```
+Se realizaron ajustes en la variable def_naturaleza para mejorar la calidad de los datos, corrigiendo inconsistencias y estandarizando categorías. Se reemplazaron valores erróneos o faltantes, como "Sin Informacion" y "ERROR: #N/A", por NA para tratarlos como datos faltantes. Además, se unificaron categorías similares, como "Otros actos sexuales" y "Otras violencias sexuales", bajo una sola etiqueta ("Otras violencias sexuales") para simplificar el análisis. Estas modificaciones permiten una mejor interpretación y manejo de los datos, facilitando su análisis posterior. 
 
-**Nuevo: ¿abuso sexual y acoso sexual se puede unificar?**
-
-Se realizaron ajustes en la variable def_naturaleza para mejorar la calidad de los datos, corrigiendo inconsistencias y estandarizando categorías. Se reemplazaron valores erróneos o faltantes, como "Sin Informacion" y "ERROR: #N/A", por NA para tratarlos como datos faltantes. Además, se unificaron categorías similares, como "Otros actos sexuales" y "Otras violencias sexuales", bajo una sola etiqueta ("Otras violencias sexuales") para simplificar el análisis. Estas modificaciones permiten una mejor interpretación y manejo de los datos, facilitando su análisis posterior. De igual forma, se unificaron las categorías "Violacion" y "Abuso sexual" en "Acceso carnal".
+<!-- De igual forma, se unificaron las categorías "Violacion" y "Abuso sexual" en "Acceso carnal". "Violacion" = "Acceso carnal","Abuso sexual" = "Acceso carnal" -->
 
 ```{r}
 # Limpiar y estandarizar la variable def_naturaleza
-
 data <- data %>%
-  mutate(def_naturaleza = as.character(def_naturaleza)) %>%  # Aseguramos que sea tipo carácter
   mutate(def_naturaleza = recode(def_naturaleza,
                                  "Sin Informacion" = NA_character_,
                                  "ERROR: #N/A" = NA_character_,
                                  "Sin informacion" = NA_character_,
                                  "Violencia fisica" = "Física",
-                                 #"Violacion" = "Acceso carnal",
-                                 #"Abuso sexual" = "Acceso carnal",
                                  "Violencia psicologica" = "Psicológica",
                                  "Otros actos sexuales" = "Otras violencias sexuales",  # Unificar categorías
                                  "Actos sexuales violencia" = "Actos sexuales",  # Unificar categorías
-                                 "Explotacion sexual, comercial niños, adolescentes" = "Explotación sexual comercial"))
+                                 "Explotacion sexual, comercial niños, adolescentes" = "Explotación sexual"))
+
+# Convertir a factor
+data$def_naturaleza <- as.factor(data$def_naturaleza)
 
 # Verificar los cambios
-unique(data$def_naturaleza)
-data$def_naturaleza <- as.factor(data$def_naturaleza)
+levels(data$def_naturaleza)
 ```
-**HAY QUE CAMBIAR**
-### Variable naturaleza
-Por lo anterior, se buscó unificar también los indicativos de esas categorías. En el caso de la categoría "4" (abuso sexual) se pasó a "6" acceso carnal. Para las categorías "violacion", "Otros actos sexuales" y "Actos sexuales violencia" coincidía su indicativo con el indicativo de la categoría a la que se cambió. Además, esta variable está tomando un valor de 99 en algunos registros, de acuerdo a las fichas encontradas con las que se notifican los casos de violencia, en ninguna versión hay una naturaleza/modalidad de violencia identificada con este valor. Por lo tanto, se convierte en NA.
+
+### Variable naturaleza (indicativo de modalidad de la violencia)
+Esta variable está tomando un valor de 99 en algunos registros, de acuerdo a las fichas encontradas con las que se notifican los casos de violencia, en ninguna versión hay una naturaleza/modalidad de violencia identificada con este valor. Por lo tanto, se convierte en NA.
 
 ```{r}
 data <- data %>%
-  mutate(naturaleza = recode(naturaleza,
+  mutate(naturaleza = recode(as.character(naturaleza),
                               "99" = NA_character_
-                               #"4" = "6"
                              ))
 ```
 
+<!-- Por lo anterior, se buscó unificar también los indicativos de esas categorías. En el caso de la categoría "4" (abuso sexual) se pasó a "6" acceso carnal. Para las categorías "violacion", "Otros actos sexuales" y "Actos sexuales violencia" coincidía su indicativo con el indicativo de la categoría a la que se cambió. #"4" = "6" -->
 
-**Nuevo**
 
-### Variable nom_actividad
-
+### Variable nom_actividad 
 Esta variable indica la actividad a la que se dedica la víctima, tiene niveles como "Reciclador", "Maestro", "Servidor publico" y "Fuerza publica". 
 
 ```{r}
- data %>% filter(nom_actividad %in% c("Reciclador","Maestro","Servidor publico","Fuerza publica"))
 unique(data$nom_actividad)
 ```
 Teniendo en cuenta que son pocos los registros y a partir de la [ficha de notificación del SIVIGILA 2018](https://www.hosdenar.gov.co/dependencias/iamii/wp-content/uploads/2019/01/VIOLENCIA_875_2018.pdf) estas categorías no son incluidas, se decide pasarlas a la categoría "Otro".
@@ -256,31 +339,47 @@ data <- data %>%
                                 ))
 ```
 
-### Variable actividad
-
+### Variable actividad (indicativo de actividad de la víctima)
 Esta variable es un indicativo para la variable anterior, por lo tanto, se realiza el cambio para las 4 categorías.
 
 ```{r}
 data <- data %>%
-  mutate(actividad = recode(actividad,
+  mutate(actividad = recode(as.character(actividad),
                                   "8" = "26",
                                   "15" = "26",
                                   "16" = "26",
                                   "17" = "26",
                             ))
+
+# Convertir a factor
+data$actividad <- as.factor(data$actividad)
 ```
 
-**Nuevo**
-### Variable edad
 
+### Variable edad agresor
 Se cambia a NA los casos en que la edad es de 0 años.
 ```{r}
 data <- data %>%
   mutate(edad_agre = na_if(edad_agre, 0))
 ```
 
+### Variable sexo_agre (sexo del agresor)
+Esta variable toma los valores de "" y "SD" en algunos registros, por lo tanto, se cambia a NA. Teniendo en cuenta que "SD" de acuerdo a los formatos de notificación significan ausencia del dato. 
+```{r}
+data <- data %>% mutate(
+  sexo_agre = case_when(
+    sexo_agre == "" ~ NA_character_,
+    sexo_agre == "SD" ~ NA_character_,
+    TRUE ~ sexo_agre
+  )
+)
 
-### Variable parentezco_vict****
+# Convertir a factor
+data$sexo_agre <- as.factor(data$sexo_agre)
+```
+
+
+### Variable parentezco_vict (Parentesco del agresor con la víctima )
 
 ```{r}
 unique(data$parentezco_vict)
@@ -291,46 +390,73 @@ El cambio de valores como "Novio(a)" a "Pareja", "Ex - amante" a "Ex pareja" y "
 ```{r}
 data <- data %>%
   mutate(parentezco_vict = recode(parentezco_vict,
-                                           "Novio(a)" = "Pareja",
-                                           "Ex - amante" = "Ex pareja",
-                                            "Pareja" = "Amante"))
+                                  "Novio(a)" = "Pareja",
+                                  "Ex - amante" = "Ex - pareja",
+                                  "Pareja" = "Amante"
+  ))
+
+# Convertir a factor
+data$parentezco_vict <- as.factor(data$parentezco_vict)
 ```
 
 
-### Variable ndep_resi
+### Variable ndep_resi (Departamento de residencia de la víctima)
+Hay cinco registros registros que indican 'Exterior' en el departamento y 'COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR' en el municipio. 
 
-Se modifica la escritura de algunos niveles.
+```{r}
+# Ver registros
+data %>% filter(ndep_resi == "EXTERIOR" & nmun_resi == "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR") %>% 
+  select(ndep_resi,nmun_resi)
+```
+Para estos casos se cambia ndep_resi a NA. Además, se corrigen errores ortográficos. 
 
 ```{r}
 data <- data %>%
-  mutate(ndep_resi = recode(ndep_resi,
-                               "BOLIVAR" = "BOLÍVAR",  # "BOLIVAR" a "BOLÍVAR"
-                               "NORTE SANTANDER" = "NORTE DE SANTANDER",  # "NORTE SANTANDER" a "NORTE DE SANTANDER"
-                               "BOGOTA" = "CUNDINAMARCA",  # Asignar "CUNDINAMARCA" a "BOGOTÁ"
-                               "BOYACA" = "BOYACÁ"
-  ))
+  mutate(
+    ndep_resi = tools::toTitleCase(tolower(ndep_resi)),
+    ndep_resi = case_when(
+      ndep_resi == "Exterior" & nmun_resi == "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" ~ NA_character_,
+      ndep_resi == "Bolivar" ~ "Bolívar",
+      ndep_resi == "Valle" ~ "Valle del Cauca",
+      ndep_resi == "Norte Santander" ~ "Norte de Santander",
+      ndep_resi == "Bogota" ~ "Cundinamarca",
+      ndep_resi == "Boyaca" ~ "Boyacá",
+      TRUE ~ ndep_resi
+    )
+  )
+
+# Convertir a factor
+data$ndep_resi <- as.factor(data$ndep_resi)
 ```
 
-### Variable nmun_resi
 
-Se cambiaron los niveles que indicaban desconocimiento del municipio por NA, al igual que "CONTRATACIÓN" y "Colombia" por no tener relación con la variable. Además, el nivel "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" se cambió a "Exterior", dado que en estos registros el departamento se registra como "Exterior".
+### Variable nmun_resi (Municipio de residencia de la víctima)
+Para los cinco registros que indican 'COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR' en municipio se cambio este valor a NA, al igual que los niveles que indicaban de otra forma desconocimiento del municipio.
 
 ```{r}
-data <- data %>%
-  mutate(nmun_resi = recode(nmun_resi,
-                               "* AMAZONAS. MUNICIPIO DESCONOCIDO" = NA_character_,
-                               "* SANTANDER. MUNICIPIO DESCONOCIDO" = NA_character_,
-                               "COLOMBIA" = NA_character_,
-                               "CONTRATACION" = NA_character_,
-                               "* EXTERIOR. PAÍS DESCONOCIDO - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" = "Exterior",
-                               "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" = "Exterior",
-                               "CUCUTA" = "CÚCUTA",
-                               "BOGOTA" = "BOGOTÁ"
-  ))
+data <- data %>% mutate(
+  nmun_resi = tools::toTitleCase(tolower(nmun_resi)),
+  nmun_resi = case_when(
+    str_detect(nmun_resi, "Municipio Desconocido") ~ NA_character_,
+    str_detect(nmun_resi, "Exterior") ~ "Exterior",
+    nmun_resi == "Colombia - Sin Especificación Adicional De Lugar" ~ NA_character_,
+    nmun_resi == "Contratacion" ~ "Contratación",
+    nmun_resi == "Cucuta" ~ "Cúcuta",
+    nmun_resi == "Bogota" ~ "Bogotá",
+    nmun_resi == "Giron" ~ "Girón",
+    nmun_resi == "El Playon" ~ "El Playón",
+    nmun_resi == "San Vicente De Chucuri" ~ "San Vicente De Chucurí",
+    nmun_resi == "Charala" ~ "Charalá",
+    nmun_resi == "Santa Helena Del Opon" ~ "Santa Helena del Opón",
+    TRUE ~ nmun_resi
+  )
+)
+
+# Convertir a factor
+data$nmun_resi <- as.factor(data$nmun_resi)
 ```
 
 ## Variable hora del hecho
-
 Se realizó una transformación en la variable hora_hecho para extraer únicamente la hora de la cadena de texto, la cual está en formato de 24 horas y se convirtió en un objeto de tipo hms, lo que permite un manejo más eficiente de los tiempos. Este proceso garantiza que la variable esté en un formato uniforme y adecuado para su análisis. 
 
 
@@ -345,25 +471,15 @@ data <- data %>%
 ```
 
 ## Variable fecha del hecho
-
-El formato de fecha inicial es dd/mm/yyyy pero al convertir el objeto se cambia al formato por defecto: yyyy-mm-dd.
+El formato de fecha inicial es dd/mm/yyyy pero al convertir a objeto Date se cambia al formato por defecto: yyyy-mm-dd.
 
 ```{r}
 # Cambiar tipo de dato a Date
 data$fec_hecho <- as.Date(data$fec_hecho, format = "%d/%m/%Y")
 ```
 
-## Rangos de fecha y hora
-
-```{r}
-# Verificar que las horas estén entre el rango 00:00:00 24:00:00
-data %>%
-  filter(!between(hms(hora_hecho), hms("00:00:00"), hms("24:00:00"))) %>%
-  nrow()
-```
 
 ## Valores faltantes
-
 ```{r}
 # Buscar valores faltantes y celdas vacias ("")
 na_empty <- data.frame(
@@ -380,31 +496,40 @@ De acuerdo a lo anterior son `r sum(na_empty$total_na)` celdas NA y `r sum(na_em
 # Filtrar filas con uno o más valores faltantes o celdas vacias
 row_na_empty <- data %>%
   filter(if_any(everything(), ~ is.na(.) | . == "")) 
-  #%>%  nrow()
+# %>%  nrow()
 ```
 
-Para un total de `r nrow(row_na_empty)` registros con celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)` % de la base de datos. Sin embargo, como hay columnas relacionadas, algunas celdas de una columna pueden recibir un valor a partir de otra columna.
+Para un total de `r nrow(row_na_empty)` registros con celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)`% de la base de datos. Sin embargo, como hay columnas relacionadas, algunas celdas de una columna pueden recibir un valor a partir de otra columna.
 
 ### Relacionar información para rellenar campos
-
 ```{r}
 # Variable Comuna a partir de barrio
-row_na_empty %>% filter((!is.na(Barrio) | Barrio != "") & (is.na(Comuna) | Comuna == ""))
+row_na_empty %>%
+  filter((!is.na(Barrio) |
+            Barrio != "") & (is.na(Comuna) | Comuna == "")) %>%
+  select(Barrio, Comuna)
 ```
 
 ```{r}
 data <- data %>%
   mutate(Comuna = case_when(
-    (is.na(Comuna) | Comuna == "" ) & Barrio == "Chapinero" ~ "03. SAN FRANCISCO",
-    (is.na(Comuna) | Comuna == "" ) & Barrio == "GIRON"~ "GIRON",
+    (is.na(Comuna) | Comuna == "" ) & Barrio == "Chapinero" ~ "San Francisco",
+    (is.na(Comuna) | Comuna == "" ) & Barrio == "Santos Bajos" ~ "Provenza",
+    (is.na(Comuna) | Comuna == "" ) & Barrio == "Monte Cruz" ~ "Morrorico",
+    (is.na(Comuna) | Comuna == "" ) & Barrio == "Girón"~ "Girón",
     TRUE ~ Comuna
   ))
+
+# Convertir a factor
+data$Comuna <- as.factor(data$Comuna)
 ```
 
 
 ```{r}
-# Variable naturaleza a partir de definición naturaleza (def_naturaleza)
-row_na_empty %>% filter((!is.na(def_naturaleza) | def_naturaleza != "") & (is.na(naturaleza) | naturaleza == ""))
+# Variable naturaleza a partir de def_naturaleza
+row_na_empty %>% filter((!is.na(def_naturaleza) |
+                           def_naturaleza != "") & (is.na(naturaleza) | naturaleza == "")) %>%
+  select(def_naturaleza, naturaleza)
 ```
 
 ```{r}
@@ -416,16 +541,22 @@ data <- data %>%
     (is.na(naturaleza) | naturaleza == "" ) & def_naturaleza == "Negligencia y abandono" ~ "3",
     (is.na(naturaleza) | naturaleza == "" ) & def_naturaleza == "Otras violencias sexuales"~ "14",
     (is.na(naturaleza) | naturaleza == "" ) & def_naturaleza == "Trata de personas"~ "10",
-    (is.na(naturaleza) | naturaleza == "" ) & def_naturaleza == "Violencia física"~ "1",
-    (is.na(naturaleza) | naturaleza == "" ) & def_naturaleza == "Violencia psicológica" ~ "2",
+    (is.na(naturaleza) | naturaleza == "" ) & def_naturaleza == "Física"~ "1",
+    (is.na(naturaleza) | naturaleza == "" ) & def_naturaleza == "Psicológica" ~ "2",
     TRUE ~ naturaleza
   ))
+
+# Convertir a factor
+data$naturaleza <- as.factor(data$naturaleza)
 ```
 
 
 ```{r}
 # Variable nombre de actividad (nom_actividad) a partir del indicativo de actividad
-row_na_empty %>% filter((!is.na(actividad) | actividad != "") & (is.na(nom_actividad) | nom_actividad == ""))
+row_na_empty %>% filter((!is.na(actividad) |
+                           actividad != "") &
+                          (is.na(nom_actividad) | nom_actividad == "")) %>%
+  select(actividad, nom_actividad)
 ```
 
 ```{r}
@@ -442,17 +573,21 @@ data <- data %>%
     (is.na(nom_actividad) | nom_actividad == "" ) & actividad == "33" ~ "Ninguna",
     TRUE ~ nom_actividad
   ))
+
+# Convertir a factor
+data$nom_actividad <- as.factor(data$nom_actividad)
 ```
 
 
 ```{r}
 # Volver a analizar celdas vacías
-na_empty <- data.frame(
+data.frame(
   Column = names(data),
   total_na = sapply(data, function(col) sum(is.na(col))),
   total_empty = sapply(data, function(col) sum(col == "", na.rm = TRUE)),
   row.names = NULL
-)
+) %>%
+  filter(total_na > 0 | total_empty > 0)
 ```
 
 Se puede observar que disminuyó la cantidad de celdas vacías. 
@@ -464,41 +599,48 @@ row_na_empty <- data %>%
   #%>%  nrow()
 ```
 
-Entonces luego de rellenar las celdas vacías a partir de información relacionada queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)` % de la base de datos. Es decir, se pueden utilizar `r nrow(data) - nrow(row_na_empty)` registros.
+Entonces luego de rellenar las celdas vacías a partir de información relacionada queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)`% de la base de datos. Es decir, se pueden utilizar `r nrow(data) - nrow(row_na_empty)` registros completos.
 
-Sin embargo, variables como edad agresor y hora del hecho no se encuentran en todas las fichas de notificación del SIVIGILA, lo que puede ser la razón por la cual hay tantas celdas vacías en sus columnas. Según lo investigado desde la ficha 2018 no se pide estas variables. 
+Sin embargo, variables como edad agresor y hora del hecho no se encuentran en todas las fichas de notificación del SIVIGILA, lo que puede ser la razón por la cual hay tantas celdas vacías en sus columnas (5046-4678). Según lo investigado desde la ficha 2018 (inclusive) no se pide estas variables. 
 
 ```{r}
 NA_without_columns <- data %>%
   select(-edad_agre, -hora_hecho) %>%
-  filter(if_any(everything(), ~ is.na(.) | . == "")) %>%
+  filter(if_any(everything(), ~ is.na(.) | . == "")) %>% 
   nrow()
 ```
+Si no se consideran estas columnas disminuye a `r NA_without_columns` registros con algún valor faltante. 
 
-Si no se consideran, se tendrían `r nrow(data) - NA_without_columns` registros completos para utilizar. 
+```{r}
+data <- data %>%
+  select(-edad_agre, -hora_hecho) %>%  
+  filter(complete.cases(.) & !apply(., 1, function(row) any(row == ""))) 
+```
+
+Al eliminar estos registros se obtiene una base de datos con `r nrow(data)` registros completos
+
 
 ## Registros duplicados
-
 ```{r}
 # Buscar registros duplicados
 data %>%
-  filter(duplicated(data)) %>%
+  filter(duplicated(.)) %>%
   nrow()
 ```
 
-## Datos atípicos
 ```{r}
-
+data <- data %>%
+    distinct()
 ```
+Finalmente, al eliminar los registros duplicados se obtiene una base de datos depurada con `r nrow(data)` registros.
 
 ## Base de datos depurada
-
 ```{r}
+# Guardar base de datos 
+# save_data(data, "datos_abiertos_2015_2023_cleaned", type = "interim", format = "csv")
 ```
 
-
 # Análisis descriptivo
-
 ```{r}
 # Leer base de datos depurada
 ```
