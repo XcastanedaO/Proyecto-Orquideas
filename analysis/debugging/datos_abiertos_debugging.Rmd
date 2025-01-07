@@ -1,5 +1,5 @@
 ---
-title: "Análisis descriptivo de casos de violencia contra mujeres en Colombia (2015-2023) según información del portal de Datos Abiertos"
+title: "Depuración información del portal de Datos Abiertos"
 date: "2024-11-13"
 output:
    pdf_document:
@@ -10,7 +10,7 @@ output:
 \newpage
 
 # Información de la base de datos
-La base de datos, titulada *04. Violencia de Género e Intrafamiliar de enero 2015 a marzo 2023 - Semana Epidemiológica 12*, está alojada en el portal de Datos Abiertos de Colombia [(Ver)](https://www.datos.gov.co/Salud-y-Protecci-n-Social/04-Violencia-de-G-nero-e-intrafamiliar-de-enero-20/sq8q-pnf5/about_data). Este recurso recopila información sobre los casos de violencia de género atendidos en instituciones prestadoras de salud (IPS) entre 2015 y 2023.
+La base de datos, titulada *04. Violencia de Género e Intrafamiliar de enero 2015 a marzo 2023 - Semana Epidemiológica 12*, está alojada en el portal de Datos Abiertos de Colombia [(Ver)](https://www.datos.gov.co/Salud-y-Protecci-n-Social/04-Violencia-de-G-nero-e-intrafamiliar-de-enero-20/sq8q-pnf5/about_data). Este recurso recopila información sobre los casos de violencia de género atendidos en instituciones prestadoras de salud (IPS) entre 2015 y 2023. Los casos registrados se dieron o son notificados principalmente en **Santander.**
 
 -   **Fuente:** Secretaría de Salud y Ambiente de Bucaramanga.
 
@@ -62,12 +62,12 @@ data <- data %>% filter(sexo_ == "Femenino")
 La base de datos tiene un total de `r nrow_aux` casos de violencia de género donde `r nrow(data)` corresponden a mujeres. De aquí adelante se trabaja solo con estos casos.
 
 
-## Variable orden
-La variable orden no aporta información útil al estudio, solo es de identificación. Por lo tanto, se elimina.
+## Variable orden y mes
+La variable orden no aporta información útil al estudio, solo es de identificación y la variable mes está mal creada, no coincide con el mes de la fecha. Por lo tanto, se eliminan.
 
 ```{r}
 data <- data %>%
-  select(-Orden)
+  select(-Orden,-MES)
 ```
 
 
@@ -458,15 +458,6 @@ data <- data %>% mutate(
 )
 ```
 
-
-### Variable mes 
-Esta variable corresponde al mes en que ocurrió el evento
-
-```{r}
-
-```
-
-
 Finalmente, las variables como **hospitalización**, **condición al egresar**,**presencia de sustancias**, **escenario** y **zona de exposición** también son categóricas y representan distintas categorías sin un orden específico. Esta conversión facilita el análisis estadístico y la interpretación de los resultados futuros, para cuando se desee estudiar estas variables categóricas. 
 
 ```{r}
@@ -495,8 +486,7 @@ data <- data %>%
       nom_eve,
       nom_upgd,
       ndep_resi,
-      nmun_resi,
-      MES
+      nmun_resi
     ),
     as.factor
   ))
