@@ -36,3 +36,8 @@ str(data)
 ```
 
 # Depuración de la base de datos
+
+```{r}
+data <- data %>% filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
+```
+
