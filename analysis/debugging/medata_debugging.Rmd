@@ -1,0 +1,38 @@
+---
+title: "Depuración información del portal de datos públicos de Medellín (MEData)."
+date: "2024-11-13"
+output:
+   pdf_document:
+    toc: true
+    number_sections: false
+---
+
+\newpage
+
+# Información de la base de datos
+La base de datos, titulada *Vigilancia Integrada de la Violencia de Género*, está alojada en el portal MEData [(Ver)](https://medata.gov.co/dataset/1-026-22-000170). Este recurso recopila información sobre los casos de violencia de género ocurridos entre 2013 y 2022 en Medellín, los cuales fueron reportados al SIVIGILA.
+
+-   **Última actualización:** 20 de septiembre de 2023.
+
+# Lectura de la base de datos
+```{r, include=FALSE}
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+```
+
+```{r}
+data <- load_data("medata_2013_2022.csv", type = "raw")
+```
+
+```{r}
+# Estructura de la base de datos
+str(data)
+```
+
+# Depuración de la base de datos
