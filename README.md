@@ -25,14 +25,17 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 ├── README.md          <- El archivo README para desarrolladores que utilizan este proyecto.
 │
 ├── analysis  
-│   ├── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
-│       └── datos_abiertos.R     <- Depuración y análisis descriptivo de los datos provenientes del portal de Datos Abiertos.
-│    └── code_guide.Rmd   <- Archivo con explicación de funciones o acciones necesarias para el buen funcionamiento del código
+│   ├── code_guide.Rmd   <- Archivo con explicación de funciones o acciones necesarias para el buen funcionamiento del código.
+│   ├── debugging        <- Archivos .R para depuración de los conjuntos de datos.
+│       └── datos_abiertos_debugging.R   <- Depuración de los datos provenientes del portal de Datos Abiertos.
+│   └── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
+│       └── datos_abiertos_descriptive.R   <- Análisis descriptivo de los datos provenientes del portal de Datos Abiertos.
 │
 ├── data
 │   ├── raw             <- Conjuntos de datos originales.
-│       └── datos_abiertos_2015_2023.csv <- Datos orginales a nivel nacional del 2015-2023 provenientes del portal de Datos Abiertos. 
+│       └── datos_abiertos_2015_2023.csv <- Datos orginales del 2015-2023 provenientes del portal de Datos Abiertos. 
 │   ├── interim         <- Conjuntos de datos intermedios, que han sido transformados.
+│       └── datos_abiertos_2015_2023.csv <- Datos depurados del 2015-2023 provenientes del portal de Datos Abiertos. 
 │   └── processed       <- Conjuntos de datos finales para la modelación.
 │
 ├── models             <- Archivos para la implementación de los modelos.
@@ -42,6 +45,6 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 ├── renv               <- Ambiente virtual donde se almacenarán las librerías implementadas.
 │
 └── utils
-    └── load_data.R       <- Funciones para lectura y guardado de conjuntos de datos 
+    └── load_data.R    <- Funciones para lectura y guardado de conjuntos de datos.
 
 ```
