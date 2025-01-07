@@ -61,20 +61,21 @@ save_data <- function(data, file_name, type = "processed", format = "csv") {
     stop("El formato debe ser 'csv', 'xlsx', 'rds' o 'txt'")
   }
   
-  path <- dirname(getwd())
-  if(sub(".*/", "", path) != "Proyecto-Orquideas"){
-    path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
-  }
+  # path <- dirname(getwd())
+  # if(sub(".*/", "", path) != "Proyecto-Orquideas"){
+  #   path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
+  # }
   
-  # Definir ruta del directorio base
-  data_dir <- file.path(path, "data", type)
+  # Definir ruta del directorio donde se guardará
+  # data_dir <- file.path(path, "data", type)
+  data_dir <- here("data", type)
   
-  # Crear el directorio si no existe
+  # Verificar si la ruta existe
   if (!dir.exists(data_dir)) {
-    dir.create(data_dir, recursive = TRUE)
+    stop("La ruta donde se quiere guardar el archivo no existe.")
   }
   
-  # Crear la ruta completa al archivo
+  # Crear la ruta completa del archivo
   file_path <- file.path(data_dir, paste0(file_name, ".", format))
   
   # Guardar el archivo según el formato
