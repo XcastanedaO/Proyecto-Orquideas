@@ -539,6 +539,8 @@ na_empty <- data.frame(
     sum(col == "", na.rm = TRUE)),
   row.names = NULL
 )
+
+na_empty
 ```
 
 De acuerdo a lo anterior son `r sum(na_empty$total_na)` celdas NA y `r sum(na_empty$total_empty)` celdas que fueron definidas como vacías poniendo "".
@@ -666,7 +668,7 @@ data$nom_actividad <- as.factor(data$nom_actividad)
 
 Se puede observar que disminuyó la cantidad de celdas vacías. 
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 # Volver a analizar celdas vacías
 data.frame(
   Column = names(data),
