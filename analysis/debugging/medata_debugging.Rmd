@@ -41,3 +41,10 @@ str(data)
 data <- data %>% filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
 ```
 
+```{r}
+data <- data %>% 
+  select(-c(cod_eve, cod_pre, cod_sub, nacionali_, cod_pais_o, 
+            cod_ase_, cer_def_, fec_aju_,nom_eve, nreg))
+```
+
+
