@@ -328,12 +328,7 @@ data <- data %>%
 
 
 ### Variable nom_actividad 
-Esta variable indica la actividad a la que se dedica la víctima, tiene niveles como "Reciclador", "Maestro", "Servidor publico" y "Fuerza publica". 
-
-```{r}
-unique(data$nom_actividad)
-```
-Teniendo en cuenta que son pocos los registros y a partir de la [ficha de notificación del SIVIGILA 2018](https://www.hosdenar.gov.co/dependencias/iamii/wp-content/uploads/2019/01/VIOLENCIA_875_2018.pdf) estas categorías no son incluidas, se decide pasarlas a la categoría "Otro".
+Esta variable indica la actividad a la que se dedica la víctima. 
 
 ```{r}
 data <- data %>%
@@ -341,27 +336,11 @@ data <- data %>%
     nom_actividad = recode(
       nom_actividad,
       "Trabajadora domestica" = "Trabajador(a) doméstico(a)",
-      "Maestro" = "Otro",
-      "Servidor publico" = "Otro",
-      "Fuerza publica" = "Otro",
-      "Reciclador" = "Otro"
+      "Fuerza publica" = "Fuerza pública",
+      "Maestro" = "Maestro(a)",
+      "Servidor publico" = "Servidor(a) público"
     )
   )
-```
-
-
-### Variable actividad (indicativo de actividad de la víctima)
-Esta variable es un indicativo para la variable anterior, por lo tanto, se realiza el cambio para las 4 categorías.
-
-```{r}
-data <- data %>%
-  mutate(actividad = recode(
-    as.character(actividad),
-    "8" = "26",
-    "15" = "26",
-    "16" = "26",
-    "17" = "26",
-  ))
 ```
 
 
