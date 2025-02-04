@@ -10,9 +10,10 @@ output:
 \newpage
 
 # Información de la base de datos
-La base de datos, titulada *Vigilancia Integrada de la Violencia de Género*, está alojada en el portal MEData [(Ver)](https://medata.gov.co/dataset/1-026-22-000170). Este recurso recopila información sobre los casos de violencia de género ocurridos entre 2013 y 2022 en Medellín, los cuales fueron reportados al SIVIGILA.
+La base de datos, titulada *Vigilancia Integrada de la Violencia de Género*, está alojada en el portal MEData [(Ver)](https://medata.gov.co/dataset/1-026-22-000170). Este recurso recopila información sobre los casos sospechosos de violencia de género ocurridos entre 2016 y 2022 en Antioquia, los cuales fueron reportados al SIVIGILA.
 
--   **Última actualización:** 20 de septiembre de 2023.
+-  **Última actualización:** 20 de septiembre de 2023.
+-  **Información sobre las variables:** Adicional al diccionario que aparece en MEData, el formato de notificación al SIVIGILA contiene indicaciones sobre muchas de las variables [(Ver)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
 
 # Lectura de la base de datos
 ```{r, include=FALSE}
@@ -27,7 +28,7 @@ library(stringi)
 ```
 
 ```{r}
-data <- load_data("medata_2013_2022.csv", type = "raw")
+data <- load_data("medata_2016_2022.csv", type = "raw")
 ```
 
 ```{r}
@@ -36,50 +37,1756 @@ str(data)
 ```
 
 # Depuración de la base de datos
+La base de datos está conformada por 118 variables, sin embargo, se elimina las siguientes variables por no ser de relevancia para el análisis:
+- Código y nombre del evento (cod_eve - nom_eve)
+- Código asignado en el SGSSS a los prestadores de servicios de salud que se hayan registrado en el 'Registro Especial de Prestadores de Servicios de Salud' (cod_pre)
+- Código asignado en el SGSSS a los prestadores de servicios de salud que indica sede ó territorio (cod_sub)
+- Código Administradora responsable de la atención del paciente, asignado por MSP (cod_ase)
+- Número del certificado defunción (cer_def_)
+- fecha efectiva de digitación del registro o realizar un ajuste a un registro previo (fec_aju_)
+- Número de registros (nreg)
+
+```{r, include=FALSE}
+data <- data %>%
+  select(-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,-fm__fuerza,-fm_unidad, -fm_grado)
+```
+
+Dado que el interés son los casos de violencia en mujeres que ocurren en Colombia se filtra la base para analizar solo estos casos. Según el formato de notificación 2024 cuando la variable **identidad de género (ident_gene)** es igual a 2 corresponde a mujer y cuando es igual a 4 corresponde a mujer trans. Además, la variable **país de ocurrencia del caso (cod_pais_o)** igual 170 representa a Colombia. 
+
+```{r, echo = FALSE}
+aux_nrow <- nrow(data)
+```
 
 ```{r}
 data <- data %>% filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
 ```
 
+Se obtiene un total de `r nrow(data)` registros, descartando `r aux_nrow - nrow(data)`.
+
+La variable clasificación inicial del caso **tip_cas_** puede tomar los siguientes valores: 1 = Sospechoso 2 = Probable 3 = Confirmado por Laboratorio 4 = Confirmado por Clínica 5 = Confirmado por Nexo Epidemiológico.
+
 ```{r}
-data <- data %>% 
-  select(-c(cod_eve, cod_pre, cod_sub, cod_pais_o, 
-            cod_ase_, cer_def_, fec_aju_,nom_eve, nreg,ident_gene))
+summary(as.factor(data$tip_cas_))
+```
+Todos los casos son sospechosos. Sin embargo, la variable Seguimiento y clasificación final del caso **ajuste_** indica que algunos casos fueron modificados, quiere decir que se modificó después de notificar cualquier campo excepto código de evento, Upgd, numero de id, fecha de notificación.
+
+```{r}
+summary(as.factor(data$ajuste_))
+```
+Y la variable clasificación final **clasificación_final** indica que 5 de los registros sospechosos terminaron siendo probables
+
+```{r}
+summary(as.factor(data$clasificación_final))
 ```
 
+## Fechas
+El formato inicial es dd/mm/yyyy pero al convertir a objeto Date se cambia al formato por defecto: yyyy-mm-dd.
+
+### Notificación (fec_not)
+```{r}
+# Cambiar tipo de dato a Date
+data$fec_not <- as.Date(data$fec_not, format = "%d/%m/%Y")
+```
+
+### Periodo epidemiológico (periodo_epid)
+
+Corresponde a la semana epidemiológica del año en la que ocurrió el hecho. Según el rango 1-53, cada valor indica una semana específica dentro del año, donde: Va del 1 (primera semana epidemiológica) al 53 (cuando el año tiene una semana extra).
+
+Sin embargo, para este caso, solo existen valores entre 1 y 16, lo que sugiere que solo hay casos ocurridos hasta la semana 16 del año, lo cual es una inconsistencia, pues la variable de fec_hecho tiene registros de todo el año.
+
+```{r}
+unique(data$periodo_epid)
+
+# data %>% filter(periodo_epid ==16) %>% select(periodo_epid,semana,año)
+```
+
+
+### Semana epidemiológica (semana)
+```{r}
+data <- data %>% filter(is.na(semana) | (semana >= 1 & semana <= 53))
+```
+
+### Consulta (fec_con_)
+Fecha en la que consultó el paciente.
+```{r}
+# Cambiar tipo de dato a Date
+data$fec_con_ <- as.Date(data$fec_con_, format = "%d/%m/%Y")
+```
+
+### Inicio de síntomas (ini_sin_)
+Fecha del primer día en que el paciente inició síntomas.
+```{r}
+# Cambiar tipo de dato a Date
+data$ini_sin_ <- as.Date(data$ini_sin_, format = "%d/%m/%Y")
+```
+
+### Hospitalización (fec_hos_)
+Fecha en la que el paciente fue hospitalizado como consecuencia del event
+```{r}
+# Cambiar tipo de dato a Date
+data$fec_hos_ <- as.Date(data$fec_hos_, format = "%d/%m/%Y")
+```
+
+### Defunción (fec_def_)
+Fecha en la que el paciente fallece como consecuencia del evento. 
+```{r}
+# Cambiar tipo de dato a Date
+data$fec_def_ <- as.Date(data$fec_def_, format = "%d/%m/%Y")
+```
+
+### Nacimiento (fecha_nto_)
+```{r}
+# Cambiar tipo de dato a Date
+data$fecha_nto_ <- as.Date(data$fecha_nto_, format = "%d/%m/%Y")
+```
+
+### Hecho (fec_hecho)
+Fecha en que ocurrió el hecho o evento. 
+```{r}
+# Cambiar tipo de dato a Date
+data$fec_hecho <- as.Date(data$fec_hecho, format = "%d/%m/%Y")
+```
+
+### Condiciones
+El formato de notificación 2024 proporciona para la sistematización del caso una serie de condiciones que debe cumplirse en estas variables:
+
+- La fecha de notificación debe ser mayor o igual a la fecha de inicio de síntomas y a la fecha de consulta.  
+
+```{r, echo = FALSE}
+aux_nrow <- nrow(data)
+```
+
+```{r}
+data <- data %>% filter(
+  is.na(fec_not) |
+    is.na(ini_sin_) |
+    is.na(fec_con_) |
+    (fec_not >= ini_sin_ &
+       fec_not >= fec_con_)
+) 
+```
+
+`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de descartarlos, Se obtiene un total de `r nrow(data)`.
+
+- La fecha de inicio de síntomas NO debe ser superior a la fecha de consulta.
+
+```{r, echo = FALSE}
+aux_nrow <- nrow(data)
+```
+
+```{r}
+data <- data %>% filter(is.na(fec_con_) |
+                          is.na(ini_sin_) |
+                          ini_sin_ <= fec_con_)
+```
+
+`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de descartarlos, Se obtiene un total de `r nrow(data)`.
+
+- La fecha de hospitalización NO puede ser inferior a la fecha de consulta, ni a la fecha de notificación. **Esta condición no tiene tanto sentido**
+
+```{r, echo = FALSE}
+aux_nrow <- nrow(data)
+```
+
+```{r}
+data <- data %>% filter(
+  is.na(fec_hos_) |
+    is.na(fec_con_) |
+    is.na(fec_not) |
+    (fec_hos_ >= fec_con_ & fec_hos_ >= fec_not)
+) 
+```
+
+`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de descartarlos, Se obtiene un total de `r nrow(data)`.
+
+- La fecha de nacimiento debe ser inferior a todas las demás fechas.
+
+```{r, echo = FALSE}
+aux_nrow <- nrow(data)
+```
+
+```{r}
+data <- data %>% filter(
+  ((fecha_nto_ < fec_not) | is.na(fecha_nto_) | is.na(fec_not)) &
+    ((fecha_nto_ < fec_con_) |
+       is.na(fecha_nto_) | is.na(fec_con_)) &
+    ((fecha_nto_ < ini_sin_) |
+       is.na(fecha_nto_) | is.na(ini_sin_)) &
+    ((fecha_nto_ < fec_hos_) |
+       is.na(fecha_nto_) | is.na(fec_hos_)) &
+    ((fecha_nto_ < fec_def_) |
+       is.na(fecha_nto_) | is.na(fec_def_)) &
+    ((fecha_nto_ < fec_hecho) |
+       is.na(fecha_nto_) | is.na(fec_hecho))
+) 
+```
+
+`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de descartarlos, Se obtiene un total de `r nrow(data)`.
+
+## Información de la víctima
+
+### Edad de la víctima (edad_,uni_med_,grupo_edad_ciclo,grupo_edad_quinque)
+
+La edad de la víctima se registra en diferentes medidas (_uni_med_): años(1), meses(2), días(3), horas(4), minutos(5). Existen algunos casos donde la unidad de medida es 0, sin embargo, de acuerdo a la ficha de notificación 2024: "La unidad de medida 0='no aplica', **solo puede ser utilizada para el evento 215 defectos congénitos**, cuando el diagnóstico se realiza prenatal". Por lo tanto, se decide eliminar estos registros.
+
+```{r}
+data %>% filter(uni_med_ == 0) %>% select(
+  edad_,
+  uni_med_,
+  grupo_edad_ciclo,
+  grupo_edad_quinque,
+  fecha_nto_,
+  fec_hecho,
+  fec_not
+)
+```
+
+```{r, echo = FALSE}
+aux_nrow <- nrow(data)
+```
+
+```{r}
+data <- data %>% filter(uni_med_ != 0) 
+```
+
+Se eliminan `r aux_nrow - nrow(data)` registros, quedando una base de datos de `r nrow(data)`.
+
+También se encuentra que para algunos registros la unidad de medida son incorrectas:
+
+```{r, echo = FALSE}
+edad_data <- data %>%
+  mutate(
+    edad_hecho = case_when(
+      uni_med_ == 1 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto_, units = "days")
+      ) / 365.25),
+      # Años
+      uni_med_ == 2 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto_, units = "days")
+      ) / 30.44),
+      # Meses
+      uni_med_ == 3 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto_, units = "days")
+      )),
+      # Días
+      uni_med_ == 4 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto_, units = "hours")
+      )),
+      # Horas
+      uni_med_ == 5 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto_, units = "mins")
+      )),
+      # Minutos
+      TRUE ~ NA_real_
+    ),
+    edad_notif = case_when(
+      uni_med_ == 1 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto_, units = "days")
+      ) / 365.25),
+      # Años
+      uni_med_ == 2 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto_, units = "days")
+      ) / 30.44),
+      # Meses
+      uni_med_ == 3 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto_, units = "days")
+      )),
+      # Días
+      uni_med_ == 4 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto_, units = "hours")
+      )),
+      # Horas
+      uni_med_ == 5 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto_, units = "mins")
+      )),
+      # Minutos
+      TRUE ~ NA_real_
+    ),
+    # df_hecho = abs(edad_hecho - edad_),
+    # df_not = abs(edad_notif - edad_),
+    # comp = case_when(
+    #   df_hecho < df_not ~ "Hecho",
+    #   df_not < df_hecho ~ "Notificación",
+    #   df_not == df_hecho ~ "Ambas"
+    # )
+    comp = case_when(
+      edad_ == edad_hecho & edad_ != edad_notif ~ "Hecho",
+      edad_ == edad_notif & edad_ != edad_hecho ~ "Notificación",
+      edad_ == edad_hecho & edad_ == edad_notif ~ "Ambas",
+      edad_ != edad_hecho & edad_ != edad_notif ~ "Inconsistencia"
+    )
+  ) %>% select(
+    uni_med_,
+    edad_,
+    fecha_nto_,
+    fec_hecho,
+    fec_not,
+    grupo_edad_ciclo,
+    edad_hecho,
+    edad_notif,
+    comp
+  )
+
+```
+
+Las variables **edad_hecho** y **edad_notif** se calcularon como la diferencia en tiempo entre la fecha de nacimiento y la fecha del hecho y notificación, respectivamente, según la unidad de medida. Luego, si se compara la edad original con las edades calculadas la diferencia es evidente, demostrando que la unidad de medida es incorrecta. 
+
+```{r, echo=FALSE}
+edad_data %>% filter((uni_med_ == 2 &
+                        (
+                          abs(edad_ - edad_hecho) > 12 & abs(edad_ - edad_notif) > 12
+                        )) |
+                       (uni_med_ == 3 &
+                          (
+                            abs(edad_ - edad_hecho) > 30 & abs(edad_ - edad_notif) > 30
+                          )) |
+                       (uni_med_ == 4 &
+                          (
+                            abs(edad_ - edad_hecho) > 24 & abs(edad_ - edad_notif) > 24
+                          )) |
+                       (uni_med_ == 5 &
+                          (
+                            abs(edad_ - edad_hecho) > 60 & abs(edad_ - edad_notif) > 60
+                          ))) %>% arrange(desc(edad_hecho)) %>% select(uni_med_,
+                                                                       edad_,
+                                                                       edad_hecho,
+                                                                       edad_notif,
+                                                                       fecha_nto_,
+                                                                       fec_hecho,
+                                                                       fec_not)
+```
+Luego, analizando la edad original, la edad al momento del hecho y al momento de notificación, se puede observar que en la mayoría de casos las tres edades son iguales porque sucedió y se notificó el evento el mismo día. O la edad coincide con la edad al momento de notificar
+
+```{r}
+# Incluyendo los registros con unidad de medida incorrecta
+summary(as.factor(edad_data$comp))
+```
+Los registros clasificados como inconsistencia, son registros donde la edad original no coincide con ninguna de las calculadas:
+
+```{r}
+edad_data %>% filter(comp == "Inconsistencia") %>% arrange(desc(fecha_nto_)) %>% select(uni_med_,
+                                                                                        edad_,
+                                                                                        edad_hecho,
+                                                                                        edad_notif,
+                                                                                        fecha_nto_,
+                                                                                        fec_hecho,
+                                                                                        fec_not) %>% head(5)
+```
+Teniendo en cuenta las inconsistencias mostradas, que se puede deducir que la edad corresponde a la edad al momento de notificación, y que el objetivo es prevenir, se decide calcular la edad en años al momento del hecho. 
+
+```{r, echo = FALSE}
+aux_nrow <- edad_data  %>% filter((month(fecha_nto_) == 1 &
+                                     day(fecha_nto_) == 1)) %>% nrow()
+```
+
+Sin embargo, `r aux_nrow` registros parecen tomar fechas genéricas en la fecha de nacimiento **(fecha_nto_)**:
+
+```{r}
+edad_data  %>% filter((month(fecha_nto_) == 1 &
+                         day(fecha_nto_) == 1)) %>%
+  select(uni_med_,
+         edad_,
+         edad_hecho,
+         edad_notif,
+         fecha_nto_,
+         fec_hecho,
+         fec_not) %>% head(5)
+```
+y esta variable tiene `r sum(is.na(data$fecha_nto_))` NA. Mientras que la fecha del hecho **(fec_hecho)** tiene `r sum(is.na(data$fec_hecho))` NA. Entonces no se podrían calcular la edad al momento del hecho para `r sum(is.na(data$fecha_nto_)) + sum(is.na(data$fec_hecho))` registros. 
+
+Para manejar estas situaciones se decide:
+- Dado que la edad original de la mayoría de registros con fechas genéricas fue registrada en años, si se tiene este caso y la diferencia entre la edad original y la edad calculada es mayor a 1, se conserva la edad original pasada a años.
+- Si la fecha de nacimiento o del hecho es NA y la fecha del hecho y notificación es igual, se conserva la edad original pasada a años. 
+
+```{r}
+data <- data %>%
+  mutate(
+    edad = case_when(
+      # 1. Fecha de nacimiento válida y no genérica
+      !is.na(fecha_nto_) &
+      !is.na(fec_hecho) &
+        !(month(fecha_nto_) == 1 & day(fecha_nto_) == 1) ~
+        round(as.numeric(
+          difftime(fec_hecho, fecha_nto_, units = "days")
+        ) / 365.25, 3),
+      
+      # 2. Fecha de nacimiento genérica, unidad en años, y fechas coinciden
+      uni_med_ == 1 &
+        (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) &
+        fec_not == fec_hecho ~ edad_,
+      
+      # 3. Fecha de nacimiento genérica y diferencia mayor a 1 (unidad en años)
+      uni_med_ == 1 &
+        (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) &
+        abs(edad_ - round(as.numeric(
+          difftime(fec_hecho, fecha_nto_, units = "days")
+        ) / 365.25, 3)) > 1 ~ edad_,
+      
+      # 4. Fecha del hecho o nacimiento son NA, pero fec_hecho = fec_not
+      (is.na(fecha_nto_) |
+         is.na(fec_hecho)) & fec_not == fec_hecho ~ case_when(
+           uni_med_ == 1 ~ edad_,
+           uni_med_ == 2 ~ round(edad_ / 12, 3),
+           uni_med_ == 3 ~ round(edad_ / 365.25, 3),
+           uni_med_ == 4 ~ round(edad_ / 8760, 3),
+           uni_med_ == 5 ~ round(edad_ / 525600, 3),
+           TRUE ~ NA_real_
+         ),
+      
+      # 5. Fechas válidas, pero fec_hecho != fec_not
+      !is.na(fecha_nto_) & !is.na(fec_hecho) &
+      fec_not != fec_hecho ~
+        round(as.numeric(
+          difftime(fec_hecho, fecha_nto_, units = "days")
+        ) / 365.25, 3),
+      
+      TRUE ~ NA_real_
+    )
+  )
+```
+
+Finalmente, se reduce a `r sum(is.na(data$edad))` registros con NA.
+
+### Edad agrupada (grupo_edad_quinque - grupo_edad_cliclo)
+
+Se comprobó que estas variables tienen los cálculos erróneos, pues, al realizar el cálculo de forma manual desde la fecha de nacimiento hasta la fecha del hecho (o notificación), en ninguno de los dos casos, corresponde al grupo que se le asigna en cada una de estas variables. Así, resulta más óptimo eliminarlas.
+
+Se construye una variable que representa el grupo etario de acuerdo a las etapas del ciclo de vida definidas por el [MSPS](https://www.minsalud.gov.co/proteccionsocial/Paginas/ciclovida.aspx)
+
+```{r}
+# Si la edad dio 5.99 lo deja en (0-5)
+data <- data %>% mutate(
+  grupo_edad = case_when(
+    edad >= 0 & edad < 6 ~ "0-5",
+    edad >= 6 & edad < 12 ~ "6-11",
+    edad >= 12 & edad < 19 ~ "12-18",
+    edad >= 19 & edad < 27 ~ "19-26",
+    edad >= 27 & edad < 60 ~ "27-59",
+    edad >= 60 ~ "60 y más",
+    TRUE ~ NA_character_
+  )
+)  
+```
+
+Luego, se elimina las variables originales relacionadas con la edad de la víctima.
+
+```{r}
+data <- data %>% select(-c(uni_med_,edad_,grupo_edad_ciclo,grupo_edad_quinque))
+```
+
+### Nacionalidad de la víctima (nombre_nacionalidad)
+Corresponde al estado o nación que pertenece la víctima según su documento de identificación.
+```{r}
+data <- data %>%
+  mutate(
+    nombre_nacionalidad = str_trim(nombre_nacionalidad),
+    nombre_nacionalidad = case_when(
+      nombre_nacionalidad == "" ~ NA,
+      nombre_nacionalidad == "ISLA CHRISTMAS" ~ "Isla de Navidad",
+      nombre_nacionalidad == "REPUBLICA POPULAR DEL CONGO" ~ "República Democrática del Congo",
+      nombre_nacionalidad == "SURINAME" ~ "Surinam",
+      nombre_nacionalidad == "REINO UNIDO DE GRAN BRETAÑA E IRLANDA DEL" ~ "Reino Unido",
+      TRUE ~ nombre_nacionalidad
+    ),
+    nombre_nacionalidad = str_to_title(tolower(nombre_nacionalidad))
+  )
+```
+
+
+### Nombre del país de procedencia (npais_proce)
+
+Se cambia la estructura de escritura:
+
+```{r}
+data <- data %>% 
+  mutate(
+    npais_proce = na_if(npais_proce, ""),
+    npais_proce = str_to_title(tolower(npais_proce))
+  )
+```
+
+### Nombre del departamento de Procedencia (ndep_proce)
+
+```{r}
+unique(data$ndep_proce)
+```
+
+El nivel correspondiente a "DEPTO DESCONOCIDO" se clasificó como un valor NA para más adelante ser tratado, además, se reordenó la escritura correcta de los departamentos, pues unos tenían tildes faltantes y el nivel de "Santa Marta", corresponde al departamento de "Magdalena"
+
+```{r}
+data <- data %>%
+  mutate(
+    ndep_proce = ifelse(ndep_proce == "DEPTO DESCONOCIDO", NA, ndep_proce), 
+    ndep_proce = recode(ndep_proce,                                       
+                        "CHOCO" = "CHOCÓ",
+                        "BOLIVAR" = "BOLÍVAR",
+                        "CORDOBA" = "CÓRDOBA",
+                        "STA MARTA D.E." = "MAGDALENA",
+                        "QUINDIO" = "QUINDÍO"),
+    ndep_proce = str_to_title(tolower(ndep_proce))
+
+  )
+    
+```
+
+
+
+### Municipio de procedencia (nmun_proce)
+
+Hay algunos niveles que tienen nombres de municipios no especificados, por lo que se procede a reemplazarlos por NA debido a la imposibilidad de asignarles un municipio concreto. Los demás, se comprobaron que sí corresponden a municipios de Colombia.
+
+```{r}
+unique(data$nmun_proce)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    nmun_proce = as.character(nmun_proce),
+    nmun_proce = recode(
+      nmun_proce,
+      "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" = NA_character_,
+      "* ANTIOQUIA. MUNICIPIO DESCONOCIDO" = NA_character_,
+      "* CHOCO. MUNICIPIO DESCONOCIDO" = NA_character_,
+      "* MAGDALENA. MUNICIPIO DESCONOCIDO" = NA_character_,
+      "ANTIOQUIA" = NA_character_,
+      "FUSAGASUGA" = "FUSAGASUGÁ",
+      "ITAGUI" = "ITAGÜÍ",
+      "APARTADO" = "APARTADÓ",
+      "ACACIAS" = "ACACÍAS", 
+      "BURITICA" = "BURITICÁ",
+      "MEDELLIN" = "MEDELLÍN",
+      "AMAGA" = "AMAGÁ",
+      "SANTA BARBARA" = "SANTA BÁRBARA",
+      "ALEJANDRIA" = "ALEJANDRÍA",
+      "SAN JUAN DE URABA" = "SAN JUAN DE URABÁ",
+      "PUERTO BERRIO" = "PUERTO BERRÍO",
+      "CORDOBA" = "CÓRDOBA",
+      "SAN JERONIMO" = "SAN JERÓNIMO",
+      "MONTERIA" = "MONTERÍA",
+      "GOMEZ PLATA" = "GÓMEZ PLATA",
+      "COCORNA" = "COCORNÁ",
+      "LOS CORDOBAS" = "LOS CÓRDOBAS",
+      "DON MATIAS" = "DON MATÍAS",
+      "ABRIAQUI" = "ABRIAQUÍ",
+      "VALPARAISO" = "VALPARAÍSO"
+    ),
+    nmun_proce = str_to_title(tolower(nmun_proce))
+
+  )
+
+```
+
+### Nombre del país de residencia (npais_resi)
+
+Se cambia la estructura de escritura
+
+```{r}
+unique(data$npais_resi)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    npais_resi = as.character(npais_resi),
+    npais_resi = case_when(
+      npais_resi == "" ~ NA_character_,
+      npais_resi == "ESTADOS UNIDOS DE AMÉRICA" ~ "ESTADOS UNIDOS",
+      TRUE ~ npais_resi
+    ),
+    npais_resi = str_to_title(tolower(npais_resi))
+  )
+```
+
+### Nombre del departamento de residencia (ndep_resi)
+
+La variable presentaba errores de escritura en algunos nombres de departamentos, como la ausencia de tildes y nombres incompletos, estos errores fueron corregidos asegurando la consistencia de los nombres de los departamentos. Además, habían algunos niveles que representaban entidades por fuera de Colombia, como "COJEDES" (Venezuela) y "PANAMÁ" (Panamá), que fueron asignados como NA, al igual que el nivel de "DEPTO DESCONOCIDO". Por último, los niveles que correspondían a ciudades específicas, como "BOGOTA", "CARTAGENA" y "BARRANQUILLA", fueron reemplazados por el nombre del departamento al que pertenecen.
+
+```{r}
+unique(data$ndep_resi)
+```
+
+
+```{r}
+data <- data %>%
+  mutate(
+    ndep_resi = as.character(ndep_resi),
+    ndep_resi = recode(
+      ndep_resi,
+      "DEPTO DESCONOCIDO" = NA_character_,
+      "STA MARTA D.E." = "MAGDALENA",
+      "BOGOTA" = "CUNDINAMARCA",
+      "CARTAGENA" = "BOLÍVAR",
+      "BARRANQUILLA" = "ATLÁNTICO",
+      "BOLIVAR" = "BOLÍVAR",
+      "CHOCO" = "CHOCÓ",
+      "BOYACA" = "BOYACÁ",
+      "CORDOBA" = "CÓRDOBA",
+      "ATLANTICO" = "ATLÁNTICO",
+      "QUINDIO" = "QUINDÍO",
+      "GUAJIRA" = "LA GUAJIRA",
+      "NORTE SANTANDER" = "NORTE DE SANTANDER"
+    ),
+    ndep_resi = str_to_title(tolower(ndep_resi))
+  )
+
+data <- data %>%
+  mutate(
+    ndep_resi = case_when(
+      ndep_resi == "" ~ NA_character_,
+      npais_resi == "Venezuela" ~ paste0("Depto[", npais_resi, "]"),
+      npais_resi == "Panamá" ~ paste0("Depto[", npais_resi, "]"),
+      TRUE ~ ndep_resi
+    )
+  )
+```
+
+
+### Nombre del municipio de residencia (nmun_resi)
+
+```{r}
+unique(data$nmun_resi)
+```
+
+La variable presentaba inconsistencias en los nombres de los municipios. Se reemplazaron los niveles que no tenían un nombre específico de municipio o que eran desconocidos por NA, así como aquellos que correspondían a países o ciudades fuera de Colombia. Además, algunas filas correspondientes al municipio de Bogotá incluían nombres de barrios o localidades, por lo que se estandarizó asignando únicamente el nombre de la ciudad.
+
+
+```{r}
+data <- data %>%
+  mutate(
+    nmun_resi = as.character(nmun_resi),
+    
+    # Eliminar el punto de "ANZOÁTEGUI (COJEDES)."
+    nmun_resi = str_replace(nmun_resi, "ANZOÁTEGUI \\(COJEDES\\)\\.", "ANZOÁTEGUI (COJEDES)"),
+    
+    nmun_resi = recode(
+      nmun_resi,
+      "ANTIOQUIA" = NA_character_,
+      "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" = NA_character_,
+      "* ANTIOQUIA. MUNICIPIO DESCONOCIDO" = NA_character_,
+      
+      "Bogotá - Suba-El Prado" = "BOGOTÁ",
+      "Bogotá - Kennedy-Calandaima" = "BOGOTÁ",
+      "Bogotá - Teusaquillo-Parque Simón Bolívar - Can" = "BOGOTÁ",
+      
+      "STA MARTA D.E." = "SANTA MARTA",
+      "ITAGUI" = "ITAGÜÍ",
+      "CUCUTA" = "CÚCUTA",
+      "BOGOTA" = "BOGOTÁ",
+      "PUERTO BOYACA" = "PUERTO BOYACÁ",
+      "TULUA" = "TULUÁ",
+      "APARTADO" = "APARTADÓ",
+      "TITIRIBI" = "TITIRIBÍ",
+      "POPAYAN" = "POPAYÁN",
+      "SAN ANDRES" = "SAN ANDRÉS",
+      "MEDELLIN" = "MEDELLÍN",
+      "AMAGA" = "AMAGÁ",
+      "SANTA BARBARA" = "SANTA BÁRBARA",
+      "ALEJANDRIA" = "ALEJANDRÍA",
+      "PUERTO BOYACA" = "PUERTO BOYACÁ",
+      "PUERTO GUZMAN" = "PUERTO GUZMÁN",
+      "COCORNA" = "COCORNÁ",
+      "JERICO" = "JERICÓ",
+      "MONTERIA" = "MONTERÍA",
+      "CHIGORODO" = "CHIGORODÓ",
+      "DON MATIAS" = "DON MATÍAS",
+      "ABRIAQUI" = "ABRIAQUÍ",
+      "VALPARAISO" = "VALPARAÍSO",
+      "CHIA" = "CHÍA",
+      "SOPETRAN" = "SOPETRÁN",
+      "LA UNION" = "LA UNIÓN",
+      "COLON (GENOVA)" = "GÉNOVA",
+      "TARAZA" = "TARAZÁ",
+      "SAMANA" = "SAMANÁ",
+      "ANGELOPOLIS" = "ANGELÓPOLIS",
+      "CIENAGA DE ORO" = "CIÉNAGA DE ORO",
+      "ANZA" = "ANZÁ",
+      "TAMESIS" = "TÁMESIS",
+      "BOLIVAR" = "CIUDAD BOLÍVAR",
+      "NECHI" = "NECHÍ",
+      "QUIBDO" = "QUIBDÓ",
+      "BARRANCA DE UPIA" = "BARRANCA DE UPÍA",
+      "SAMPUES" = "SAMPUÉS",
+      "MAGANGUE" = "MAGANGUÉ",
+      "BOYACA" = "BOYACÁ",
+      "SAHAGUN" = "SAHAGÚN",
+      "EBEJICO" = "EBÉJICO"
+    ),
+    # Convertir a título después de todas las transformaciones
+    nmun_resi = str_to_title(tolower(nmun_resi))
+  )
+
+
+
+data <- data %>%
+  mutate(
+    nmun_resi = case_when(
+      nmun_resi == "" ~ NA_character_,
+      npais_resi == "España" ~ paste0("Mun[", npais_resi, "]"),
+      npais_resi == "Eslovenia" ~ paste0("Mun[", npais_resi, "]"),
+      npais_resi == "Venezuela" ~ paste0("Mun[", npais_resi, "]"),
+      npais_resi == "Estados Unidos" ~ paste0("Mun[", npais_resi, "]"),
+      npais_resi == "Montserrat" ~ paste0("Mun[", npais_resi, "]"),
+      npais_resi == "Bangladesh" ~ paste0("Mun[", npais_resi, "]"),
+
+      TRUE ~ nmun_resi
+    )
+  )
+
+
+```
+
+
+
+### Nombre comuna de residencia
+
+Esta variable sirve para imputar datos faltantes del municipio
+
+```{r}
+# Recodificar "Sin información" como NA y quitar los números al inicio de nombre_comuna
+data <- data %>%
+  mutate(
+    nombre_comuna = recode(nombre_comuna, "Sin información" = NA_character_),
+    nombre_comuna = gsub("^[0-9]+\\s+", "", nombre_comuna)
+  )
+```
+
+### Estrato (estrato_)
+Esta variable es información de la ficha de datos básicos que se debe registrar para cualquier evento que se reporta al SIVIGILA. Sin embargo, se encontró una ficha del 2016 donde no se solicita y otra de 2019 donde sí, lo que puede explicar porqué la gran cantidad de NA
+
+```{r}
+summary(as.factor(data$estrato_))
+```
+
+
+### Orientación sexual (orient_sex)
+De acuerdo a las fichas de notificación 2015-2022 y el diccionario de la base de datos, los niveles de esta variable son: homosexual(1),bisexual(2),heterosexual(5) y asexual(6). Sin embargo, esta variable también toma valor 3 y 4. 
+
+```{r, include=FALSE}
+summary(as.factor(data$orient_sex))
+```
+
+<!-- En la [ficha de notificación 2024](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf), se hace una nueva clasificación: heterosexual(1), gay/lesbiana(2), bisexual(3) y otra(4). Por lo tanto, se unifica los niveles iguales en ambas clasificaciones según las fichas 2015-2022 y el diccionario -->
+
+```{r}
+# data <- data %>% mutate(orient_sex = if_else(orient_sex == 3, 2, orient_sex))
+```
+
+### Ocupación de la víctima (ocupacion_)
+De acuerdo al diccionario en MEData la codificación de está variable corresponde a la [Clasificación Única de Ocupaciones para Colombia (CUOC)](https://ocupacol.mintrabajo.gov.co/Jerarquias/Jerarquias). El valor que toma el código puede ser hasta de 5 dígitos, cada dígito asigna un adicional de precisión sobre la ocupación. Por ejemplo, "25120" corresponde a desarrolladores de software mientras que "251" es desarrolladores y analistas de software y multimedia.
+
+Sin embargo, algunos registros no tienen ningún tipo de relación con la codificación.
+
+```{r}
+unique(data$ocupacion_)
+```
+
+Entonces se verifica que los valores tomados en esta variable se encuentran en la clasificación mediante la siguiente base de datos que contiene las 676 ocupaciones posibles (código de 5 dígitos):
+
+```{r}
+CUOC <- load_data("CUOC.csv", type = "raw")
+```
+
+En caso que el valor de la variable no coincida con los códigos posibles se convierte el valor a NA. 
+
+```{r}
+data <- data %>%
+  mutate(ocupacion_ = ifelse(sapply(ocupacion_, function(ocup) {
+    any(grepl(paste0("^", ocup), CUOC$Código.CUOC))
+  }), ocupacion_, NA))
+```
+
+Esta variable queda con `r sum(is.na(data$ocupacion_) | data$ocupacion_ == "")` celdas vacías. Pero puede servir para completar información de los niveles 26 (Otro) y 33 (Ninguna) de la variable **actividad**. 
+
+### Actividad
+
+Esta variable es numérica pero se cambia a string para hacer la relación con **ocupación**
+
+```{r}
+data <- data %>%
+  mutate(
+    actividad = case_when(
+      actividad == 13 ~ "Líderes(as) cívicos",
+      actividad == 15 ~ "Maestro(a)",
+      actividad == 24 ~ "Estudiante",
+      actividad == 26 ~ "Otro",
+      actividad == 28 ~ "Trabajador(a) doméstico(a)",
+      actividad == 30 ~ "Campesino/a",
+      actividad == 29 ~ "Persona en situación de prostitución",
+      actividad == 31 ~ "Persona dedicada al cuidado del hogar",
+      actividad == 32 ~ "Persona que cuida a otras",
+      actividad == 33 ~ "Ninguna"
+    )
+  )
+```
+
+```{r}
+summary(as.factor(data$actividad))
+```
+
+
+```{r, echo=FALSE}
+aux_nrow <- data %>% filter((actividad == "Ninguna" |
+                               actividad == "Otro") &
+                              (!is.na(ocupacion_) &
+                                 ocupacion_ != "")) %>%
+  nrow()
+```
+
+Son `r aux_nrow` registros con valor "Otro" o "Ninguna" en **actividad** y que tienen valor en **ocupación**. Para evitar tantas categorías, se extraen los dos primeros dígitos que representan los 43 subgrupos principales de ocupaciones:
+
+```{r}
+ocupaciones <- c(
+  "01" = "Oficiales de las fuerzas militares",
+  "02" = "Suboficiales de las fuerzas militares",
+  "03" = "Otros miembros de las fuerzas militares",
+  "11" = "Directores ejecutivos, personal directivo de la administración y legislativos",
+  "12" = "Directores administrativos y comerciales",
+  "13" = "Directores y gerentes en sectores de producción y servicios",
+  "14" = "Gerentes de hoteles, restaurantes, comercios y otros servicios",
+  "21" = "Profesionales de las ciencias y de la ingeniería",
+  "22" = "Profesionales de la salud",
+  "23" = "Profesionales de la educación",
+  "24" = "Profesionales de negocios y de administración",
+  "25" = "Profesionales de tecnología de la información y las comunicaciones",
+  "26" = "Profesionales en derecho, en ciencias sociales y culturales",
+  "31" = "Técnicos y profesionales del nivel medio de las ciencias y la ingeniería",
+  "32" = "Técnicos y profesionales del nivel medio de la salud",
+  "33" = "Técnicos y profesionales del nivel medio en las finanzas y la administración",
+  "34" = "Técnicos y profesionales del nivel medio de servicios jurídicos, sociales, culturales y afines",
+  "35" = "Técnicos en tecnología de la información y las comunicaciones",
+  "41" = "Oficinistas",
+  "42" = "Empleados de trato directo con el público",
+  "43" = "Auxiliares contables y encargados del registro de materiales",
+  "44" = "Otro personal de apoyo administrativo",
+  "51" = "Trabajadores de los servicios personales",
+  "52" = "Vendedores",
+  "53" = "Trabajadores de los cuidados personales",
+  "54" = "Personal de los servicios de protección",
+  "61" = "Agricultores y trabajadores calificados de explotaciones agropecuarias con destino al mercado",
+  "62" = "Trabajadores forestales calificados, pescadores y cazadores en actividades orientadas al mercado",
+  "63" = "Trabajadores agropecuarios, pescadores, cazadores y recolectores de subsistencia",
+  "71" = "Oficiales y operarios de la construcción (excluyendo electricistas)",
+  "72" = "Oficiales y operarios de la metalurgia; mecánicos y reparadores de máquinas y afines",
+  "73" = "Artesanos y operarios de las artes gráficas y afines",
+  "74" = "Oficiales y operarios de electricidad y electrónica",
+  "75" = "Oficiales y operarios de procesamiento de alimentos, de la confección, ebanistas y afines",
+  "81" = "Operadores de instalaciones fijas y máquinas",
+  "82" = "Ensambladores",
+  "83" = "Conductores de vehículos y operadores de equipos pesados móviles",
+  "91" = "Personal doméstico y de aseo",
+  "92" = "Obreros y peones agropecuarios, pesqueros y forestales",
+  "93" = "Obreros y peones de la minería, la construcción, la industria manufacturera y el transporte",
+  "94" = "Ayudantes de preparación de alimentos",
+  "95" = "Vendedores ambulantes de servicios y afines (excluyendo comidas de preparación inmediata)",
+  "96" = "Recolectores de desechos y otras ocupaciones elementales"
+)
+```
+
+Las categorías "Maestro(a)", "Trabajador(a) doméstico(a)" y "Campesino/a" se cambian a su nombre equivalente en la CUOC
+
+```{r}
+data <- data %>%
+  mutate(
+    actividad = case_when(
+      (actividad == "Ninguna" |
+         actividad == "Otro") &
+        (!is.na(ocupacion_) &
+           ocupacion_ != "")  ~ ocupaciones[str_sub(ocupacion_, 1, 2)],
+      actividad == "Maestro(a)" ~ "Profesionales de la educación",
+      actividad == "Trabajador(a) doméstico(a)" ~ "Personal doméstico y de aseo",
+      actividad == "Campesino/a" ~ "Trabajadores agropecuarios, pescadores, cazadores y recolectores de subsistencia",
+      TRUE ~ actividad
+    )
+  )
+
+```
+
+```{r}
+# ocupaciones <- c(
+#   "0" = "Fuerzas militares",
+#   "1" = "Directores y gerentes",
+#   "2" = "Profesionales, científicos e intelectuales",
+#   "3" = "Técnicos y profesionales del nivel medio",
+#   "4" = "Personal de apoyo administrativo",
+#   "5" = "Trabajadores de los servicios y vendedores de comercios y mercados",
+#   "6" = "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
+#   "7" = "Oficiales, operarios, artesanos y oficios relacionados",
+#   "8" = "Operadores de instalaciones y máquinas y emsambladores",
+#   "9" = "Ocupaciones elementales"
+# )
+# 
+# aux_data <- data %>%
+#   mutate(
+#        actividad = case_when(
+#          (actividad == "Ninguna" | actividad == "Otro") & (!is.na(ocupacion_) & ocupacion_ != "")  ~ ocupaciones[ str_sub(ocupacion_, 1, 1)],
+#          actividad == "Maestro(a)" ~ "Profesionales, científicos e intelectuales",
+#          actividad == "Trabajador(a) doméstico(a)" ~ "Ocupaciones elementales",
+#          actividad == "Campesino/a" ~ "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
+#          TRUE ~ actividad
+#        )
+#   )
+```
+
+### Grupo étnico (nom_grupo_)
+Esta variable toma valor si la variable **Pertenencia étnica (per_etn_)** es igual a 1 (indígena), en caso contrario, se asigna "No aplica".
+
+```{r}
+data <- data %>% mutate(
+  nom_grupo_ = str_to_title(tolower(nom_grupo_)),
+  nom_grupo_ = case_when(
+    per_etn_ != 1 ~ "No aplica",
+    nom_grupo_ == "Wayuu" ~ "Wayúu",
+    grepl("^Embera", nom_grupo_, ignore.case = TRUE) ~ sub("^Embera", "Emberá", nom_grupo_, ignore.case = TRUE),
+    nom_grupo_ == "" ~ NA_character_,
+    TRUE ~ nom_grupo_
+  )
+)
+```
+
+### Semanas de gestación (sem_ges_)
+Esta variable toma valor si la variable **gp_gestan** es igual a 1 (Sí). Además, se verifica que dicho valor sea entre 1 y 45 ya que es lo esperado en tiempo de gestación.
+```{r}
+# Verificar que los valores estén en el rango
+data <- data %>% filter(( sem_ges_ >= 1 &
+                           sem_ges_ <= 45) | (gp_gestan != 1) | is.na(sem_ges_))
+
+# Asignar 0 a los registros donde gp_gestan es "No"
+# en caso contrario, se asigna un valor de 0, que representa "No aplica", para no confundir con valores faltantes.
+# data <- data %>% mutate(sem_ges_ = if_else(gp_gestan != 1, 0, sem_ges_))
+```
+
+
+## Información del hecho
+
+### Código del departamento (cod_dpto_o) y municipio (cod_mun_o) de ocurrencia 
+Estas variables corresponde a la [codificación Divipola](https://geoportal.dane.gov.co/geovisores/territorio/consulta-divipola-division-politico-administrativa-de-colombia/) para departamentos y municipios de Colombia. 
+
+Para facilidad en la comprensión de los resultados y dado que la mayoría de las variables que representan lugares tiene su equivalente en nombre, se decide crear dos nuevas variables que tomen como valor el nombre del departamento y municipio de ocurrencia.
+
+```{r}
+data <- data %>% mutate(
+  # Variable para departamento
+  ndep_hecho = case_when(
+    cod_dpto_o == 5  ~ "Antioquia",
+    cod_dpto_o == 25 ~ "Cundinamarca",
+    cod_dpto_o == 11  ~ "Bogotá",
+    cod_dpto_o == 50 ~ "Meta",
+    cod_dpto_o == 66 ~ "Risaralda",
+    cod_dpto_o == 76 ~ "Valle del Cauca",
+    cod_dpto_o == 23 ~ "Córdoba",
+    cod_dpto_o == 27 ~ "Chocó",
+    cod_dpto_o == 13 ~ "Bolívar",
+    cod_dpto_o == 68 ~ "Santander",
+    cod_dpto_o == 63 ~ "Quindío",
+    cod_dpto_o == 47 ~ "Magdalena",
+    TRUE         ~ NA_character_
+  ),
+  
+  #variable para municipio
+  nmun_hecho = case_when(
+    cod_mun_o == 1 & cod_dpto_o == 5 ~ "Medellín",
+    cod_mun_o == 1 & cod_dpto_o == 66 ~ "Pereira",
+    cod_mun_o == 1 & cod_dpto_o == 63 ~ "Armenia",
+    cod_mun_o == 1 & cod_dpto_o == 23 ~ "Montería",
+    cod_mun_o == 88  ~ "Bello",
+    cod_mun_o == 290  ~ "Fusagasugá",
+    cod_mun_o == 360  ~ "Itaguí",
+    cod_mun_o == 45  ~ "Apartadó",
+    cod_mun_o == 615  ~ "Rionegro",
+    cod_mun_o == 42  ~ "Santa Fé de Antioquia",
+    cod_mun_o == 79  ~ "Barbosa",
+    cod_mun_o == 31  ~ "Amalfi",
+    cod_mun_o == 6 & cod_dpto_o == 50 ~ "Acacías",
+    cod_mun_o == 113  ~ "Buriticá",
+    cod_mun_o == 212 & cod_dpto_o == 5 ~ "Copacabana",
+    cod_mun_o == 212 & cod_dpto_o == 13 ~ "Córdoba",
+    cod_mun_o == 631  ~ "Sabaneta",
+    cod_mun_o == 887  ~ "Yarumal",
+    cod_mun_o == 197  ~ "Cocorná",
+    cod_mun_o == 111 & cod_dpto_o == 76  ~ "Buga",
+    cod_mun_o == 419 & cod_dpto_o == 23 ~ "Los córdobas",
+    cod_mun_o == 361  ~ "Ituango",
+    cod_mun_o == 308  ~ "Girardota",
+    cod_mun_o == 686  ~ "Santa Rosa de Osos",
+    cod_mun_o == 125  ~ "Caicedo",
+    cod_mun_o == 129  ~ "Caldas",
+    cod_mun_o == 30  ~ "Amagá",
+    cod_mun_o == 842  ~ "Uramita",
+    cod_mun_o == 93  ~ "Betulia",
+    cod_mun_o == 266  ~ "Envigado",
+    cod_mun_o == 856  ~ "Valparaíso",
+    cod_mun_o == 642  ~ "Salgar",
+    cod_mun_o == 690  ~ "Santo Domingo",
+    cod_mun_o == 649  ~ "San Carlos",
+    cod_mun_o == 664  ~ "San Pedro de los Milagros",
+    cod_mun_o == 579  ~ "Puerto Berrío",
+    cod_mun_o == 237  ~ "Donmatías",
+    cod_mun_o == 234  ~ "Dabeiba",
+    cod_mun_o == 547 & cod_dpto_o == 68  ~ "Piedecuesta",
+    cod_mun_o == 679  ~ "Santa Bárbara",
+    cod_mun_o == 854  ~ "Valdivia",
+    cod_mun_o == 674  ~ "San Vicente Ferrer",
+    cod_mun_o == 656  ~ "San Jerónimo",
+    cod_mun_o == 628  ~ "Sabanalarga",
+    cod_mun_o == 869 & cod_dpto_o == 76 ~ "Vijes",
+    cod_mun_o == 591  ~ "Puerto Triunfo",
+    cod_mun_o == 190  ~ "Cisneros",
+    cod_mun_o == 847  ~ "Urrao",
+    cod_mun_o == 4  ~ "Abriaquí",
+    cod_mun_o == 21 ~ "Alejandría",
+    cod_mun_o == 310  ~ "Gómez Plata",
+    cod_mun_o == 154  ~ "Caucasia",
+    TRUE ~ NA_character_
+  )
+)
+```
+
+### Hora del hecho 
+
+```{r}
+data <- data %>% mutate(hora_hecho = ifelse(hora_hecho == "", NA_character_, hora_hecho))
+```
+
+
+### Modalidad de la violencia (naturaleza y nat_viosex)
+De acuerdo a las fichas de notificación existen dos grupos de modalidad: violencia no sexual y violencia sexual, cada una con diferentes tipos. Si la víctima sufrió violencia no sexual se registra el tipo en la variable **naturaleza** y si sufrió violencia sexual se registra el tipo en la variable **nat_viosex**. 
+
+Por facilidad en el análisis y evitando la mayor cantidad de celdas vacías posibles, se decide unificar la información de ambas variables en una variable llamada **def_naturaleza**.
+
+```{r}
+data <- data %>%
+  mutate(def_naturaleza = coalesce(naturaleza, nat_viosex))
+```
+
+
+### Mecanismo utilizado para la agresión
+Se observa que el uso de armas no es solo en violencia física, también en psicológica, abandono y otras violencias sexuales. 
+```{r}
+ table(as.factor(data$def_naturaleza),as.factor(data$armas))
+```
+Entonces los casos donde la violencia sea física, que se sabe si o si implica una arma y armas NA (`r sum(is.na(data$armas))`) se cambia a otro mecanismo (15). Pero para los otros casos no sabemos si se usó o no un arma como para poner "No aplica"
+
+```{r}
+aux_nrow <- data %>%
+  filter(
+    is.na(armas) & def_naturaleza == 1
+  ) %>% nrow()
+```
+Hay `r aux_nrow` NA que se recuperarían al hacer esta asignación
+
+```{r}
+# data <- data %>% mutate(armas = ifelse((is.na(armas) & def_naturaleza == 1
+# ), 15, armas))
+```
+
+
+### Quemaduras
+En la base de datos, las variables relacionadas con quemaduras (por ejemplo, que_cara, que_cuello, etc.) solo contienen información relevante cuando la categoría de la variable armas corresponde a "Quemaduras por fuego o llama" (12), "Quemaduras por ácido, álcalis, o sustancias corrosivas" (13) y "Quemadura con líquido hirviente" (14). Sin embargo, en los casos en que no hay quemaduras, estas variables contienen valores faltantes (NA), lo que puede generar dificultades en los análisis. Entonces, se transforman los valores NA en una categoría explícita como "No aplica".
+
+```{r}
+# Transformar los NA en las columnas seleccionadas a "No aplica"
+data <- data %>%
+  mutate(across(
+    c(que_cara, que_cuello, que_mano, que_pie, que_pliegu,
+      que_genita, que_tronco, que_miesup, que_mieinf, cla_gra, ext_que),
+    ~ ifelse(is.na(armas) | armas %in% c(12, 13, 14), ., "No aplica")
+  ))
+
+```
+
+
+
+## Información del agresor
+
+### Sexo del agresor (sexo_agre)
+Esta variable toma los valores de vacíos y de "SD" en algunos registros, por lo tanto, se cambia a NA. Teniendo en cuenta que "SD" de acuerdo a los formatos de notificación significan ausencia del dato.
+
+```{r}
+data <- data %>% mutate(
+  sexo_agre = case_when(
+    sexo_agre == "" ~ NA_character_,
+    sexo_agre == "SD" ~ NA_character_,
+    TRUE ~ sexo_agre
+  )
+)
+```
+
+
+### Edad del agresor (edad_agre)
+
+```{r}
+unique(data$edad_agre)
+```
+
+```{r}
+edad0 <- sum(data$edad_agre == 0, na.rm = TRUE)
+edad2 <- sum(data$edad_agre == 2, na.rm = TRUE)
+m <- edad0+edad2
+m/nrow(data)
+```
+
+Se ve que esta variable (cuya unidad de medida es años), contiene edades de 0 y 2 años para el agresor, lo cual parece ser una inconsistencia en la variable. Además se ve que son más del 90% de los registros que presentan este problema y de acuerdo con las fichas de notificación de violencia disponibles, la única ficha que incluye la pregunta de la edad del agresor es en el año 2015, por tanto los valores de 0 y 2 podrían corresponder a valores faltantes de los años restantes de notificaciones en las que no se pregunta esto. Así, la variable tiene bastantes valores faltantes, por lo tanto es necesario eliminarla del análisis.
+
+```{r}
+# data <- data %>% 
+#   select(-edad_agre)
+```
+
+### Relación del agresor con la víctima (r_fam_vic)
+
+```{r echo=FALSE}
+unique(data$r_fam_vic)
+# sum(data$r_fam_vic == 3, na.rm = TRUE)
+```
+
+```{r}
+# data[data$r_fam_vic == 3,]
+```
+
+<!-- Esta variable presenta un valor de 3 en un único registro, el cual no corresponde a ninguna codificación definida para esta variable en las versiones de las fichas encontradas en las que se notifican los casos de violencia. Sin embargo, sí existe una codificación válida de 23 correspondiente a la ex-pareja de la víctima, y revisando esta fila incorrecta, se ve que podría ser resultado de un error de digitación, por lo que será reemplazado por dicho valor (3) por 23. -->
+
+```{r}
+# data <- data %>%
+#   mutate(r_fam_vic = ifelse(r_fam_vic == 3, 23, r_fam_vic))
+```
+
+### Relación del agresor con la víctima: no familiar (r_nofiliar)
+
+```{r}
+unique(data$r_nofiliar)
+```
+
+Esta variable toma el valor de 9 en algunos registros, de acuerdo a las fichas encontradas con las que se notifican los casos de violencia, este código corresponde a la respuesta "Sin información" sobre la relación no familiar que existe entre la víctima y el agresor. Así, este nivel se convierte en NA.
+
+```{r}
+data <- data %>%
+  mutate(r_nofiliar = ifelse(r_nofiliar == 9, NA, r_nofiliar))
+```
+
+
+### Unión de las variables de relación con el agresor:
+
+Las variables r_fam_vic (relación familiar) y r_nofiliar (relación no familiar) contienen información relacionada con el parentesco entre la víctima y el agresor. Por lo tanto, resulta útil unificar esta información en una sola variable llamada parentezco_agresor, con el propósito de simplificar y organizar los datos para facilitar futuros análisis.
+
+En la variable r_fam_vic, el nivel 25 ("Ninguno") indica que no existe una relación familiar con el agresor, y tiene una cantidad bastante grande de datos, alcanza a sumar casi el total de datos que hay en la variable de relación no familiar exceptuando los NA. Entonces, es razonable asumir que el parentesco (en nivel "Ninguno") podría corresponder a alguno de los niveles presentes en la variable r_nofiliar. Sin embargo, para realizar esta unificación de manera adecuada, fue necesario recodificar los niveles de ambas variables. Esto se hizo para evitar duplicados o combinaciones incorrectas, ya que algunos niveles podrían compartir nombres similares pero referirse a descripciones diferentes.
+
+La unificación de las variables se realizó aplicando la lógica de:
+
+-   Si r_fam_vic tenía un valor válido distinto de "Ninguno", se priorizó ese valor.
+-   Si r_fam_vic era "Ninguno", se utilizó el valor correspondiente de r_nofiliar.
+-   En los casos donde ambas variables eran NA, el resultado final también se dejó como NA.
+
+Este proceso, además permitió reducir los NAs, que en ambas variables sumaban un total de 36842, y después de la transformación se reducen a 1696 para la nueva variable. Finalmente, se eliminan las variables originales r_fam_vic y r_nofiliar.
+
+```{r}
+# Ver niveles y conteos de cada variable
+table(data$r_fam_vic, useNA = "ifany")
+table(data$r_nofiliar, useNA = "ifany")
+```
+
+```{r}
+# Paso 1: Recodificar niveles directamente en r_nofiliar
+data <- data %>%
+  mutate(r_nofiliar = recode(
+    r_nofiliar,
+    `1` = "Profesor(a)",
+    `2` = "Amigo(a)",
+    `3` = "Compañero(a) de trabajo",
+    `4` = "Compañero(a) de estudio",
+    `6` = "Desconocido(a)",
+    `7` = "Vecino(a)",
+    `8` = "Conocido(a)",
+    `10` = "Otro",
+    `11` = "Jefe",
+    `12` = "Sacerdote/Pastor",
+    `13` = "Servidor(a) público"
+  ))
+
+# Paso 2: Recodificar niveles directamente en r_fam_vic
+data <- data %>%
+  mutate(r_fam_vic = recode(
+    r_fam_vic,
+    `9` = "Padre",
+    `10` = "Madre",
+    `22` = "Pareja",
+    `23` = "Ex_Pareja",
+    `24` = "Familiar",
+    `25` = "Ninguno"
+  ))
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    parentezco_agresor = case_when(
+      r_fam_vic == "Ninguno" ~ r_nofiliar,  # Si es "Ninguno", usa el valor de r_nofiliar_rec
+      !is.na(r_fam_vic) ~ r_fam_vic,        # Si r_fam_vic_rec tiene un valor válido, úsalo
+      TRUE ~ NA_character_                          # Si ambos son NA, deja como NA
+    )
+  )
+
+# Ver niveles únicos en la nueva variable
+table(data$parentezco_agresor, useNA = "ifany")
+
+```
+
+
+Vemos además que se reducen considerablemente los valores NA.
+
+
+
+## Información de la atención/notificación
+
+### Mes de reporte caso (mes_caso)
+
+Acá se analizó la fecha de ocurrencia. Analizar con la fecha de notificación si coincide o no
+
+**CALCULAR EL MES Y SEMANA RESPECTO A LA FECHA DEL HECHO**
+
+```{r}
+# # Verificación temporal sin agregar columnas permanentes
+# data %>%
+#   transmute(
+#     mes_fecha = lubridate::month(fec_hecho),  # Extraer el mes
+#     coinciden = mes_caso == mes_fecha         # Comparar con mes_caso
+#   ) %>%
+#   pull(coinciden) %>%
+#   table(useNA = "always")
+
+```
+
+Sin embargo, podría ser una variable candidata a eliminar, pues no nos arriesgamos a que existan inconsistencias entre la fecha y el mes. Además tenemos algunos (aunque pocos valores faltantes). Una mejor opción, si se llega a necesitar la variable mes para algún análisis, es calcularla manualmente con la variable de la fecha.
+
+### Fuente de la notificación (fuente)
+Algunos registros toman valor de 0, sin embargo, no es un indicativo válido para las posibles fuentes de acuerdo al diccionario de MEData. Se cambia en estos casos a NA.
+
+```{r}
+data <- data %>% mutate(
+  fuente = if_else(
+    fuente == 0,
+    NA,
+    fuente
+  )
+)
+```
+
+
+### Nombre del departamento de notificación (ndep_noti)
+
+Se cambia la estructura de escritura de las categorías.
+
+```{r}
+unique(data$ndep_notif)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    ndep_notif = as.character(ndep_notif),
+    ndep_notif = na_if(ndep_notif, ""),
+    ndep_notif = recode(
+      ndep_notif,
+      "BOYACA" = "BOYACÁ",
+      "CORDOBA" = "CÓRDOBA",
+      "ATLANTICO" = "ATLÁNTICO",
+      "QUINDIO" = "QUINDÍO",
+      "NORTE SANTANDER" = "NORTE DE SANTANDER"
+    ),
+    ndep_notif = str_to_title(tolower(ndep_notif))
+
+  )
+```
+
+### Nombre municipio de notificación (nmun_noti)
+
+```{r}
+unique(data$nmun_notif)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    nmun_notif = as.character(nmun_notif),
+    nmun_notif = na_if(nmun_notif, ""),
+    nmun_notif = recode(
+      nmun_notif,
+      "MEDELLIN" = "MEDELLÍN",
+      "SAMPUES" = "SAMPUÉS",
+      "CHIA" = "CHÍA",
+      "CUCUTA" = "CÚCUTA",
+      "APARTADO" = "APARTADÓ",
+      "CHIGORODO" = "CHIGORODÓ",
+      "BOLIVAR" = "BOLÍVAR",
+      "ITAGUI" = "ITAGÜÍ",
+      "LA UNION" = "LA UNIÓN",
+      "TAMESIS" = "TÁMESIS",
+      "PUERTO BOYACA" = "PUERTO BOYACÁ"
+    ),
+    nmun_notif = str_to_title(tolower(nmun_notif))
+
+  )
+
+```
+
+
+### Atención integral en salud
+
+Este grupo de variables corresponden a las atenciones en salud que se le realizaron a las víctimas. La atenciones relacionadas con profilaxis para VIH, HB, otras profilaxis, anticoncepción de emergencia, orientación IVE y y recolección de evidencia medico legal solo se realizan en caso de violencias sexuales. Por lo tanto, en los casos que no son violencia sexual se asigna "No aplica" a las variables que las representa.
+
+```{r}
+# Transformar los NA en las columnas seleccionadas a "No aplica"
+data <- data %>%
+  mutate(across(
+    c(sp_its,prof_hep_b,prof_otras,ac_anticon,ac_ive,evi_mlegal),
+    ~ ifelse(is.na(def_naturaleza) | def_naturaleza %in% c(4,5,6,7,10,11,12,14,15), ., "No aplica")
+  ))
+
+```
+
+
+### Condición final de la víctima al momento de la notificación (con_fin_)
+Según los datos esta variable toma tres posibles valores: 0 = No sabe, no responde, 1 = Vivo, 2 = Muerto. Sin embargo, el formato de notificación 2024 indica que "0" solo aplica cuando se capte el caso por BAI (Brotes, Alertas e Incidencias) y se desconoce el dato, o para defectos congénitos cuando la unidad de medida es "0". Dado que el evento de interés no es ninguno de los mencionados, se cambia los casos con "0" por NA. 
+
+```{r}
+data <- data %>% mutate(
+  con_fin_ = if_else(
+    con_fin_ == 0,
+    NA,
+    con_fin_
+  )
+)
+```
+
+### Causa básica de defunción (cbmte_)
+
+Esta variable corresponde al [diagnóstico CIE-10](https://web.sispro.gov.co/WebPublico/Consultas/ConsultarDetalleReferenciaBasica.aspx?Code=CIE10) que ocasionó la muerte de la víctima y que está relacionado con el evento de interés. Toma un valor si la variable **con_fin_** es igual a 2 (muerto), en caso contrario, se le asigna "No aplica" para no confundir con valores faltantes. Además, para los valores que no son un código válido se cambian a NA.
+
+```{r}
+data <- data %>% mutate(
+  cbmte_ = case_when(
+    cbmte_ %in% c("8888", "9999") ~ NA_character_,
+    !is.na(con_fin_) & con_fin_ == 1 ~ "No aplica", 
+    cbmte_ == "" ~ NA_character_,
+    TRUE ~ cbmte_
+  )
+)
+```
+
+
 ## Valores faltantes
+```{r}
+# Variables que no se considerarán o son secundarias
+ex_columns <- c(
+  "mes_caso",
+  "naturaleza",
+  "nat_viosex",
+  "nacionali_",
+  "cod_pais_o",
+  "cod_dpto_o",
+  "cod_mun_o",
+  # "codigo_barrio",
+  # "codigo_comuna",
+  "cod_pais_r",
+  "cod_dpto_r",
+  "cod_mun_r",
+  # "nombre_comuna",
+  # "bar_ver_",
+  # "localidad_",
+  # "vereda_",
+  # "cen_pobla_",
+  # "nombre_barrio",
+  "fecha_nto_",
+  "ocupacion_",
+  "ajuste_",
+  "ident_gene",
+  "nom_upgd",
+  "tip_cas_",
+  "clasificación_final",
+  "r_nofiliar", 
+  "r_fam_vic"
+)
+
+# Se quitan también fec_hos_,fec_def_ y sem_ges_ porque son evento que dependen de un evento, entonces tendrán muchos NA pero no es porque falte info sino que no aplica
+aux_data <- data %>% select(-all_of(c(
+  ex_columns, "fec_hos_", "fec_def_", "sem_ges_"
+)))
+```
+
+```{r, echo=FALSE}
+# Buscar valores faltantes y celdas vacias ("")
+na_empty <- data.frame(
+  Column = names(aux_data),
+  total_na = sapply(aux_data, function(col)
+    sum(is.na(col))),
+  total_empty = sapply(aux_data, function(col)
+    sum(col == "", na.rm = TRUE)),
+  percent_na = sapply(aux_data, function(col)
+    round(sum(is.na(
+      col
+    )) / nrow(aux_data) * 100, 2)),
+  percent_empty = sapply(aux_data, function(col)
+    round(
+      sum(col == "", na.rm = TRUE) / nrow(aux_data) * 100, 2
+    )),
+  row.names = NULL
+)
+
+na_empty <- na_empty %>%
+  filter(total_na > 0 | total_empty > 0) %>% arrange(desc(percent_na))
+
+na_empty
+```
+
+```{r}
+NA_hos <- data %>% filter(
+  (pac_hos_ == 1 & is.na(fec_hos_))
+) %>% nrow()
+
+NA_def <- data %>% filter(
+  (con_fin_ == 2 & is.na(fec_def_))
+) %>% nrow()
+
+NA_sem_ges <- data %>% filter(
+  (gp_gestan == 1 & is.na(sem_ges_))
+) %>% nrow()
+```
+
+Con respecto a las variables **fec_hos_** y **fec_def_**, que toman un valor solo si la víctima fue hospitalizada o falleció, `r NA_hos` registros no cuentan con un valor  **fec_hos_** y `r NA_def` en **fec_def_**. En el caso de *sem_ges_** son `r NA_sem_ges` registros.
+
+De acuerdo a lo anterior, son `r sum(na_empty$total_na) + NA_def + NA_hos` celdas NA y `r sum(na_empty$total_empty)` celdas que fueron definidas como vacías poniendo "".
+
+```{r, include=FALSE}
+# Filtrar filas con uno o más valores faltantes o celdas vacias
+row_na_empty <- data %>% select(-all_of(ex_columns)) %>%
+  filter(
+    if_any(everything(), ~ is.na(.)) |
+      (pac_hos_ == 1 &
+         is.na(fec_hos_)) |
+      (con_fin_ == 2 &
+         is.na(fec_def_)) | (gp_gestan == 1 & is.na(sem_ges_))
+  )
+# %>%  nrow()
+```
+
+Para un total de `r nrow(row_na_empty)` registros con valores faltantes y celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(aux_data),2)`% de la base de datos. Sin embargo, como hay columnas relacionadas, algunas celdas de una columna pueden recibir un valor a partir de otra columna.
 
 ### Relacionar información para rellenar campos vacíos
 
+#### Variable ndep_proce a partir de nmun_proce
+No es posible pues el departamento solo tiene un NA, y el municipio tiene 20 NA. Además, ambos valores faltantes coinciden en las mismas filas, lo que impide utilizar uno para completar el otro.
+
+```{r}
+row_na_empty %>% filter(is.na(ndep_proce) | ndep_proce == "") %>% select(npais_proce,ndep_proce, nmun_proce)
+```
+
+#### Variable npais_proce a partir de ndep_proce
+Dado que todos los departamentos en ndep_proce corresponden todos a Colombia, se completaron los valores vacíos o faltantes (NA) en npais_proce con "Colombia". Tras esta imputación, solo queda un valor faltante en npais_proce, el cual corresponde al mismo registro que tiene un valor faltante en ndep_proce, que no es posible saber.
+
+```{r}
+# Imputar valores de npais_proce según ndep_proce
+data <- data %>%
+  mutate(npais_proce = ifelse(npais_proce == "" | !is.na(ndep_proce), "Colombia", npais_proce))
+```
+
+```{r}
+data %>% filter(is.na(npais_proce) | npais_proce == "") %>% select(npais_proce, ndep_proce, nmun_proce)
+```
+
+#### Variable nmun_resi a partir de nombre_comuna
+Todas las comunas están dentro de Medellín, entonces se llenan los valores vacíos de municipio con "Medellín" para aquellos que tienen información en comuna.
+
+```{r}
+data <- data %>% 
+  mutate(nmun_resi = ifelse(nmun_resi == "" | !is.na(nombre_comuna), 
+                            "Medellín",
+                            nmun_resi ))
+```
+
+#### Variable npais_resi a partir de ndep_resi
+```{r}
+# Crear un vector con los departamentos de Colombia
+deptos_colombia <- c("Antioquia", "Boyacá", "Bolívar", "Caldas", "Valle", 
+                     "Córdoba", "Sucre", "Cundinamarca", "Atlántico", 
+                     "Norte De Santander", "Santander", "Quindío", 
+                     "Risaralda", "Putumayo", "Meta", "Magdalena", 
+                     "Huila", "Chocó", "Cauca", "La Guajira", 
+                     "Nariño", "Arauca")
+
+# Imputar valores en npais_resi
+data$npais_resi <- ifelse(data$ndep_resi %in% deptos_colombia, 
+                          "Colombia", 
+                          data$npais_resi)
+
+```
+
+#### Variable ndep_resi a partir de nmun_resi y npais_resi
+```{r}
+row_na_empty %>%
+  filter(is.na(ndep_resi) | ndep_resi == "") %>%
+  select(npais_resi, ndep_resi, nmun_resi)
+```
+
+Vemos que únicamente es posible imputar el departamento de residencia para aquellas observaciones a las cuales se les conoce el país de residencia y todos resultan ser extranjeros, entonces se adapta la misma estructura utilizada anteriormente
+
+```{r}
+# data <- data %>%
+#   mutate(
+#     ndep_resi = case_when(
+#       nmun_resi == "Medellín" ~ "Antioquia",  # Imputa "Antioquia" si nmun_resi es "Medellín"
+#       is.na(nmun_resi) ~ NA_character_,  # Mantiene NA si nmun_resi es NA
+#       TRUE ~ ndep_resi # Mantiene el valor original si no aplica ninguna condición
+#     )
+#   )
+
+# NO DA CAMBIO
+```
+
+```{r}
+# Imputar valores de ndep_resi según npais_resi
+
+data <- data %>%
+  mutate(
+    ndep_resi = case_when(
+      npais_resi == "España" ~ paste0("Depto[", npais_resi, "]"),
+      npais_resi == "Eslovenia" ~ paste0("Depto[", npais_resi, "]"),
+      npais_resi == "Venezuela" ~ paste0("Depto[", npais_resi, "]"),
+      npais_resi == "Estados Unidos" ~ paste0("Depto[", npais_resi, "]"),
+      npais_resi == "Montserrat" ~ paste0("Depto[", npais_resi, "]"),
+      npais_resi == "Bangladesh" ~ paste0("Depto[", npais_resi, "]"),
+      nmun_resi == "Medellín" ~ "Antioquia",  # Imputa "Antioquia" si nmun_resi es "Medellín"
+      is.na(nmun_resi) ~ NA_character_, 
+      TRUE ~ ndep_resi # Mantiene el valor original si no aplica ninguna condición
+    )
+  )
+
+```
+
+#### Variable npais_resi a partir de nmun_resi
+
+```{r}
+row_na_empty %>%
+  filter(is.na(npais_resi) | npais_resi == "") %>%
+  select(npais_resi, ndep_resi, nmun_resi)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    npais_resi = case_when(
+      ndep_resi == "Antioquia" & is.na(npais_resi) ~ "Colombia",  # Asigna "Colombia" si nmun_resi es "Medellín" y npais_resi está vacío
+      TRUE ~ npais_resi  # Mantiene el valor original de npais_resi si no se cumple la condición
+    )
+  )
+
+```
+
+
+#### Variable área a partir de departamento, localidad, vereda o barrio de ocurrencia
+```{r}
+data %>% 
+  filter(is.na(area_)) %>%
+  select(nmun_hecho, area_, localidad_, vereda_, bar_ver_, cen_pobla_)
+```
+
+```{r}
+data <- data %>% mutate(area_ = case_when(bar_ver_ == "LA FLORESTA"~ 1,TRUE~ area_))
+```
+
+
+#### Variable armas a partir de que_., cla_gra y ext_que
+No se puede porque no hay registros vacíos en armas que tenga algún valor en que_
+
+```{r}
+data %>%
+  filter(
+    is.na(armas) & if_any(
+      all_of(c("que_cara", "que_cuello", "que_mano", "que_pie", 
+               "que_pliegu", "que_genita", "que_tronco", 
+               "que_miesup", "que_mieinf", "cla_gra", "ext_que")),
+      ~ !is.na(.) & . != "No aplica"
+    )
+  )
+
+```
+
+
+Se puede observar que disminuyó la cantidad de celdas vacías. 
+
+```{r}
+aux_data <- data %>% select(-all_of(c(ex_columns, "fec_hos_", "fec_def_","sem_ges_")))
+```
+
+```{r, echo=FALSE}
+# Volver a calcular valores faltantes y celdas vacías ("")
+na_empty <- data.frame(
+  Column = names(aux_data),
+  total_na = sapply(aux_data, function(col)
+    sum(is.na(col))),
+  total_empty = sapply(aux_data, function(col)
+    sum(col == "", na.rm = TRUE)),
+  percent_na = sapply(aux_data, function(col)
+    round(sum(is.na(col)) / nrow(aux_data) * 100,2)),
+  percent_empty = sapply(aux_data, function(col)
+    round(sum(col == "", na.rm = TRUE) / nrow(aux_data) * 100,2)),
+  row.names = NULL
+)
+
+na_empty <- na_empty %>%
+  filter(total_na > 0 | total_empty > 0) %>% arrange(desc(percent_na))
+
+na_empty
+```
+
+
+```{r, include=FALSE}
+row_na_empty <- data %>% select(-all_of(ex_columns)) %>%
+  filter(
+    if_any(everything(), ~ is.na(.)) |
+      (pac_hos_ == 1 &
+         is.na(fec_hos_)) |
+      (con_fin_ == 2 &
+         is.na(fec_def_)) | (gp_gestan == 1 & is.na(sem_ges_))
+  )
+```
+
+Luego de rellenar las celdas vacías a partir de información relacionada queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)`% de la base de datos. Es decir, se pueden utilizar `r nrow(data) - nrow(row_na_empty)` registros completos.
+
+Ahora, algunas variables tienen más del 50% de los registros con celdas vacías, ya sea porque no se registró la información o porque esa variable no es considerada en todas las fichas de notificación del SIVIGILA. Como es el caso de **edad agresor**, **estrato_**, y **hora del hecho** que según lo investigado desde la ficha 2018 (inclusive) no se pide estas variables. 
+
+```{r, include=FALSE}
+# Filtrar nombre de las variables con el 50% de celdas vacías
+NA_columns <- na_empty %>% 
+  filter(percent_na > 60 | percent_empty > 60) %>% 
+  pull(Column)
+
+row_na_empty <- data %>% select(-all_of(c(ex_columns,NA_columns))) %>%
+  filter(
+    if_any(everything(), ~ is.na(.)) |
+      (pac_hos_ == 1 &
+         is.na(fec_hos_)) |
+      (con_fin_ == 2 &
+         is.na(fec_def_)) | (gp_gestan == 1 & is.na(sem_ges_))
+  )
+
+```
+Si no se consideran estas columnas disminuye a `r nrow(row_na_empty)` registros con algún valor faltante. 
+
+```{r}
+final_data <- data %>%
+  select(-all_of(c(ex_columns, NA_columns))) %>%
+  filter(!(pac_hos_ == 1 & is.na(fec_hos_)))
+
+final_data <- final_data %>%
+  filter(!(con_fin_ == 2 & is.na(fec_def_))) # 51391
+
+final_data <- final_data %>%
+  filter(!(gp_gestan == 1 & is.na(sem_ges_))) # 49749
+
+final_data <- final_data %>%
+  filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.)))
+```
+
+Al eliminar estos registros con algún valor faltante, se obtiene una base de datos con `r nrow(final_data)` registros completos.
+
+**Nota importante:** Si se eliminan la columnas que tienen más del 50% de celdas con NA. quedan muy pocos registros completos porque las celdas vacías están muy distribuidas. Además, 
+
+- La nacionalidad y semana de gestación comienzan a solicitarse desde el 2018 según las fichas que tenemos. Por lo tanto, en esta base no hay ningún caso de años previos con esa info. Pero hay que resaltar que hay pocos registros de estos años entonces la mayoría de NA corresponden a años que sí se pidió
+
+```{r}
+summary(as.factor(data$año))
+```
+
+```{r}
+table(as.factor(data$sem_ges_), as.factor(data$año))
+```
+
+```{r}
+table(as.factor(data$nombre_nacionalidad), as.factor(data$año))
+```
+
+- La mayoría de los registros tienen NA en la variable **armas** y ya no es posible relacionar más información. Lo que afecta también a las variables relacionadas con la parte del cuerpo afectada en caso de quemadura porque tomarían valor de NA en este caso
+```{r}
+summary(as.factor(data$armas))
+```
+Si se considerar quitar las columnas con un porcentaje mayor de NA, se descartarían las siguientes columnas:
+
+```{r}
+# NA_columns <- na_empty %>% 
+#   filter(percent_na > 40 | percent_empty > 40) %>% 
+#   pull(Column)
+# 
+# NA_columns
+```
+```{r}
+# final_data <- data %>%
+#   select(-all_of(c(ex_columns, NA_columns))) %>%
+#   filter(!(pac_hos_ == 1 & is.na(fec_hos_)))
+# 
+# final_data <- final_data %>%
+#   filter(!(con_fin_ == 2 & is.na(fec_def_))) # 51391
+# 
+# final_data <- final_data %>%
+#   filter(!(gp_gestan == 1 & is.na(sem_ges_))) # 49749
+# 
+# final_data <- final_data %>%
+#   filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.)))
+```
+
+Al eliminar estos registros con algún valor faltante, se obtiene una base de datos con `r nrow(final_data)` registros completos.
+
 ## Registros duplicados
+```{r}
+# Buscar registros duplicados
+final_data %>%
+  filter(duplicated(.)) %>%
+  nrow()
+```
+
+```{r}
+final_data <- final_data %>%
+    distinct()
+```
+
+Finalmente, al eliminar los registros duplicados se obtiene una base de datos depurada con **`r nrow(data)` registros.**
+
+## Conversión a factor
+
+```{r}
+final_data <- final_data %>%
+  mutate(across(
+    .cols = !all_of(c("semana","edad")),  
+    .fns = as.factor                     
+  ))
+```
+
 
 ## Orden de las columnas
 Se establece un nuevo orden en la base de datos para mayor facilidad en el proceso de análisis.
 
 ```{r}
-data <- data %>%
+final_data <- final_data %>%
   select(
     fec_not,
     semana,
     año,
     periodo_epid,
     fec_hecho,
-    mes_caso,
+    #mes_caso,
     fec_con_,
     ini_sin_,
     fec_hos_,
     fec_def_,
-    fecha_nto_,
-    nacionali_,
     nombre_nacionalidad,
     sexo_,
     orient_sex,
-    ocupacion_,
+    edad,
+    grupo_edad,
+    # ocupacion_,
     actividad,
     tip_ss_,
     per_etn_,
     nom_grupo_,
-    estrato_,
     gp_discapa,
     gp_desplaz,
     gp_migrant,
@@ -93,81 +1800,65 @@ data <- data %>%
     gp_psiquia,
     gp_vic_vio,
     gp_otros,
-    edad_,
-    uni_med_,
-    grupo_edad_ciclo,
-    grupo_edad_quinque,
     mujer_cabf,
     antec,
-    cod_pais_r,
     npais_resi,
-    cod_dpto_r,
     ndep_resi,
-    cod_mun_r,
     nmun_resi,
-    codigo_barrio,
-    nombre_barrio,
-    codigo_comuna,
-    nombre_comuna,
     npais_proce,
     ndep_proce,
     nmun_proce,
-    cod_dpto_o,
-    cod_mun_o,
+    def_naturaleza,
+    nmun_hecho,
+    ndep_hecho,
     area_,
-    localidad_,
-    cen_pobla_,
-    vereda_,
-    bar_ver_,
-    hora_hecho,
-    naturaleza,
-    nat_viosex,
     consum_spa,
     sust_vict,
     zona_conf,
-    armas,
-    que_cara,
-    que_cuello,
-    que_mano,
-    que_pie,
-    que_pliegu,
-    que_genita,
-    que_tronco,
-    que_miesup,
-    que_mieinf,
-    cla_gra,
-    ext_que,
+    # que_cara,
+    # que_cuello,
+    # que_mano,
+    # que_pie,
+    # que_pliegu,
+    # que_genita,
+    # que_tronco,
+    # que_miesup,
+    # que_mieinf,
+    # cla_gra,
+    # ext_que,
     escenario,
     ambito_lug,
     sexo_agre,
-    edad_agre,
-    r_nofiliar,
-    r_fam_vic,
+    parentezco_agresor,
+    # r_nofiliar, 
+    # r_fam_vic,
     conv_agre,
     fuente,
-    tip_cas_,
-    fm_fuerza,
-    fm_unidad,
-    fm_grado,
+    # tip_cas_,
     pac_hos_,
     con_fin_,
     cbmte_,
-    sp_its,
-    prof_hep_b,
-    prof_otras,
-    ac_anticon,
-    ac_ive,
-    ac_mental,
-    remit_prot,
-    inf_aut,
-    evi_mlegal,
-    estadotran,
-    nom_upgd,
+    # sp_its,
+    # prof_hep_b,
+    # prof_otras,
+    # ac_anticon,
+    # ac_ive,
+    # ac_mental,
+    # remit_prot,
+    # inf_aut,
+    # evi_mlegal,
+    # estadotran,
+    # nom_upgd,
     ndep_notif,
     nmun_notif,
-    ajuste_,
-    clasificación_final
+    # ajuste_,
+    # clasificación_final
   )
 ```
 
 # Base de datos depurada
+
+```{r}
+# Guardar base de datos 
+# save_data(data, "medata_2016_2022_debugged", type = "interim", format = "csv")
+```
