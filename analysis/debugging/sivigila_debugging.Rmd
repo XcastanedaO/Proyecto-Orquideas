@@ -5,28 +5,41 @@ output: html_document
 
 # Información de las base de datos
 
+
 # Lectura de las bases de datos
 ```{r, include=FALSE}
 source("../../utils/load_data.R")
 library(here)
+library(dplyr)
 ```
 
-```{r}
-years <- 2012:2015
+Las bases de datos alojadas en el portal SIVIGILA no incluyen la variable  **identidad de género** entonces para las bases de datos se filtra por la variable **Sexo**
 
-# Crear una lista para almacenar los datos
+```{r, warning=FALSE}
 data_list <- list()
 
-# Bucle para leer, filtrar y almacenar cada archivo
-for (year in years) {
-  data_ <- load_data(paste0("SIVIGILA/Datos_", year, "_875.xls"), type = "raw") %>%
-    filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
+# Lectura de las bases años 2012 al 2015
+for (year in 2012:2015) {
+  data_ <- load_data(paste0("SIVIGILA/Datos_", year, "_875.xls"), type = "raw", col_types = "text") %>%
+  filter(SEXO == "F" & COD_PAIS_O == 170)
   data_list[[as.character(year)]] <- data_
-  
-  
 }
 
+# Lectura de las bases años 2016 al 2023
+for (year in 2016:2023) {
+  data_ <- load_data(paste0("SIVIGILA/Datos_", year, "_875.xlsx"), type = "raw", col_types = "text") %>%
+  filter(SEXO == "F" & COD_PAIS_O == 170)
+  data_list[[as.character(year)]] <- data_
+}
+
+# Juntar las bases de datos
 data <- bind_rows(data_list, .id = "Año")
 
+# Eliminar columnas repetidas o innecesarias
+data <- data %>% select(-ANO, -COD_EVE...1, -COD_EVE...3, -consecutive_origen, -Partición, -CONSECUTIVE)
+
+# Guardar base de datos completa y filtrada por sexo femenino
+# save_data(data, "SIVIGILA/sivigila_2012_2023", type = "raw", format = "csv")
 ```
+
 
