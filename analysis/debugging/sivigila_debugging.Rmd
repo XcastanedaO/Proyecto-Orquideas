@@ -3,3 +3,30 @@ title: "sivigila_debugging"
 output: html_document
 ---
 
+# Información de las base de datos
+
+# Lectura de las bases de datos
+```{r, include=FALSE}
+source("../../utils/load_data.R")
+library(here)
+```
+
+```{r}
+years <- 2012:2015
+
+# Crear una lista para almacenar los datos
+data_list <- list()
+
+# Bucle para leer, filtrar y almacenar cada archivo
+for (year in years) {
+  data_ <- load_data(paste0("SIVIGILA/Datos_", year, "_875.xls"), type = "raw") %>%
+    filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
+  data_list[[as.character(year)]] <- data_
+  
+  
+}
+
+data <- bind_rows(data_list, .id = "Año")
+
+```
+
