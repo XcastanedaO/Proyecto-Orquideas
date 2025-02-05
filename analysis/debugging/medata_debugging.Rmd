@@ -48,7 +48,7 @@ La base de datos está conformada por 118 variables, sin embargo, se elimina las
 
 ```{r, include=FALSE}
 data <- data %>%
-  select(-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,-fm__fuerza,-fm_unidad, -fm_grado)
+  select(-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado)
 ```
 
 Dado que el interés son los casos de violencia en mujeres que ocurren en Colombia se filtra la base para analizar solo estos casos. Según el formato de notificación 2024 cuando la variable **identidad de género (ident_gene)** es igual a 2 corresponde a mujer y cuando es igual a 4 corresponde a mujer trans. Además, la variable **país de ocurrencia del caso (cod_pais_o)** igual 170 representa a Colombia. 
