@@ -35,8 +35,8 @@ load_data <- function(file_name, type = "raw", ...) {
   # Leer archivo según su extensión
   if (grepl("\\.csv$", file_name)) {
     data <- read.csv(file_path, ...)
-  } else if (grepl("\\.xlsx$", file_name)) {
-    data <- read_xlsx(file_path, ...)
+  } else if (grepl("\\.(xlsx|xls)$", file_name)) {
+    data <- read_excel(file_path, ...)
   } else if (grepl("\\.rds$", file_name)) {
     data <- readRDS(file_path)
   } else if (grepl("\\.txt$", file_name)) {
