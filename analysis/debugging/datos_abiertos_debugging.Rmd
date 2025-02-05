@@ -61,7 +61,7 @@ data <- data %>% filter(sexo_ == "Femenino")
 
 La base de datos tiene un total de `r nrow_aux` casos de violencia de género donde `r nrow(data)` corresponden a mujeres. De aquí adelante se trabaja solo con estos casos.
 
-Se eliminan las siguientes variables por considera<r que no aportan información útil al estudio
+Se eliminan las siguientes variables por considerar que no aportan información útil al estudio
 
 ```{r}
 data <- data %>%
@@ -218,7 +218,7 @@ data <- data %>%
       "GRON" = "GIRÓN",
       "GIRON" = "GIRÓN"
     ),
-    Barrio = tools::toTitleCase(tolower(Barrio))
+    Barrio = str_to_title(tolower(Barrio))
   )
 ```
 
@@ -234,7 +234,7 @@ unique(data$Comuna)
 data <- data %>%
   mutate(
     Comuna = str_remove(Comuna, "^[0-9]+\\.\\s*"),
-    Comuna = tools::toTitleCase(tolower(Comuna)),
+    Comuna = str_to_title(tolower(Comuna)),
     Comuna = case_when(
       Comuna %in% c("Sin Informacion", "Monte Cruz", "Santos Bajos") ~ NA_character_,
       Comuna == "Giron" ~ "Girón",
@@ -285,6 +285,7 @@ data <- data %>%
       "Sin Informacion" = NA_character_,
       "ERROR: #N/A" = NA_character_,
       "Sin informacion" = NA_character_,
+      "Violacion" = "Violación",
       "Violencia fisica" = "Física",
       "Violencia psicologica" = "Psicológica",
       # "Otros actos sexuales" = "Otras violencias sexuales",
@@ -379,7 +380,7 @@ Para estos casos se cambia ndep_resi a NA. Además, se corrigen errores ortográ
 ```{r}
 data <- data %>%
   mutate(
-    ndep_resi = tools::toTitleCase(tolower(ndep_resi)),
+    ndep_resi = str_to_title(tolower(ndep_resi)),
     ndep_resi = case_when(
       ndep_resi == "Exterior" &
         nmun_resi == "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" ~ NA_character_,
@@ -399,7 +400,7 @@ Para los cinco registros que indican "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL D
 
 ```{r}
 data <- data %>% mutate(
-  nmun_resi = tools::toTitleCase(tolower(nmun_resi)),
+  nmun_resi = str_to_title(tolower(nmun_resi)),
   nmun_resi = case_when(
     str_detect(nmun_resi, "Municipio Desconocido") ~ NA_character_,
     str_detect(nmun_resi, "Exterior") ~ "Exterior",
@@ -434,7 +435,6 @@ data <- data %>%
       Tipo.de.Seguridad.Social,
       pac_hos_,
       con_fin_,
-      version,
       def_naturaleza,
       actividad,
       sexo_agre,
@@ -572,6 +572,16 @@ data <- data %>%
          naturaleza == "") & def_naturaleza == "Física" ~ "1",
       (is.na(naturaleza) |
          naturaleza == "") & def_naturaleza == "Psicológica" ~ "2",
+            (is.na(naturaleza) |
+         naturaleza == "") & def_naturaleza == "Abuso sexual" ~ "4",
+      (is.na(naturaleza) |
+         naturaleza == "") & def_naturaleza == "Actos sexuales violencia" ~ "12",
+      (is.na(naturaleza) |
+         naturaleza == "") & def_naturaleza == "Violación" ~ "6",
+            (is.na(naturaleza) |
+         naturaleza == "") & def_naturaleza == "Explotacion sexual, comercial niños, adolescentes" ~ "7",
+                  (is.na(naturaleza) |
+         naturaleza == "") & def_naturaleza == "Otros actos sexuales" ~ "14",
       TRUE ~ naturaleza
     )
   )
