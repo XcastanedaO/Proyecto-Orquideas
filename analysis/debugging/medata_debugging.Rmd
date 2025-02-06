@@ -777,6 +777,11 @@ summary(as.factor(data$orient_sex))
 
 ### Lugar del hecho 
 
+```{r}
+data %>% select(area_, localidad_, bar_ver_, cen_pobla_, vereda_)
+```
+
+
 Con respecto a las variables **bar_ver_, vereda_, localidad_ y cen_pobla_**, estas corresponden a la ubicación donde ocurrieron los hechos de violencia. Según las fichas de SIVIGILA, su uso depende de la variable área_, que clasifica el lugar del hecho en: (1) Cabecera municipal, (2) Centro poblado o (3) Rural disperso.
 
 Cada variable tiene la siguiente función:
@@ -788,48 +793,71 @@ Cada variable tiene la siguiente función:
 
 Con el fin de estandarizar la información, y manejar los datos faltantes, se realizaron algunos ajustes:
 
-1.   Unificar *localidad_* y *cen_pobla_* en una sola variable, ya que ambas cumplen funciones similares dependiendo del municipio.
+1.    Limpieza de datos: Se reemplazaron por NA los valores que indicaban falta de información, tales como "SIN INFORMACIÓN", "NO REGISTRA", "DESCONOCIDO", valores vacíos, entre otros.
 
-2.   Completar los valores faltantes en *bar_ver_* con los de *vereda_*, en caso de que estuvieran vacíos o fueran NA.
+2.    Unificación de variables:
 
-3.   Crear la nueva variable **lugar_hecho**, aplicando las siguientes reglas:
+-   Se creó una nueva variable que fusiona localidad_ y bar_ver_, dado que ambas se utilizan únicamente cuando área_ = 1 (cabecera municipal).
+-   Se combinó vereda_ y cen_pobla_, asignando vereda_ cuando área_ = 3 (rural disperso) y cen_pobla_ cuando área_ = 2 (centro poblado).
 
--   Si el área es cabecera municipal (1), se usa bar_ver_ y, si está vacío, localidad/cen_pobla_.
--   Si el área es centro poblado (2), se usa localidad/cen_pobla_.
+3.    Completado de valores faltantes:
+
+-   Si bar_ver_ estaba vacío en un área urbana (área_ = 1), se completó con cen_pobla_, en caso de que esta última tuviera información.
+
+4.    Creación de la variable lugar_hecho:
+
+-   Si el área es cabecera municipal (1), se asigna bar_ver_ y, si está vacío, se usa localidad_ / cen_pobla_.
+-   Si el área es centro poblado (2), se usa cen_pobla_.
 -   Si el área es rural disperso (3), se usa vereda_.
--   Si no hay información disponible, se asigna "NA".
+-   Si no hay información disponible, se asigna NA.
 
-4.    Eliminé las variables originales que ya no eran necesarias.
+5.    Eliminación de variables innecesarias:
 
-5. Poner como NA algunas catregorías que no corresponden a ningun registro.
+-   Se eliminaron las variables originales (bar_ver_, localidad_, cen_pobla_, vereda_) después de construir la variable lugar_hecho.
 
 ```{r}
+# Reemplazar valores sin información por NA en cada variable
+data <- data %>%
+  mutate(across(c(bar_ver_, localidad_, cen_pobla_, vereda_), 
+                ~ str_replace_all(., 
+                                  "^999+.*|SIN INFORMAC.*|DESCONOCIDO|NO REGISTRA|NS|XXX|X|000000|SI DATO|SD|1E\\+19|69999|SIN DATOI|C|-|NINGUNA|N  APLICA|DESCONOCIDA|ND|N|1E+12|1E+21|1E+40|1E+13|1E+25|1E+20|1E+22|SIN DATO|SD|SI|INFORM.*|NO INFORMA.*|SIN SINFORMACION.*|SIN NINFORMACION.*|SIN INFOMACION.*|NOINFORMA.*|DESCONOCE|CALLE DESCONOCIDA$", 
+                                  NA_character_))) %>%
+  mutate(across(c(bar_ver_, localidad_, cen_pobla_, vereda_), ~ na_if(., "")))  # Convertir valores vacíos a NA
+
+# Unificación de variables
 data <- data %>%
   mutate(
-    # Unir localidad y centro poblado
-    localidad_cenpob_ = coalesce(na_if(localidad_, ""), na_if(cen_pobla_, "")),
+    # Unir Localidad y Barrio (solo aplica cuando area_ == 1)
+    loc_bar = case_when(
+      area_ == 1 & !is.na(bar_ver_) ~ bar_ver_,
+      area_ == 1 & is.na(bar_ver_) ~ localidad_,
+      TRUE ~ NA_character_
+    ),
     
-    # Unir bar_ver_ y vereda_
-    bar_ver_ = coalesce(na_if(bar_ver_, ""), na_if(vereda_, "")),
-    
-    # Construir "lugar_hecho" según área_
-    lugar_hecho = case_when(
-      area_ == 1 & !is.na(bar_ver_) ~ bar_ver_,  # Cabecera municipal: Usa bar_ver_
-      area_ == 1 & is.na(bar_ver_) & !is.na(localidad_cenpob_) ~ localidad_cenpob_,  # Si no hay bar_ver_, usa localidad
-      area_ == 2 & !is.na(localidad_cenpob_) ~ localidad_cenpob_,  # Centro poblado: Usa localidad/cen_pobla_
-      area_ == 3 & !is.na(vereda_) ~ vereda_,  # Rural disperso: Usa vereda
-      TRUE ~ NA_character_  # Si no hay datos, asignar "SIN INFORMACIÓN"
+    # Unir Vereda y Centro Poblado
+    ver_cen = case_when(
+      area_ == 3 & !is.na(vereda_) ~ vereda_,
+      area_ == 2 & !is.na(cen_pobla_) ~ cen_pobla_,
+      TRUE ~ NA_character_
     )
-  ) %>%
-  select(-localidad_, -bar_ver_, -cen_pobla_, -vereda_, -localidad_cenpob_) 
+  )
+
+# Construcción de la variable final `lugar_hecho`
+data <- data %>%
+  mutate(
+    lugar_hecho = case_when(
+      area_ == 1 ~ coalesce(loc_bar, cen_pobla_),  # Usa loc_bar y si es NA, usa cen_pobla_
+      area_ == 2 ~ ver_cen,
+      area_ == 3 ~ ver_cen,
+      TRUE ~ NA_character_
+    )
+  )
+
+# Eliminar las variables originales que ya no se necesitan
+data <- data %>% select(-bar_ver_, -localidad_, -cen_pobla_, -vereda_)
+
 ```
 
-```{r}
-data$lugar_hecho <- data$lugar_hecho %>%
-  
-  gsub(pattern = "^999+.*|SIN INFORMAC.*|DESCONOCIDO|SD|1E\\+19|69999|INFORM.*|NO INFORMA.*|SIN SINFORMACION.*|SIN NINFORMACION.*|SIN INFOMACION.*|NOINFORMA.*|DESCONOCE|CALLE DESCONOCIDA$", 
-       replacement = NA, x = .)
-```
 
 
 
@@ -1596,7 +1624,7 @@ data$npais_resi <- ifelse(data$ndep_resi %in% deptos_colombia,
 
 #### Variable ndep_resi a partir de nmun_resi y npais_resi
 ```{r}
-row_na_empty %>%
+data %>%
   filter(is.na(ndep_resi) | ndep_resi == "") %>%
   select(npais_resi, ndep_resi, nmun_resi)
 ```
@@ -1604,14 +1632,14 @@ row_na_empty %>%
 Vemos que únicamente es posible imputar el departamento de residencia para aquellas observaciones a las cuales se les conoce el país de residencia y todos resultan ser extranjeros, entonces se adapta la misma estructura utilizada anteriormente
 
 ```{r}
-# data <- data %>%
-#   mutate(
-#     ndep_resi = case_when(
-#       nmun_resi == "Medellín" ~ "Antioquia",  # Imputa "Antioquia" si nmun_resi es "Medellín"
-#       is.na(nmun_resi) ~ NA_character_,  # Mantiene NA si nmun_resi es NA
-#       TRUE ~ ndep_resi # Mantiene el valor original si no aplica ninguna condición
-#     )
-#   )
+ data <- data %>%
+   mutate(
+     ndep_resi = case_when(
+       nmun_resi == "Medellín" ~ "Antioquia",  # Imputa "Antioquia" si nmun_resi es "Medellín"
+       is.na(nmun_resi) ~ NA_character_,  # Mantiene NA si nmun_resi es NA
+       TRUE ~ ndep_resi # Mantiene el valor original si no aplica ninguna condición
+     )
+   )
 
 # NO DA CAMBIO
 ```
@@ -1658,9 +1686,6 @@ data <- data %>%
 
 
 
-```{r}
-data <- data %>% mutate(area_ = case_when(bar_ver_ == "LA FLORESTA"~ 1,TRUE~ area_))
-```
 
 
 #### Variable armas a partir de que_., cla_gra y ext_que
