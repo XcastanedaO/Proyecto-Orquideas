@@ -1656,12 +1656,7 @@ data <- data %>%
 ```
 
 
-#### Variable área a partir de departamento, localidad, vereda o barrio de ocurrencia
-```{r}
-data %>% 
-  filter(is.na(area_)) %>%
-  select(nmun_hecho, area_, localidad_, vereda_, bar_ver_, cen_pobla_)
-```
+
 
 ```{r}
 data <- data %>% mutate(area_ = case_when(bar_ver_ == "LA FLORESTA"~ 1,TRUE~ area_))
