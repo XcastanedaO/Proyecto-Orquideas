@@ -102,6 +102,8 @@ unique(data$periodo_epid)
 
 
 ### Semana epidemiológica (semana)
+Esta semana epidemiológica corresponde a la fecha de notificación. Sería de más utilidad en el análisis trabajar con la semana epidemiológica en la que ocurrió el hecho.
+
 ```{r}
 data <- data %>% filter(is.na(semana) | (semana >= 1 & semana <= 53))
 ```
@@ -772,6 +774,66 @@ summary(as.factor(data$orient_sex))
 # data <- data %>% mutate(orient_sex = if_else(orient_sex == 3, 2, orient_sex))
 ```
 
+
+### Lugar del hecho 
+
+Con respecto a las variables **bar_ver_, vereda_, localidad_ y cen_pobla_**, estas corresponden a la ubicación donde ocurrieron los hechos de violencia. Según las fichas de SIVIGILA, su uso depende de la variable área_, que clasifica el lugar del hecho en: (1) Cabecera municipal, (2) Centro poblado o (3) Rural disperso.
+
+Cada variable tiene la siguiente función:
+
+-   **bar_ver_**: Barrio dentro de una cabecera municipal.
+-   **vereda_**: Vereda en un área rural dispersa.
+-   **localidad_**: Localidad en municipios sectorizados (como Medellín o Bogotá).
+-   **cen_pobla_**: Centro poblado en áreas rurales.
+
+Con el fin de estandarizar la información, y manejar los datos faltantes, se realizaron algunos ajustes:
+
+1.   Unificar *localidad_* y *cen_pobla_* en una sola variable, ya que ambas cumplen funciones similares dependiendo del municipio.
+
+2.   Completar los valores faltantes en *bar_ver_* con los de *vereda_*, en caso de que estuvieran vacíos o fueran NA.
+
+3.   Crear la nueva variable **lugar_hecho**, aplicando las siguientes reglas:
+
+-   Si el área es cabecera municipal (1), se usa bar_ver_ y, si está vacío, localidad/cen_pobla_.
+-   Si el área es centro poblado (2), se usa localidad/cen_pobla_.
+-   Si el área es rural disperso (3), se usa vereda_.
+-   Si no hay información disponible, se asigna "NA".
+
+4.    Eliminé las variables originales que ya no eran necesarias.
+
+5. Poner como NA algunas catregorías que no corresponden a ningun registro.
+
+```{r}
+data <- data %>%
+  mutate(
+    # Unir localidad y centro poblado
+    localidad_cenpob_ = coalesce(na_if(localidad_, ""), na_if(cen_pobla_, "")),
+    
+    # Unir bar_ver_ y vereda_
+    bar_ver_ = coalesce(na_if(bar_ver_, ""), na_if(vereda_, "")),
+    
+    # Construir "lugar_hecho" según área_
+    lugar_hecho = case_when(
+      area_ == 1 & !is.na(bar_ver_) ~ bar_ver_,  # Cabecera municipal: Usa bar_ver_
+      area_ == 1 & is.na(bar_ver_) & !is.na(localidad_cenpob_) ~ localidad_cenpob_,  # Si no hay bar_ver_, usa localidad
+      area_ == 2 & !is.na(localidad_cenpob_) ~ localidad_cenpob_,  # Centro poblado: Usa localidad/cen_pobla_
+      area_ == 3 & !is.na(vereda_) ~ vereda_,  # Rural disperso: Usa vereda
+      TRUE ~ NA_character_  # Si no hay datos, asignar "SIN INFORMACIÓN"
+    )
+  ) %>%
+  select(-localidad_, -bar_ver_, -cen_pobla_, -vereda_, -localidad_cenpob_) 
+```
+
+```{r}
+data$lugar_hecho <- data$lugar_hecho %>%
+  
+  gsub(pattern = "^999+.*|SIN INFORMAC.*|DESCONOCIDO|SD|1E\\+19|69999|INFORM.*|NO INFORMA.*|SIN SINFORMACION.*|SIN NINFORMACION.*|SIN INFOMACION.*|NOINFORMA.*|DESCONOCE|CALLE DESCONOCIDA$", 
+       replacement = NA, x = .)
+```
+
+
+
+
 ### Ocupación de la víctima (ocupacion_)
 De acuerdo al diccionario en MEData la codificación de está variable corresponde a la [Clasificación Única de Ocupaciones para Colombia (CUOC)](https://ocupacol.mintrabajo.gov.co/Jerarquias/Jerarquias). El valor que toma el código puede ser hasta de 5 dígitos, cada dígito asigna un adicional de precisión sobre la ocupación. Por ejemplo, "25120" corresponde a desarrolladores de software mientras que "251" es desarrolladores y analistas de software y multimedia.
 
@@ -1207,6 +1269,7 @@ data <- data %>%
 data <- data %>%
   mutate(r_fam_vic = recode(
     r_fam_vic,
+    `3` = "Novio(a)",
     `9` = "Padre",
     `10` = "Madre",
     `22` = "Pareja",
@@ -1240,9 +1303,20 @@ Vemos además que se reducen considerablemente los valores NA.
 
 ### Mes de reporte caso (mes_caso)
 
-Acá se analizó la fecha de ocurrencia. Analizar con la fecha de notificación si coincide o no
-
 **CALCULAR EL MES Y SEMANA RESPECTO A LA FECHA DEL HECHO**
+
+```{r}
+data <- data %>%
+  mutate(
+    semana_hecho = case_when(
+      fec_not == fec_hecho ~ semana,  # Usa la semana de notificación si las fechas son iguales
+      TRUE ~ epiweek(fec_hecho)       # Calcula la semana epidemiológica de la fecha del hecho
+    ),
+    mes_hecho = month(fec_hecho)
+  )
+
+```
+
 
 ```{r}
 # # Verificación temporal sin agregar columnas permanentes
