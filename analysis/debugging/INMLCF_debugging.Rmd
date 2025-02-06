@@ -1,0 +1,262 @@
+---
+title: "INMLCF_debugging"
+output: html_document
+---
+
+# Información de la bases de datos
+
+Es una base que registra casos de lesiones fatales de causa externa entre 01/enero y 30/noviembre del 2024 atendidos por Instituto Nacional de Medicina Legal y Ciencias Forenses. 
+
+- Se debe aclarar que estos casos son solo los atendidos por INMLCF y los agregados al sistema del instituto del sector salud. Es importante tenerlo en cuenta porque no todos los casos atendidos en el sector salud o por investigados por las autoridades judiciales son conocidos reportados a INMLCF.
+
+- De conformidad con el párrafo que antecede, las cifras que aporta la entidad, se entregan a manera de presunción, por cuanto, únicamente mediante las investigaciones a cargo de las diligencias de cada caso, se puede establecer con certeza las circunstancias en las que ocurrieron los hechos. **Sin embargo, en la base de MEData también todos son sospechosos o problables** 
+
+
+# Lectura de las bases de datos
+
+```{r, include=FALSE}
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+```
+
+```{r}
+# Bases de datos de lesiones fatales
+f_data <- load_data("fatales_INMLCF_2024.csv", type = "raw")
+f_row <- nrow(f_data)
+
+# Bases de datos de lesiones no fatales
+n_f_data <- load_data("no_fatales_INMLCF_2024.csv", type = "raw")
+n_f_row <- nrow(n_f_data)
+```
+
+## Nuevas variables
+
+La base de datos con casos de lesiones fatales tiene 26.457 registros y 39 variables mientras que casos de lesiones no fatales tiene 182.795 registros y 42 variables.
+Estas bases de datos tiene variables que no tienen las otras porque no se piden en la ficha de notificación:
+
+- Escolaridad
+```{r}
+unique(f_data$Escolaridad)
+```
+
+- Estado civil
+```{r}
+unique(f_data$Estado.Civil)
+```
+
+- Actividad durante el hecho
+```{r}
+unique(f_data$Actividad.Durante.el.Hecho)
+```
+
+- Circunstancia del hecho
+```{r}
+unique(f_data$Circunstancia.del.Hecho)
+```
+
+```{r}
+unique(n_f_data$Circunstancia.del.Hecho)
+```
+
+- Mecanismo causal
+```{r}
+unique(f_data$Mecanismo.Causal)
+```
+
+- Parte agredida
+```{r}
+unique(f_data$Diagnóstico.Topográfico.de.la.Lesión)
+```
+
+- Condición victima
+```{r}
+unique(f_data$Condición.de.la.Víctima)
+```
+
+- Medio de Desplazamiento o Transporte
+```{r}
+unique(f_data$Medio.de.Desplazamiento.o.Transporte)
+```
+
+- Servicio del vehículo
+```{r}
+unique(f_data$Servicio.del.Vehículo)
+```
+
+- Tipo de accidente
+```{r}
+unique(f_data$Clase.o.Tipo.de.Accidente)
+```
+- Objeto de colisión
+```{r}
+unique(f_data$Objeto.de.Colisión)
+```
+
+- Servicio del objeto de colisión
+```{r}
+unique(f_data$Servicio.del.Objeto.de.Colisión)
+```
+
+## Variables diferentes en estas bases
+
+- Grupo poblacional
+```{r}
+unique(f_data$Pertenencia.Grupal)
+```
+
+- Ancestro racial
+```{r}
+unique(f_data$Ancestro.Racial)
+```
+
+- Manera muerte
+```{r}
+unique(f_data$Manera.de.Muerte)
+```
+
+- Razón del suicidio
+```{r}
+unique(f_data$Razón.del.Suicidio)
+```
+
+- Tipo de discapacidad
+```{r}
+unique(n_f_data$Tipo.de.Discapacidad)
+```
+- Contexto de violencia
+```{r}
+unique(n_f_data$Contexto.de.Violencia)
+```
+
+- Días de incapacidad
+
+```{r}
+unique(n_f_data$Días.de.Incapacidad.Medicolegal)
+```
+
+- Sexo del presunto agresor
+
+```{r}
+unique(n_f_data$Sexo.del.Presunto.Agresor)
+```
+- Factor Desencadenante de la Agresión
+
+```{r}
+unique(n_f_data$Factor.Desencadenante.de.la.Agresión)
+```
+## Casos de mujeres
+Ambas bases de datos tiene **sexo, orientación e identidad de género y transgénero** de la víctima. Para filtrar los casos se utiliza únicamente **identidad de género** porque la variable **transgénero** no indica de que género a que género se hizo la transición.
+
+Sin embargo, en la base de datos de casos fatales son más los casos con NA que de mujeres
+
+```{r}
+summary(as.factor(f_data$Identidad.de.Género))
+```
+
+```{r}
+summary(as.factor(f_data$Sexo.de.la.víctima))
+```
+En el caso de la base de datos de lesiones no fatales no sucede igual:
+```{r}
+summary(as.factor(n_f_data$Identidad.de.Género))
+```
+
+```{r}
+summary(as.factor(f_data$Sexo.de.la.víctima))
+```
+
+```{r}
+f_data <- f_data %>% filter(Identidad.de.Género == "Femenino")
+f_row <- nrow(f_data)
+
+
+n_f_data <- n_f_data %>% filter(Identidad.de.Género == "Femenino")
+n_f_row <- nrow(n_f_data)
+```
+
+La base de fatales disminuye `r f_row - nrow(f_data)` y no fatales `r n_f_row - nrow(n_f_data)`
+
+## Casos relacionados con violencia de género
+
+La variable **circunstancia del hecho** está en ambas bases. Se filtran según los niveles que se consideran están relacionados con la violencia basada en género
+
+```{r}
+f_data <- f_data %>% filter(Circunstancia.del.Hecho %in% c(
+  "Violencia de pareja",
+  "Violencia entre otros familiares",
+  "Feminicidio",
+  "Violencia al adulto mayor",
+  "Violencia a niños, niñas y adolescentes",
+  "Negligencia",
+  "Celos",
+  "Acceso carnal violento",
+  "Presunta explotación sexual",
+  "Tortura",
+  "Machismo",
+  "Hostigamiento",
+  "Trabajo forzoso",
+  "Agresión o ataque sexual",
+  "Violencia sexual",
+  "Abuso de autoridad",
+  "Violencia sociopolítica",
+  "Violencia económica"
+))
+```
+
+La base de fatales disminuye `r f_row - nrow(f_data)`. 
+
+```{r}
+n_f_data <- n_f_data %>% filter(
+  Circunstancia.del.Hecho %in% c(
+    "Abuso sexual",
+    "Acoso sexual",
+    "Abandono",
+    "Sin información",
+    "Acceso carnal violento",
+    "Celos",
+    "Machismo",
+    "Pornografía",
+    "Agresión o ataque sexual",
+    "Obligar a realizar actos sexuales",
+    "Hostigamiento",
+    "Presunta explotación sexual y comercial",
+    "Desnudez forzada",
+    "Retención legal",
+    "Obligar a presenciar actos sexuales",
+    "Matoneo",
+    "Presunta trata de personas con fines de explotación sexual",
+    "Negligencia",
+    "Violencia económica",
+    "Contacto engañoso vía internet",
+    "Desaparición forzada",
+    "Acto sexual violento con persona protegida",
+    "Violencia sociopolítica",
+    "Tortura",
+    "Presunta esclavitud sexual o prostitución forzada",
+    "Violencia sexual en el contexto del conflicto armado",
+    "Acto sexual violento",
+    "Embarazo forzado"
+  )
+)
+
+
+```
+
+Esta base de no lesiones disminuyó a `r n_f_row - nrow(n_f_data)` y tiene otra variable llamada **contexto de la violencia**. 
+
+```{r}
+unique(n_f_data$Contexto.de.Violencia)
+```
+Se filtra por los casos que no están relacionados a accidentes de tránsito
+
+```{r}
+n_f_data <- n_f_data %>% filter(Contexto.de.Violencia != "7 LESIONES POR EVENTOS DE TRANSPORTE" & Contexto.de.Violencia != "8 LESIONES ACCIDENTALES")
+```
+
+La base resultante disminuyó a disminuyó a `r n_f_row - nrow(n_f_data)` registros
