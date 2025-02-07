@@ -161,11 +161,13 @@ aux_nrow <- nrow(data)
 ```{r}
 data <- data %>% filter(
   is.na(fec_not) |
-    is.na(ini_sin_) |
-    is.na(fec_con_) |
-    (fec_not >= ini_sin_ &
-       fec_not >= fec_con_)
-) 
+  is.na(ini_sin_) |
+  is.na(fec_con_) |
+  (fec_not >= ini_sin_ &
+   fec_not >= fec_con_ &
+   fec_not >= fec_hecho) # Se asegura que la notificación no sea antes del hecho
+)
+
 ```
 
 `r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de descartarlos, Se obtiene un total de `r nrow(data)`.
@@ -1866,6 +1868,8 @@ final_data <- final_data %>%
     año,
     periodo_epid,
     fec_hecho,
+    mes_hecho,
+    semana_hecho,
     #mes_caso,
     fec_con_,
     ini_sin_,
