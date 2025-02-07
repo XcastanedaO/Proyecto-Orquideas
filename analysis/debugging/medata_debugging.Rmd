@@ -167,7 +167,6 @@ data <- data %>% filter(
    fec_not >= fec_con_ &
    fec_not >= fec_hecho) # Se asegura que la notificación no sea antes del hecho
 )
-
 ```
 
 `r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de descartarlos, Se obtiene un total de `r nrow(data)`.
@@ -1340,12 +1339,20 @@ data <- data %>%
   mutate(
     semana_hecho = case_when(
       fec_not == fec_hecho ~ semana,  # Usa la semana de notificación si las fechas son iguales
-      TRUE ~ epiweek(fec_hecho)       # Calcula la semana epidemiológica de la fecha del hecho
+      TRUE ~ week(fec_hecho)       # Calcula la semana epidemiológica de la fecha del hecho
     ),
-    mes_hecho = month(fec_hecho)
+    
+    mes_hecho = month(fec_hecho),
+    año_hecho = year(fec_hecho)  
   )
-
 ```
+
+
+
+
+
+
+
 
 
 ```{r}
@@ -1851,7 +1858,8 @@ Finalmente, al eliminar los registros duplicados se obtiene una base de datos de
 ```{r}
 final_data <- final_data %>%
   mutate(across(
-    .cols = !all_of(c("semana","edad")),  
+    .cols = !all_of(c("semana","edad", "semana_hecho", "fec_not", "fec_hecho",
+                      "fec_con_", "fec_hos_", "fec_def_", "año_hecho", "año")),  
     .fns = as.factor                     
   ))
 ```
@@ -1868,8 +1876,9 @@ final_data <- final_data %>%
     año,
     periodo_epid,
     fec_hecho,
-    mes_hecho,
     semana_hecho,
+    mes_hecho,
+    año_hecho,
     #mes_caso,
     fec_con_,
     ini_sin_,
