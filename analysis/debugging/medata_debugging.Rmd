@@ -28,7 +28,7 @@ library(stringi)
 ```
 
 ```{r}
-data <- load_data("medata_2016_2022.csv", type = "raw")
+data <- load_data("medata_2013_2022.csv", type = "raw")
 ```
 
 ```{r}
@@ -48,7 +48,7 @@ La base de datos está conformada por 118 variables, sin embargo, se elimina las
 
 ```{r, include=FALSE}
 data <- data %>%
-  select(-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado)
+  select(-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado, fuente, nacionali_, nombre_nacionalidad)
 ```
 
 Dado que el interés son los casos de violencia en mujeres que ocurren en Colombia se filtra la base para analizar solo estos casos. Según el formato de notificación 2024 cuando la variable **identidad de género (ident_gene)** es igual a 2 corresponde a mujer y cuando es igual a 4 corresponde a mujer trans. Además, la variable **país de ocurrencia del caso (cod_pais_o)** igual 170 representa a Colombia. 
@@ -830,8 +830,9 @@ data <- data %>%
   mutate(
     # Unir Localidad y Barrio (solo aplica cuando area_ == 1)
     loc_bar = case_when(
-      area_ == 1 & !is.na(bar_ver_) ~ bar_ver_,
-      area_ == 1 & is.na(bar_ver_) ~ localidad_,
+      area_ == 1 & (!is.na(bar_ver_) | bar_ver_ =="") ~ bar_ver_,
+      area_ == 1 & (is.na(bar_ver_) | bar_ver_ == "") ~ localidad_,
+      area_ == 1 & (is.na(localidad_) |localidad_ == "" ) ~ bar_ver_,
       TRUE ~ NA_character_
     ),
     
@@ -1133,6 +1134,19 @@ data <- data %>% mutate(
 )
 ```
 
+
+#### Municipio y departamento de hecho
+Las variables nmun_proce y ndep_proce, corresponden según las fichas a las variables del municipio y ocurrencia del hecho, las cuales ya también existen, entonces se procede a juntarlas para tener la misma información en una sola.
+```{r}
+data <- data %>%
+  mutate(ndep_hecho = coalesce(ndep_hecho, ndep_proce))
+
+data <- data %>%
+  mutate(nmun_hecho = coalesce(nmun_hecho, nmun_proce))
+```
+
+
+
 ### Hora del hecho 
 
 ```{r}
@@ -1149,6 +1163,10 @@ Por facilidad en el análisis y evitando la mayor cantidad de celdas vacías pos
 data <- data %>%
   mutate(def_naturaleza = coalesce(naturaleza, nat_viosex))
 ```
+
+
+
+
 
 
 ### Mecanismo utilizado para la agresión
@@ -1298,7 +1316,7 @@ data <- data %>%
 data <- data %>%
   mutate(r_fam_vic = recode(
     r_fam_vic,
-    `3` = "Novio(a)",
+    `3` = "Pareja", # en una ficha correspondía a Novio(a)
     `9` = "Padre",
     `10` = "Madre",
     `22` = "Pareja",
@@ -1450,9 +1468,10 @@ Este grupo de variables corresponden a las atenciones en salud que se le realiza
 data <- data %>%
   mutate(across(
     c(sp_its,prof_hep_b,prof_otras,ac_anticon,ac_ive,evi_mlegal),
-    ~ ifelse(is.na(def_naturaleza) | def_naturaleza %in% c(4,5,6,7,10,11,12,14,15), ., "No aplica")
+    ~ ifelse(is.na(def_naturaleza) | def_naturaleza == "" | def_naturaleza %in% c(4,5,6,7,10,11,12,14,15), ., "No aplica")
   ))
 
+  
 ```
 
 
@@ -1489,9 +1508,11 @@ data <- data %>% mutate(
 ```{r}
 # Variables que no se considerarán o son secundarias
 ex_columns <- c(
+  "año",
   "mes_caso",
   "naturaleza",
   "nat_viosex",
+  "nombre_nacionalidad",
   "nacionali_",
   "cod_pais_o",
   "cod_dpto_o",
@@ -1509,19 +1530,44 @@ ex_columns <- c(
   # "nombre_barrio",
   "fecha_nto_",
   "ocupacion_",
+  "fuente",
+  #"npais_proce",
   "ajuste_",
   "ident_gene",
   "nom_upgd",
   "tip_cas_",
   "clasificación_final",
   "r_nofiliar", 
-  "r_fam_vic"
+  "r_fam_vic",
+  "ndep_proce",
+  "nmun_proce"
 )
 
 # Se quitan también fec_hos_,fec_def_ y sem_ges_ porque son evento que dependen de un evento, entonces tendrán muchos NA pero no es porque falte info sino que no aplica
 aux_data <- data %>% select(-all_of(c(
   ex_columns, "fec_hos_", "fec_def_", "sem_ges_"
 )))
+```
+
+
+```{r}
+data <- data %>%
+  mutate(def_naturaleza = recode(
+    def_naturaleza,
+    # violencia no sexual
+    `1` = "Violencia física",
+    `2` = "Violencia psicológica",
+    `3` = "Negligencia y abandono",
+    
+    # violencia sexual
+    `4` = "Violencia sexual",
+    `5` = "Violencia sexual",
+    `6` = "Violencia sexual",
+    `7` = "Violencia sexual",
+    `10` = "Violencia sexual",
+    `12` = "Violencia sexual",
+    `14` = "Violencia sexual"
+  ))
 ```
 
 ```{r, echo=FALSE}
@@ -1584,24 +1630,19 @@ Para un total de `r nrow(row_na_empty)` registros con valores faltantes y celdas
 
 ### Relacionar información para rellenar campos vacíos
 
-#### Variable ndep_proce a partir de nmun_proce
-No es posible pues el departamento solo tiene un NA, y el municipio tiene 20 NA. Además, ambos valores faltantes coinciden en las mismas filas, lo que impide utilizar uno para completar el otro.
 
-```{r}
-row_na_empty %>% filter(is.na(ndep_proce) | ndep_proce == "") %>% select(npais_proce,ndep_proce, nmun_proce)
-```
 
-#### Variable npais_proce a partir de ndep_proce
+#### Variable npais_proce a partir de ndep_hecho
 Dado que todos los departamentos en ndep_proce corresponden todos a Colombia, se completaron los valores vacíos o faltantes (NA) en npais_proce con "Colombia". Tras esta imputación, solo queda un valor faltante en npais_proce, el cual corresponde al mismo registro que tiene un valor faltante en ndep_proce, que no es posible saber.
 
 ```{r}
-# Imputar valores de npais_proce según ndep_proce
+# Imputar valores de npais_proce según ndep_proce = ndep_hecho
 data <- data %>%
-  mutate(npais_proce = ifelse(npais_proce == "" | !is.na(ndep_proce), "Colombia", npais_proce))
+  mutate(npais_proce = ifelse(npais_proce == "" | !is.na(ndep_hecho), "Colombia", npais_proce))
 ```
 
 ```{r}
-data %>% filter(is.na(npais_proce) | npais_proce == "") %>% select(npais_proce, ndep_proce, nmun_proce)
+data %>% filter(is.na(npais_proce) | npais_proce == "") %>% select(npais_proce, ndep_hecho, nmun_hecho)
 ```
 
 #### Variable nmun_resi a partir de nombre_comuna
@@ -1685,7 +1726,7 @@ row_na_empty %>%
 data <- data %>%
   mutate(
     npais_resi = case_when(
-      ndep_resi == "Antioquia" & is.na(npais_resi) ~ "Colombia",  # Asigna "Colombia" si nmun_resi es "Medellín" y npais_resi está vacío
+      ndep_resi == "Antioquia" & (is.na(npais_resi) | npais_resi == "") ~ "Colombia",  # Asigna "Colombia" si nmun_resi es "Medellín" y npais_resi está vacío
       TRUE ~ npais_resi  # Mantiene el valor original de npais_resi si no se cumple la condición
     )
   )
@@ -1786,9 +1827,11 @@ final_data <- final_data %>%
 final_data <- final_data %>%
   filter(!(gp_gestan == 1 & is.na(sem_ges_))) # 49749
 
-final_data <- final_data %>%
-  filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.)))
+  final_data <- final_data %>%
+    filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.)))
 ```
+
+
 
 Al eliminar estos registros con algún valor faltante, se obtiene una base de datos con `r nrow(final_data)` registros completos.
 
@@ -1797,15 +1840,15 @@ Al eliminar estos registros con algún valor faltante, se obtiene una base de da
 - La nacionalidad y semana de gestación comienzan a solicitarse desde el 2018 según las fichas que tenemos. Por lo tanto, en esta base no hay ningún caso de años previos con esa info. Pero hay que resaltar que hay pocos registros de estos años entonces la mayoría de NA corresponden a años que sí se pidió
 
 ```{r}
-summary(as.factor(data$año))
+summary(as.factor(data$año_hecho))
 ```
 
 ```{r}
-table(as.factor(data$sem_ges_), as.factor(data$año))
+table(as.factor(data$sem_ges_), as.factor(data$año_hecho))
 ```
 
 ```{r}
-table(as.factor(data$nombre_nacionalidad), as.factor(data$año))
+table(as.factor(data$nombre_nacionalidad), as.factor(data$año_hecho))
 ```
 
 - La mayoría de los registros tienen NA en la variable **armas** y ya no es posible relacionar más información. Lo que afecta también a las variables relacionadas con la parte del cuerpo afectada en caso de quemadura porque tomarían valor de NA en este caso
@@ -1859,10 +1902,15 @@ Finalmente, al eliminar los registros duplicados se obtiene una base de datos de
 final_data <- final_data %>%
   mutate(across(
     .cols = !all_of(c("semana","edad", "semana_hecho", "fec_not", "fec_hecho",
-                      "fec_con_", "fec_hos_", "fec_def_", "año_hecho", "año")),  
+                      "fec_con_", "fec_hos_", "fec_def_", "año_hecho")),  
     .fns = as.factor                     
   ))
+
+
 ```
+
+
+
 
 
 ## Orden de las columnas
@@ -1872,8 +1920,8 @@ Se establece un nuevo orden en la base de datos para mayor facilidad en el proce
 final_data <- final_data %>%
   select(
     fec_not,
-    semana,
-    año,
+    #semana,
+    #año,
     periodo_epid,
     fec_hecho,
     semana_hecho,
@@ -1884,7 +1932,7 @@ final_data <- final_data %>%
     ini_sin_,
     fec_hos_,
     fec_def_,
-    nombre_nacionalidad,
+    #nombre_nacionalidad,
     sexo_,
     orient_sex,
     edad,
@@ -1913,8 +1961,8 @@ final_data <- final_data %>%
     ndep_resi,
     nmun_resi,
     npais_proce,
-    ndep_proce,
-    nmun_proce,
+    #ndep_proce,
+    #nmun_proce,
     def_naturaleza,
     nmun_hecho,
     ndep_hecho,
@@ -1922,6 +1970,7 @@ final_data <- final_data %>%
     consum_spa,
     sust_vict,
     zona_conf,
+    armas,
     # que_cara,
     # que_cuello,
     # que_mano,
@@ -1940,7 +1989,7 @@ final_data <- final_data %>%
     # r_nofiliar, 
     # r_fam_vic,
     conv_agre,
-    fuente,
+    #fuente,
     # tip_cas_,
     pac_hos_,
     con_fin_,
