@@ -28,7 +28,7 @@ library(stringi)
 ```
 
 ```{r}
-data <- load_data("medata_2013_2022.csv", type = "raw")
+data <- load_data("medata_2016_2022.csv", type = "raw")
 ```
 
 ```{r}
@@ -409,9 +409,9 @@ data <- data %>%
       !is.na(fecha_nto_) &
       !is.na(fec_hecho) &
         !(month(fecha_nto_) == 1 & day(fecha_nto_) == 1) ~
-        round(as.numeric(
+        floor(as.numeric(
           difftime(fec_hecho, fecha_nto_, units = "days")
-        ) / 365.25, 3),
+        ) / 365.25),
       
       # 2. Fecha de nacimiento genérica, unidad en años, y fechas coinciden
       uni_med_ == 1 &
@@ -421,27 +421,27 @@ data <- data %>%
       # 3. Fecha de nacimiento genérica y diferencia mayor a 1 (unidad en años)
       uni_med_ == 1 &
         (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) &
-        abs(edad_ - round(as.numeric(
+        abs(edad_ - floor(as.numeric(
           difftime(fec_hecho, fecha_nto_, units = "days")
-        ) / 365.25, 3)) > 1 ~ edad_,
+        ) / 365.25)) > 1 ~ edad_,
       
       # 4. Fecha del hecho o nacimiento son NA, pero fec_hecho = fec_not
       (is.na(fecha_nto_) |
          is.na(fec_hecho)) & fec_not == fec_hecho ~ case_when(
            uni_med_ == 1 ~ edad_,
-           uni_med_ == 2 ~ round(edad_ / 12, 3),
-           uni_med_ == 3 ~ round(edad_ / 365.25, 3),
-           uni_med_ == 4 ~ round(edad_ / 8760, 3),
-           uni_med_ == 5 ~ round(edad_ / 525600, 3),
+           uni_med_ == 2 ~ floor(edad_ / 12),
+           uni_med_ == 3 ~ floor(edad_ / 365.25),
+           uni_med_ == 4 ~ floor(edad_ / 8760),
+           uni_med_ == 5 ~ floor(edad_ / 525600),
            TRUE ~ NA_real_
          ),
       
       # 5. Fechas válidas, pero fec_hecho != fec_not
       !is.na(fecha_nto_) & !is.na(fec_hecho) &
       fec_not != fec_hecho ~
-        round(as.numeric(
+        floor(as.numeric(
           difftime(fec_hecho, fecha_nto_, units = "days")
-        ) / 365.25, 3),
+        ) / 365.25),
       
       TRUE ~ NA_real_
     )
@@ -1344,6 +1344,16 @@ table(data$parentezco_agresor, useNA = "ifany")
 
 Vemos además que se reducen considerablemente los valores NA.
 
+### Convivencia con el agresor
+```{r}
+unique(data$conv_agre)
+```
+Se convierte a NA los casos en que se representan la ausencia del datos con ""
+
+```{r}
+data <- data %>%
+  mutate(conv_agre = ifelse(conv_agre == "" , NA_character_, conv_agre))
+```
 
 
 ## Información de la atención/notificación
@@ -1551,23 +1561,23 @@ aux_data <- data %>% select(-all_of(c(
 
 
 ```{r}
-data <- data %>%
-  mutate(def_naturaleza = recode(
-    def_naturaleza,
-    # violencia no sexual
-    `1` = "Violencia física",
-    `2` = "Violencia psicológica",
-    `3` = "Negligencia y abandono",
-    
-    # violencia sexual
-    `4` = "Violencia sexual",
-    `5` = "Violencia sexual",
-    `6` = "Violencia sexual",
-    `7` = "Violencia sexual",
-    `10` = "Violencia sexual",
-    `12` = "Violencia sexual",
-    `14` = "Violencia sexual"
-  ))
+# data <- data %>%
+#   mutate(def_naturaleza = recode(
+#     def_naturaleza,
+#     # violencia no sexual
+#     `1` = "Violencia física",
+#     `2` = "Violencia psicológica",
+#     `3` = "Negligencia y abandono",
+#     
+#     # violencia sexual
+#     `4` = "Violencia sexual",
+#     `5` = "Violencia sexual",
+#     `6` = "Violencia sexual",
+#     `7` = "Violencia sexual",
+#     `10` = "Violencia sexual",
+#     `12` = "Violencia sexual",
+#     `14` = "Violencia sexual"
+#   ))
 ```
 
 ```{r, echo=FALSE}
@@ -1629,8 +1639,6 @@ row_na_empty <- data %>% select(-all_of(ex_columns)) %>%
 Para un total de `r nrow(row_na_empty)` registros con valores faltantes y celdas vacías, lo que corresponde al `r round((nrow(row_na_empty)*100)/nrow(aux_data),2)`% de la base de datos. Sin embargo, como hay columnas relacionadas, algunas celdas de una columna pueden recibir un valor a partir de otra columna.
 
 ### Relacionar información para rellenar campos vacíos
-
-
 
 #### Variable npais_proce a partir de ndep_hecho
 Dado que todos los departamentos en ndep_proce corresponden todos a Colombia, se completaron los valores vacíos o faltantes (NA) en npais_proce con "Colombia". Tras esta imputación, solo queda un valor faltante en npais_proce, el cual corresponde al mismo registro que tiene un valor faltante en ndep_proce, que no es posible saber.
@@ -1734,10 +1742,6 @@ data <- data %>%
 ```
 
 
-
-
-
-
 #### Variable armas a partir de que_., cla_gra y ext_que
 No se puede porque no hay registros vacíos en armas que tenga algún valor en que_
 
@@ -1801,7 +1805,7 @@ Ahora, algunas variables tienen más del 50% de los registros con celdas vacías
 ```{r, include=FALSE}
 # Filtrar nombre de las variables con el 50% de celdas vacías
 NA_columns <- na_empty %>% 
-  filter(percent_na > 60 | percent_empty > 60) %>% 
+  filter(percent_na > 50 | percent_empty > 50) %>% 
   pull(Column)
 
 row_na_empty <- data %>% select(-all_of(c(ex_columns,NA_columns))) %>%
@@ -1827,8 +1831,8 @@ final_data <- final_data %>%
 final_data <- final_data %>%
   filter(!(gp_gestan == 1 & is.na(sem_ges_))) # 49749
 
-  final_data <- final_data %>%
-    filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.)))
+  # final_data <- final_data %>%
+  #   filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.)))
 ```
 
 
@@ -1970,7 +1974,7 @@ final_data <- final_data %>%
     consum_spa,
     sust_vict,
     zona_conf,
-    armas,
+    #armas,
     # que_cara,
     # que_cuello,
     # que_mano,
