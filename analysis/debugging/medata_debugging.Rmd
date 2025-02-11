@@ -861,9 +861,6 @@ data <- data %>% select(-bar_ver_, -localidad_, -cen_pobla_, -vereda_)
 ```
 
 
-
-
-
 ### Ocupación de la víctima (ocupacion_)
 De acuerdo al diccionario en MEData la codificación de está variable corresponde a la [Clasificación Única de Ocupaciones para Colombia (CUOC)](https://ocupacol.mintrabajo.gov.co/Jerarquias/Jerarquias). El valor que toma el código puede ser hasta de 5 dígitos, cada dígito asigna un adicional de precisión sobre la ocupación. Por ejemplo, "25120" corresponde a desarrolladores de software mientras que "251" es desarrolladores y analistas de software y multimedia.
 
@@ -928,97 +925,102 @@ aux_nrow <- data %>% filter((actividad == "Ninguna" |
 Son `r aux_nrow` registros con valor "Otro" o "Ninguna" en **actividad** y que tienen valor en **ocupación**. Para evitar tantas categorías, se extraen los dos primeros dígitos que representan los 43 subgrupos principales de ocupaciones:
 
 ```{r}
-ocupaciones <- c(
-  "01" = "Oficiales de las fuerzas militares",
-  "02" = "Suboficiales de las fuerzas militares",
-  "03" = "Otros miembros de las fuerzas militares",
-  "11" = "Directores ejecutivos, personal directivo de la administración y legislativos",
-  "12" = "Directores administrativos y comerciales",
-  "13" = "Directores y gerentes en sectores de producción y servicios",
-  "14" = "Gerentes de hoteles, restaurantes, comercios y otros servicios",
-  "21" = "Profesionales de las ciencias y de la ingeniería",
-  "22" = "Profesionales de la salud",
-  "23" = "Profesionales de la educación",
-  "24" = "Profesionales de negocios y de administración",
-  "25" = "Profesionales de tecnología de la información y las comunicaciones",
-  "26" = "Profesionales en derecho, en ciencias sociales y culturales",
-  "31" = "Técnicos y profesionales del nivel medio de las ciencias y la ingeniería",
-  "32" = "Técnicos y profesionales del nivel medio de la salud",
-  "33" = "Técnicos y profesionales del nivel medio en las finanzas y la administración",
-  "34" = "Técnicos y profesionales del nivel medio de servicios jurídicos, sociales, culturales y afines",
-  "35" = "Técnicos en tecnología de la información y las comunicaciones",
-  "41" = "Oficinistas",
-  "42" = "Empleados de trato directo con el público",
-  "43" = "Auxiliares contables y encargados del registro de materiales",
-  "44" = "Otro personal de apoyo administrativo",
-  "51" = "Trabajadores de los servicios personales",
-  "52" = "Vendedores",
-  "53" = "Trabajadores de los cuidados personales",
-  "54" = "Personal de los servicios de protección",
-  "61" = "Agricultores y trabajadores calificados de explotaciones agropecuarias con destino al mercado",
-  "62" = "Trabajadores forestales calificados, pescadores y cazadores en actividades orientadas al mercado",
-  "63" = "Trabajadores agropecuarios, pescadores, cazadores y recolectores de subsistencia",
-  "71" = "Oficiales y operarios de la construcción (excluyendo electricistas)",
-  "72" = "Oficiales y operarios de la metalurgia; mecánicos y reparadores de máquinas y afines",
-  "73" = "Artesanos y operarios de las artes gráficas y afines",
-  "74" = "Oficiales y operarios de electricidad y electrónica",
-  "75" = "Oficiales y operarios de procesamiento de alimentos, de la confección, ebanistas y afines",
-  "81" = "Operadores de instalaciones fijas y máquinas",
-  "82" = "Ensambladores",
-  "83" = "Conductores de vehículos y operadores de equipos pesados móviles",
-  "91" = "Personal doméstico y de aseo",
-  "92" = "Obreros y peones agropecuarios, pesqueros y forestales",
-  "93" = "Obreros y peones de la minería, la construcción, la industria manufacturera y el transporte",
-  "94" = "Ayudantes de preparación de alimentos",
-  "95" = "Vendedores ambulantes de servicios y afines (excluyendo comidas de preparación inmediata)",
-  "96" = "Recolectores de desechos y otras ocupaciones elementales"
-)
+# ocupaciones <- c(
+#   "01" = "Oficiales de las fuerzas militares",
+#   "02" = "Suboficiales de las fuerzas militares",
+#   "03" = "Otros miembros de las fuerzas militares",
+#   "11" = "Directores ejecutivos, personal directivo de la administración y legislativos",
+#   "12" = "Directores administrativos y comerciales",
+#   "13" = "Directores y gerentes en sectores de producción y servicios",
+#   "14" = "Gerentes de hoteles, restaurantes, comercios y otros servicios",
+#   "21" = "Profesionales de las ciencias y de la ingeniería",
+#   "22" = "Profesionales de la salud",
+#   "23" = "Profesionales de la educación",
+#   "24" = "Profesionales de negocios y de administración",
+#   "25" = "Profesionales de tecnología de la información y las comunicaciones",
+#   "26" = "Profesionales en derecho, en ciencias sociales y culturales",
+#   "31" = "Técnicos y profesionales del nivel medio de las ciencias y la ingeniería",
+#   "32" = "Técnicos y profesionales del nivel medio de la salud",
+#   "33" = "Técnicos y profesionales del nivel medio en las finanzas y la administración",
+#   "34" = "Técnicos y profesionales del nivel medio de servicios jurídicos, sociales, culturales y afines",
+#   "35" = "Técnicos en tecnología de la información y las comunicaciones",
+#   "41" = "Oficinistas",
+#   "42" = "Empleados de trato directo con el público",
+#   "43" = "Auxiliares contables y encargados del registro de materiales",
+#   "44" = "Otro personal de apoyo administrativo",
+#   "51" = "Trabajadores de los servicios personales",
+#   "52" = "Vendedores",
+#   "53" = "Trabajadores de los cuidados personales",
+#   "54" = "Personal de los servicios de protección",
+#   "61" = "Agricultores y trabajadores calificados de explotaciones agropecuarias con destino al mercado",
+#   "62" = "Trabajadores forestales calificados, pescadores y cazadores en actividades orientadas al mercado",
+#   "63" = "Trabajadores agropecuarios, pescadores, cazadores y recolectores de subsistencia",
+#   "71" = "Oficiales y operarios de la construcción (excluyendo electricistas)",
+#   "72" = "Oficiales y operarios de la metalurgia; mecánicos y reparadores de máquinas y afines",
+#   "73" = "Artesanos y operarios de las artes gráficas y afines",
+#   "74" = "Oficiales y operarios de electricidad y electrónica",
+#   "75" = "Oficiales y operarios de procesamiento de alimentos, de la confección, ebanistas y afines",
+#   "81" = "Operadores de instalaciones fijas y máquinas",
+#   "82" = "Ensambladores",
+#   "83" = "Conductores de vehículos y operadores de equipos pesados móviles",
+#   "91" = "Personal doméstico y de aseo",
+#   "92" = "Obreros y peones agropecuarios, pesqueros y forestales",
+#   "93" = "Obreros y peones de la minería, la construcción, la industria manufacturera y el transporte",
+#   "94" = "Ayudantes de preparación de alimentos",
+#   "95" = "Vendedores ambulantes de servicios y afines (excluyendo comidas de preparación inmediata)",
+#   "96" = "Recolectores de desechos y otras ocupaciones elementales"
+# )
+
+# data <- data %>%
+#   mutate(
+#     actividad = case_when(
+#       (actividad == "Ninguna" |
+#          actividad == "Otro") &
+#         (!is.na(ocupacion_) &
+#            ocupacion_ != "")  ~ ocupaciones[str_sub(ocupacion_, 1, 2)],
+#       actividad == "Maestro(a)" ~ "Profesionales de la educación",
+#       actividad == "Trabajador(a) doméstico(a)" ~ "Personal doméstico y de aseo",
+#       actividad == "Campesino/a" ~ "Trabajadores agropecuarios, pescadores, cazadores y recolectores de subsistencia",
+#       TRUE ~ actividad
+#     )
+#   )
 ```
+
+```{r}
+ocupaciones <- c(
+  "0" = "Fuerzas militares",
+  "1" = "Directores y gerentes",
+  "2" = "Profesionales, científicos e intelectuales",
+  "3" = "Técnicos y profesionales del nivel medio",
+  "4" = "Personal de apoyo administrativo",
+  "5" = "Trabajadores de los servicios y vendedores de comercios y mercados",
+  "6" = "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
+  "7" = "Oficiales, operarios, artesanos y oficios relacionados",
+  "8" = "Operadores de instalaciones y máquinas y emsambladores",
+  "9" = "Ocupaciones elementales"
+)
+
+```
+
 
 Las categorías "Maestro(a)", "Trabajador(a) doméstico(a)" y "Campesino/a" se cambian a su nombre equivalente en la CUOC
 
 ```{r}
+
 data <- data %>%
   mutate(
-    actividad = case_when(
-      (actividad == "Ninguna" |
-         actividad == "Otro") &
-        (!is.na(ocupacion_) &
-           ocupacion_ != "")  ~ ocupaciones[str_sub(ocupacion_, 1, 2)],
-      actividad == "Maestro(a)" ~ "Profesionales de la educación",
-      actividad == "Trabajador(a) doméstico(a)" ~ "Personal doméstico y de aseo",
-      actividad == "Campesino/a" ~ "Trabajadores agropecuarios, pescadores, cazadores y recolectores de subsistencia",
-      TRUE ~ actividad
-    )
+       actividad = case_when(
+         (actividad == "Ninguna" | actividad == "Otro") & (!is.na(ocupacion_) & ocupacion_ != "")  ~ ocupaciones[ str_sub(ocupacion_, 1, 1)],
+         actividad == "Maestro(a)" ~ "Profesionales, científicos e intelectuales",
+         actividad == "Trabajador(a) doméstico(a)" ~ "Ocupaciones elementales",
+         actividad == "Campesino/a" ~ "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
+         TRUE ~ actividad
+       )
   )
 
 ```
 
-```{r}
-# ocupaciones <- c(
-#   "0" = "Fuerzas militares",
-#   "1" = "Directores y gerentes",
-#   "2" = "Profesionales, científicos e intelectuales",
-#   "3" = "Técnicos y profesionales del nivel medio",
-#   "4" = "Personal de apoyo administrativo",
-#   "5" = "Trabajadores de los servicios y vendedores de comercios y mercados",
-#   "6" = "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
-#   "7" = "Oficiales, operarios, artesanos y oficios relacionados",
-#   "8" = "Operadores de instalaciones y máquinas y emsambladores",
-#   "9" = "Ocupaciones elementales"
-# )
-# 
-# aux_data <- data %>%
-#   mutate(
-#        actividad = case_when(
-#          (actividad == "Ninguna" | actividad == "Otro") & (!is.na(ocupacion_) & ocupacion_ != "")  ~ ocupaciones[ str_sub(ocupacion_, 1, 1)],
-#          actividad == "Maestro(a)" ~ "Profesionales, científicos e intelectuales",
-#          actividad == "Trabajador(a) doméstico(a)" ~ "Ocupaciones elementales",
-#          actividad == "Campesino/a" ~ "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
-#          TRUE ~ actividad
-#        )
-#   )
-```
+
 
 ### Grupo étnico (nom_grupo_)
 Esta variable toma valor si la variable **Pertenencia étnica (per_etn_)** es igual a 1 (indígena), en caso contrario, se asigna "No aplica".
