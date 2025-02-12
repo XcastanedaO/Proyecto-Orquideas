@@ -260,3 +260,8 @@ n_f_data <- n_f_data %>% filter(Contexto.de.Violencia != "7 LESIONES POR EVENTOS
 ```
 
 La base resultante disminuyó a disminuyó a `r n_f_row - nrow(n_f_data)` registros
+
+```{r}
+
+```
+
