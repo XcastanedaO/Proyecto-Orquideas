@@ -27,15 +27,22 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 ├── analysis  
 │   ├── code_guide.Rmd   <- Archivo con explicación de funciones o acciones necesarias para el buen funcionamiento del código.
 │   ├── debugging        <- Archivos .R para depuración de los conjuntos de datos.
+│       ├── sivigila_debugging.R   <- Depuración de los datos provenientes del portal de sivigila.
+│       ├── medata_debugging.R   <- Depuración de los datos provenientes de MEData.
+│       ├── INMLCF_debugging.R   <- Depuración de ambas bases de datos provenientes del INMLCF.
 │       └── datos_abiertos_debugging.R   <- Depuración de los datos provenientes del portal de Datos Abiertos.
 │   └── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
-│       └── datos_abiertos_descriptive.R   <- Análisis descriptivo de los datos provenientes del portal de Datos Abiertos.
+│       └── medata_descriptive.R   <- Análisis descriptivo de los datos provenientes de MEData.
 │
 ├── data
-│   ├── raw             <- Conjuntos de datos originales.
-│       └── datos_abiertos_2015_2023.csv <- Datos orginales del 2015-2023 provenientes del portal de Datos Abiertos. 
+│   ├── raw           <- Conjuntos de datos originales.
+|       ├── SIVIGILA <- Carpeta con datos del 2012 al 2023 provenientes del portal oficial de SIVIGILA 
+|       ├── medata_1900_2022.csv <- Datos orginales provenientes de MEData. 
+│       ├── INMLCF.zip <- Datos sobre casos de lesiones fatales y no fatales desde 2015 al 2024 provenientes del INMLCF
+|       ├── datos_abiertos_2015_2023.csv <- Datos orginales del 2015-2023 provenientes del portal de Datos Abiertos.
+|       └── CUOC.csv <- Base de datos con Clasificació Única de Ocupaciones adaptada para Colombia. 
 │   ├── interim         <- Conjuntos de datos intermedios, que han sido transformados.
-│       └── datos_abiertos_2015_2023.csv <- Datos depurados del 2015-2023 provenientes del portal de Datos Abiertos. 
+│       └── medata_1900_2022_debugged.csv <- Datos depurados provenientes de MEData. 
 │   └── processed       <- Conjuntos de datos finales para la modelación.
 │
 ├── models             <- Archivos para la implementación de los modelos.
