@@ -97,12 +97,20 @@ data <- data %>%
   select(-nom_upgd,-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado, -fuente)
 ```
 
-Dado que el interés son los casos de violencia en mujeres que ocurren en
+# Filtros
+
+El diccionario de la base de datos indica que hay variables del país, departamento y municipio de procedencia y del hecho. Lo considera como
+variables separadas para cada uno. Sin embargo, en la ficha solo se tiene un campo con el siguiente nombre: **"Departamento y municipio de procedencia/ocurrencia"** e indica que se refiere al lugar donde posiblemente el paciente adquirió o al cual se atribuye la exposición al agente o factor de riesgo que ocasionó el evento.
+
+Se comprobó que estas variables son totalmente iguales, se eliminan las variables denominadas como procedencia:
+
+```{r}
+data <- data %>% select(-c(npais_proce,ndep_proce,nmun_proce))
+```
+
+Ahora bien, dado que el interés son los casos de violencia en mujeres que ocurren en
 Colombia se filtra la base para analizar solo estos casos. Según el
-formato de notificación 2024 cuando la variable **identidad de género
-(ident_gene)** es igual a 2 corresponde a mujer y cuando es igual a 4
-corresponde a mujer trans. Mientras que la variable **país de ocurrencia
-del caso (cod_pais_o)** igual a 170 representa a Colombia.
+formato de notificación 2024 cuando la variable **identidad de género (ident_gene)** es igual a 2 corresponde a mujer y cuando es igual a 4 corresponde a mujer trans. Mientras que la variable **país de ocurrencia del caso (cod_pais_o)** igual a 170 representa a Colombia.
 
 ```{r, include = FALSE}
 aux_nrow <- nrow(data)
@@ -110,6 +118,19 @@ aux_nrow <- nrow(data)
 
 ```{r, echo=TRUE}
 data <- data %>% filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
+```
+
+Se obtiene un total de `r nrow(data)` registros, descartando
+`r aux_nrow - nrow(data)`.
+
+Luego, como la mayoría de casos ocurrieron en Medellín, se filtra por este municipio.
+
+```{r}
+table(as.factor(data$cod_mun_o),as.factor(data$cod_dpto_o))
+```
+
+```{r, echo=TRUE}
+data <- data %>% filter(cod_mun_o == 1 & cod_dpto_o == 5)
 ```
 
 Se obtiene un total de `r nrow(data)` registros, descartando
@@ -1112,172 +1133,8 @@ data <- data %>% filter(( sem_ges_ >= 1 &
 
 ## Información del hecho
 
-### Lugar de ocurrencia del evento
 
-La codificación de las variables código del departamento **(cod_dpto_o)** y
-municipio **(cod_mun_o)** de ocurrencia corresponde a la codificación
-Divipola [(Ver)](https://geoportal.dane.gov.co/geovisores/territorio/consulta-divipola-division-politico-administrativa-de-colombia/)
-para departamentos y municipios de Colombia.
-
-Para facilidad en la comprensión de los resultados y dado que la mayoría
-de las variables que representan lugares tiene su equivalente en nombre,
-se decide crear dos nuevas variables que tomen como valor el nombre del
-departamento y municipio de ocurrencia.
-
-```{r, include=FALSE}
-data <- data %>% mutate(
-  # Variable para departamento
-  ndep_hecho = case_when(
-    cod_dpto_o == 5  ~ "Antioquia",
-    cod_dpto_o == 25 ~ "Cundinamarca",
-    cod_dpto_o == 11  ~ "Bogotá",
-    cod_dpto_o == 50 ~ "Meta",
-    cod_dpto_o == 66 ~ "Risaralda",
-    cod_dpto_o == 76 ~ "Valle del Cauca",
-    cod_dpto_o == 23 ~ "Córdoba",
-    cod_dpto_o == 27 ~ "Chocó",
-    cod_dpto_o == 13 ~ "Bolívar",
-    cod_dpto_o == 68 ~ "Santander",
-    cod_dpto_o == 63 ~ "Quindío",
-    cod_dpto_o == 47 ~ "Magdalena",
-    TRUE         ~ NA_character_
-  ),
-  
-  #variable para municipio
-  nmun_hecho = case_when(
-    cod_mun_o == 1 & cod_dpto_o == 5 ~ "Medellín",
-    cod_mun_o == 1 & cod_dpto_o == 66 ~ "Pereira",
-    cod_mun_o == 1 & cod_dpto_o == 63 ~ "Armenia",
-    cod_mun_o == 1 & cod_dpto_o == 23 ~ "Montería",
-    cod_mun_o == 88  ~ "Bello",
-    cod_mun_o == 290  ~ "Fusagasugá",
-    cod_mun_o == 360  ~ "Itaguí",
-    cod_mun_o == 45  ~ "Apartadó",
-    cod_mun_o == 615  ~ "Rionegro",
-    cod_mun_o == 42  ~ "Santa Fé de Antioquia",
-    cod_mun_o == 79  ~ "Barbosa",
-    cod_mun_o == 31  ~ "Amalfi",
-    cod_mun_o == 6 & cod_dpto_o == 50 ~ "Acacías",
-    cod_mun_o == 113  ~ "Buriticá",
-    cod_mun_o == 212 & cod_dpto_o == 5 ~ "Copacabana",
-    cod_mun_o == 212 & cod_dpto_o == 13 ~ "Córdoba",
-    cod_mun_o == 631  ~ "Sabaneta",
-    cod_mun_o == 887  ~ "Yarumal",
-    cod_mun_o == 197  ~ "Cocorná",
-    cod_mun_o == 111 & cod_dpto_o == 76  ~ "Buga",
-    cod_mun_o == 419 & cod_dpto_o == 23 ~ "Los córdobas",
-    cod_mun_o == 361  ~ "Ituango",
-    cod_mun_o == 308  ~ "Girardota",
-    cod_mun_o == 686  ~ "Santa Rosa de Osos",
-    cod_mun_o == 125  ~ "Caicedo",
-    cod_mun_o == 129  ~ "Caldas",
-    cod_mun_o == 30  ~ "Amagá",
-    cod_mun_o == 842  ~ "Uramita",
-    cod_mun_o == 93  ~ "Betulia",
-    cod_mun_o == 266  ~ "Envigado",
-    cod_mun_o == 856  ~ "Valparaíso",
-    cod_mun_o == 642  ~ "Salgar",
-    cod_mun_o == 690  ~ "Santo Domingo",
-    cod_mun_o == 649  ~ "San Carlos",
-    cod_mun_o == 664  ~ "San Pedro de los Milagros",
-    cod_mun_o == 579  ~ "Puerto Berrío",
-    cod_mun_o == 237  ~ "Donmatías",
-    cod_mun_o == 234  ~ "Dabeiba",
-    cod_mun_o == 547 & cod_dpto_o == 68  ~ "Piedecuesta",
-    cod_mun_o == 679  ~ "Santa Bárbara",
-    cod_mun_o == 854  ~ "Valdivia",
-    cod_mun_o == 674  ~ "San Vicente Ferrer",
-    cod_mun_o == 656  ~ "San Jerónimo",
-    cod_mun_o == 628  ~ "Sabanalarga",
-    cod_mun_o == 869 & cod_dpto_o == 76 ~ "Vijes",
-    cod_mun_o == 591  ~ "Puerto Triunfo",
-    cod_mun_o == 190  ~ "Cisneros",
-    cod_mun_o == 847  ~ "Urrao",
-    cod_mun_o == 4  ~ "Abriaquí",
-    cod_mun_o == 21 ~ "Alejandría",
-    cod_mun_o == 310  ~ "Gómez Plata",
-    cod_mun_o == 154  ~ "Caucasia",
-    TRUE ~ NA_character_
-  )
-)
-```
-
-Ahora bien, el diccionario de la base de datos indica que hay variables del país,
-departamento y municipio de procedencia y del hecho. Lo considera como
-variables separadas para cada uno. Sin embargo, en la ficha solo se
-tiene un campo con el siguiente nombre: **"Departamento y municipio de
-procedencia/ocurrencia"** e indica que se refiere al lugar donde
-posiblemente el paciente adquirió o al cual se atribuye la exposición al
-agente o factor de riesgo que ocasionó el evento.
-
-```{r, include=FALSE}
-data <- data %>%
-  mutate(
-    ndep_proce = ifelse(ndep_proce == "DEPTO DESCONOCIDO", NA, ndep_proce), 
-    ndep_proce = recode(ndep_proce,                                       
-                        "CHOCO" = "CHOCÓ",
-                        "BOLIVAR" = "BOLÍVAR",
-                        "CORDOBA" = "CÓRDOBA",
-                        "STA MARTA D.E." = "MAGDALENA",
-                        "QUINDIO" = "QUINDÍO"),
-    ndep_proce = str_to_title(tolower(ndep_proce))
-
-  )
-
-data <- data %>%
-  mutate(
-    nmun_proce = as.character(nmun_proce),
-    nmun_proce = recode(
-      nmun_proce,
-      "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" = NA_character_,
-      "* ANTIOQUIA. MUNICIPIO DESCONOCIDO" = NA_character_,
-      "* CHOCO. MUNICIPIO DESCONOCIDO" = NA_character_,
-      "* MAGDALENA. MUNICIPIO DESCONOCIDO" = NA_character_,
-      "ANTIOQUIA" = NA_character_,
-      "FUSAGASUGA" = "FUSAGASUGÁ",
-      "ITAGUI" = "ITAGÜÍ",
-      "APARTADO" = "APARTADÓ",
-      "ACACIAS" = "ACACÍAS", 
-      "BURITICA" = "BURITICÁ",
-      "MEDELLIN" = "MEDELLÍN",
-      "AMAGA" = "AMAGÁ",
-      "SANTA BARBARA" = "SANTA BÁRBARA",
-      "ALEJANDRIA" = "ALEJANDRÍA",
-      "SAN JUAN DE URABA" = "SAN JUAN DE URABÁ",
-      "PUERTO BERRIO" = "PUERTO BERRÍO",
-      "CORDOBA" = "CÓRDOBA",
-      "SAN JERONIMO" = "SAN JERÓNIMO",
-      "MONTERIA" = "MONTERÍA",
-      "GOMEZ PLATA" = "GÓMEZ PLATA",
-      "COCORNA" = "COCORNÁ",
-      "LOS CORDOBAS" = "LOS CÓRDOBAS",
-      "DON MATIAS" = "DON MATÍAS",
-      "ABRIAQUI" = "ABRIAQUÍ",
-      "VALPARAISO" = "VALPARAÍSO"
-    ),
-    nmun_proce = str_to_title(tolower(nmun_proce))
-
-  )
-    
-```
-
-Se comprobó que estas variables son totalmente iguales, por lo tanto, se
-eliminan las variables relacionadas al departamento y municipio de
-procedencia y se deja las variables relacionadas al hecho.
-
-```{r}
-data <- data %>%
-  mutate(ndep_hecho = coalesce(ndep_hecho, ndep_proce))
-
-data <- data %>%
-  mutate(nmun_hecho = coalesce(nmun_hecho, nmun_proce))
-```
-
-```{r}
-data <- data %>% select(-c(npais_proce,ndep_proce,nmun_proce))
-```
-
-#### Área y barrio
+### Área y barrio
 
 ```{r}
 data %>% select(area_, localidad_, bar_ver_, cen_pobla_, vereda_) %>% head(10)
@@ -1918,38 +1775,18 @@ una columna pueden recibir un valor a partir de otra columna.
 
 ### Relacionar información para rellenar campos vacíos
 
-<!-- #### Variable npais_proce a partir de ndep_hecho -->
+#### Variable nmun_resi a partir de nombre_comuna:
 
-<!-- Dado que todos los departamentos en ndep_proce corresponden todos a Colombia, se completaron los valores vacíos o faltantes (NA) en npais_proce con "Colombia". Tras esta imputación, solo queda un valor faltante en npais_proce, el cual corresponde al mismo registro que tiene un valor faltante en ndep_proce, que no es posible saber. -->
+todas las comunas están dentro de Medellín, entonces se llenan los
+valores vacíos de municipio con "Medellín" para aquellos que tienen
+información en comuna.
 
-<!-- ```{r} -->
-
-<!-- # Imputar valores de npais_proce según ndep_proce = ndep_hecho -->
-
-<!-- data <- data %>% -->
-
-<!--   mutate(npais_proce = ifelse(npais_proce == "" | !is.na(ndep_hecho), "Colombia", npais_proce)) -->
-
-<!-- ``` -->
-
-<!-- ```{r} -->
-
-<!-- data %>% filter(is.na(npais_proce) | npais_proce == "") %>% select(npais_proce, ndep_hecho, nmun_hecho) -->
-
-<!-- ``` -->
-
-<!-- #### Variable nmun_resi a partir de nombre_comuna: -->
-
-<!-- todas las comunas están dentro de Medellín, entonces se llenan los -->
-<!-- valores vacíos de municipio con "Medellín" para aquellos que tienen -->
-<!-- información en comuna. -->
-
-<!-- ```{r} -->
-<!-- data <- data %>%  -->
-<!--   mutate(nmun_resi = ifelse(nmun_resi == "" | !is.na(nombre_comuna),  -->
-<!--                             "Medellín", -->
-<!--                             nmun_resi )) -->
-<!-- ``` -->
+```{r}
+data <- data %>%
+  mutate(nmun_resi = ifelse(nmun_resi == "" | !is.na(nombre_comuna),
+                            "Medellín",
+                            nmun_resi ))
+```
 
 #### Variable npais_resi a partir de ndep_resi
 

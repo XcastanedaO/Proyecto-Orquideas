@@ -163,31 +163,6 @@ base_datos %>%
 Aunque podría considerarse una distribución de casos por mes muy uniforme, se ve que, para el mes de enero es cuando se reportan más casos de violencia de género hacia la mujer durante los años 2018 y 2022, lo que es congruente con la semana, pues la primera semana del año es en la que más se reportan hechos **¿no es una fecha genérica REVISAR**
 
 ### Tiempo entre el hecho y la notificación
-
-```{r}
-# base_datos <- base_datos %>% filter((month(fec_hecho) != 1 &
-#                                day(fec_hecho) != 1) )
-```
-
-**Agrupar por tiempos para tener mejor interpretación**
-
-```{r}
-base_datos <- base_datos %>%
-  mutate(tiempo_not = as.numeric(base_datos$fec_not - base_datos$fec_hecho))
-
-# Revisar si hay valores NA o negativos
-summary(base_datos$tiempo_not)
-
-base_datos %>%
-  filter(!is.na(tiempo_not) & tiempo_not >= 0) %>%
-  ggplot(aes(x = tiempo_not)) +
-  geom_histogram(fill = "#c07dca", bins = 30,  alpha = 0.8) +
-  labs(title = "Días entre el hecho y la notificación", x = "Días", y = "Frecuencia") +
-  theme_minimal()
-
-
-```
-
 Vemos claramente que existe la distribucón del tiempo de notificación, indica que la mayoría de los casos ocurren en los primeros 30 días, con una caída significativa en los intervalos siguientes.
 Esto es interesante porque nos ayuda a elegir una forma de la distribución para modelar el tiempo de notificación.
 Sin embargo, con el fin de obtener una distribución más equilibrada y una interpretación mucho más clara, ajustamos los intervalos usando criterios epidemiológicos que indican:
@@ -223,37 +198,6 @@ base_datos %>%
 
 ```
 
-
-```{r}
-# Calcular proporciones
-df_tiempo <- base_datos %>%
-  filter(!is.na(grupo_tiempo)) %>%
-  count(grupo_tiempo) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2))
-
-# Gráfico con etiquetas de porcentaje
-ggplot(df_tiempo, aes(x = grupo_tiempo, y = n)) +
-  geom_bar(stat = "identity", fill = "#c07dca", alpha = 0.8) +
-  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
-            vjust = -0.2, 
-            color = "#4B0082",  # Morado oscuro
-            fontface = "bold",
-            size = 3.4)  +
-  labs(title = "Días entre el hecho y la notificación (según criterios epidemiológicos)", 
-       x = "Rango de tiempo", y = "Frecuencia") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar etiquetas
-
-
-
-
-# 
-# geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
-#             vjust = -0.2, 
-#             color = "#4B0082",  # Morado oscuro
-#             fontface = "bold",
-#             size = 3.4) 
-```
 
 
 ## Caracterización de las víctimas
@@ -489,54 +433,9 @@ base_datos %>%
   mutate(proporcion = round( n / sum(n) * 100, 2))
 ```
 
-```{r}
-# Crear gráfico de barras con etiquetas de porcentaje
-# base_datos %>%
-#   count(categoria_ambito) %>%
-#   arrange(desc(n)) %>%
-#   mutate(proporcion = round(n / sum(n) * 100, 2)) %>%
-#   ggplot(aes(x = reorder(categoria_ambito, n), y = n)) +
-#   geom_bar(stat = "identity", fill = "#c07dca", alpha = 0.8) +
-#   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
-#             vjust = -0.2, 
-#             color = "#4B0082",  # Morado oscuro
-#             fontface = "bold",
-#             size = 3.4) +
-#   labs(title = "Casos de violencia por ámbito", 
-#        x = "Ámbito", y = "Frecuencia") +
-#   theme_minimal() +
-#   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar etiquetas del eje X
-
-```
-
-
 La mayoría de los casos de violencia (68.26%) ocurren en el hogar, lo que resalta la vulnerabilidad de las víctimas en su entorno familiar y la necesidad de fortalecer medidas de prevención y protección. Un 18.50% de los casos están en la categoría "Otro", lo que sugiere una clasificación poco definida que podría ocultar patrones importantes y lo que sugiere la necesidad de mayor precisión en la clasificación de los espacios donde ocurre la violencia.
 
 Los espacios públicos, entornos educativos y laborales presenta menores reportes de violencia sin embargo, sigue siendo relevante, indicando que las agresiones también ocurren fuera del hogar, aunque en menor proporción.
-
-
-
-
-
-
-
-
-
-
-```{r}
-# base_datos %>%
-#   count(ambito_lug) %>%
-#   mutate(proporcion = n / sum(n) * 100) %>%  # Calculamos el porcentaje
-#   ggplot(aes(x = reorder(ambito_lug, n), y = n)) +
-#   geom_col(fill = "#c07dca") +
-#   geom_text(aes(label = paste0(round(proporcion, 1), "%")),  # Agregamos etiquetas con los porcentajes
-#             hjust = 1.2, size = 3.5) +
-#   coord_flip() +
-#   labs(title = "Tipos de violencia reportados", 
-#        x = "Tipo de violencia", 
-#        y = "Casos") +
-#   theme_minimal()
-```
 
 ## Caracterización de los agresores
 
@@ -1009,22 +908,9 @@ La violencia sexual también tiene un porcentaje considerable de reincidencia (6
 La violencia psicológica y la negligencia tienen muy baja reincidencia, lo que puede deberse a que las víctimas no reportan estos casos o a que los agresores no son recurrentes en estos tipos de violencia.
 
 ##### Reincidencia según área
-
-```{r}
-base_datos %>%
-  filter(!is.na(area_)) %>% 
-  group_by(area_, antec) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(area_) %>%  # Agrupar nuevamente por tipo de violencia
-  mutate(proporcion = round(n / sum(n) * 100, 4))
-```
-
 La reincidencia es más alta en las zonas rurales (15.14%) que en las cabeceras municipales (6.94%).
 Esto sugiere que en las zonas rurales hay más casos de revictimización, posiblemente por falta de acceso a medidas de protección o por dinámicas familiares y comunitarias donde la violencia es más recurrente.
 En contraste, en las cabeceras municipales la reincidencia es menor, lo que podría indicar una mayor presencia de instituciones de apoyo o mecanismos de protección más efectivos.
-
-
-
 
 ```{r}
 base_datos %>%
@@ -1187,30 +1073,6 @@ base_datos %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-
-
-
-
-#### Tipo de violencia por año
-
-```{r}
-# Contar el número de casos por año y tipo de violencia
-violencia_por_año <- base_datos %>%
-  count(año_hecho, def_naturaleza) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2)) 
-
-# Crear gráfico de barras agrupadas por año
-ggplot(violencia_por_año, aes(x = factor(año_hecho), y = n, fill = def_naturaleza)) +
-  geom_bar(stat = "identity", position = "dodge") +  # Para barras separadas
-  labs(title = "Casos por año y tipo de violencia",
-       x = "Año",
-       y = "Número de casos",
-       fill = "Tipo de violencia") +
-  theme_minimal() +
-  scale_fill_manual(values = c("#f4e04d", "#f5a25d", "#82c4c3", "#b19cd9", "#e07a5f")) +  # Colores personalizables
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Inclinar etiquetas si son
-
-```
 
 
 
