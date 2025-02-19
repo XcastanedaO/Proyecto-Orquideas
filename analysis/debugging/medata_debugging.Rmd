@@ -1104,10 +1104,6 @@ esperado en tiempo de gestación.
 # Verificar que los valores estén en el rango
 data <- data %>% filter(( sem_ges_ >= 1 &
                            sem_ges_ <= 45) | (gp_gestan != 1) | is.na(sem_ges_))
-
-# Asignar 0 a los registros donde gp_gestan es "No"
-# en caso contrario, se asigna un valor de 0, que representa "No aplica", para no confundir con valores faltantes.
-# data <- data %>% mutate(sem_ges_ = if_else(gp_gestan != 1, 0, sem_ges_))
 ```
 
 ## Información del hecho
