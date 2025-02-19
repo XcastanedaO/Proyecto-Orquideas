@@ -789,7 +789,116 @@ f_final_data <- f_data %>%
 Al eliminar estas variables, se obtiene una base de datos con
 **`r nrow(f_final_data)` registros**.
 
-### Registros duplicados
+
+## Lesiones no fatales
+
+La base unida queda con un total `r n_f_row` filas y `r ncol(n_f_data)` variables:
+
+```{r}
+colnames(n_f_data)
+```
+
+### Selección de variables de interés
+Se descartan las siguientes variables porque aplican en caso de que la muerte haya sido de forma accidental o por eventos de tránsito
+
+-   Condición de la víctima
+-   Medio de Desplazamiento o Transporte 
+-   Servicio del Vehículo
+-   Clase o Tipo de Accidente
+-   Objeto de Colisión
+-   Servicio del Objeto de Colisión
+
+Además, se elimina *id* por no ser de relevancia
+```{r}
+n_f_data <- n_f_data %>% select(-c(condicion_de_la_victima,medio_de_desplazamiento_o_transporte,servicio_del_vehiculo,clase_o_tipo_de_accidente,objeto_de_colision,servicio_del_objeto_de_colision, id))
+```
+
+
+### Selección de casos según género
+Dado que no se tiene **identidad de género** para todos los registros, se filtra por **sexo**
+```{r}
+summary(as.factor(n_f_data$identidad_de_genero))
+```
+
+```{r}
+summary(as.factor(n_f_data$sexo_de_la_victima))
+```
+
+```{r}
+n_f_data <- n_f_data %>% filter(sexo_de_la_victima == "Mujer")
+```
+
+Se obtiene una base de `r nrow(n_f_data)` filas. Se descartaron `r n_f_row - nrow(n_f_data)`.
+
+```{r}
+n_f_data <- n_f_data %>% select(-sexo_de_la_victima)
+```
+
+
+### Selección de casos según contexto (Tipo de violencia)
+
+Como se mencionó anteriormente, los casos de lesiones no fatales se pueden clasificar en: lesiones en eventos de transporte, lesiones accidentales, exámenes de presunto delito sexual, violencia interpersonal e intrafamiliar. Se seleccionan los casos que corresponden a las últimas tres categorías: 
+
+
+```{r}
+unique(n_f_data$contexto_de_violencia)
+```
+
+
+```{r}
+n_f_data <- n_f_data %>% filter(!(
+  contexto_de_violencia %in% c(
+    "7 Lesiones por Eventos de Transporte",
+    "8 Lesiones Accidentales"
+  ))
+)
+```
+
+Se obtiene una base de `r nrow(n_f_data)` filas. Se descartaron `r n_f_row - nrow(n_f_data)`.
+
+El boletín mensual del INMLCF [(Ver)](https://www.medicinalegal.gov.co/documents/20143/696494/1+Homicidios+Masatugo+sep+7-21.pdf) tiene una subclasificación para el tipo de violencia que puede servir para entender mejor los casos. Muchos niveles de esa subclasificación están siendo niveles en la variable **contexto** que debería tomar solo los tres niveles principales.
+
+Por este motivo se crea una variable **def_naturaleza** para indicar el según nivel del tipo de violencia.
+
+
+```{r}
+n_f_data <- n_f_data %>% mutate(
+  def_naturaleza = case_when(
+    contexto_de_violencia == "5 Lesiones no Fatales contra el Adulto Mayor por Violencia Intrafamiliar" ~ "Violencia contra el adulto mayor",
+    contexto_de_violencia == "6 Lesiones no Fatales por Violencia de Pareja" ~ "Violencia de Pareja",
+    contexto_de_violencia == "4 Lesiones no Fatales por Violencia entre otros Familiares" ~ "Violencia entre otros familiares",
+    contexto_de_violencia == "3 Lesiones no Fatales contra Niños, Niñas y Adolescentes por Violencia Intrafamiliar" ~ "Violencia contra niños, niñas y adolescentes",
+    contexto_de_violencia == "Violencia Contra Niños, Niñas y Adolescentes (VIF)" ~ "Violencia contra niños, niñas y adolescentes",
+    contexto_de_violencia == "Violencia Contra Niños, Niñas y Adolescentes (VIF)" ~ "Violencia contra niños, niñas y adolescentes",
+    contexto_de_violencia == "Violencia Entre Otros Familiares (VIF)" ~ "Violencia entre otros familiares",
+    contexto_de_violencia == "Violencia Contra el Adulto Mayor (VIF)" ~ "Violencia contra el adulto mayor",
+    TRUE ~ NA_character_
+  )
+)  
+```
+
+Una vez utiliza la variable **contexto** para crear la subclasificación, se puede limpiar las categorías de esta variable
+
+```{r}
+n_f_data <- n_f_data %>% mutate(
+  contexto_de_violencia = case_when(
+     contexto_de_violencia == "5 Lesiones no Fatales contra el Adulto Mayor por Violencia Intrafamiliar" ~ "Violencia intrafamiliar",
+      contexto_de_violencia == "1 Lesiones no Fatales por Violencia Interpersonal" ~ "Violencia Interpersonal",
+    contexto_de_violencia == "6 Lesiones no Fatales por Violencia de Pareja" ~ "Violencia de Pareja",
+    contexto_de_violencia == "2 Exámenes Medicolegales por Presunto Delito Sexual" ~ "Presunto Delito Sexual",
+    contexto_de_violencia == "4 Lesiones no Fatales por Violencia entre otros Familiares" ~ "Violencia intrafamiliar",
+    contexto_de_violencia == "3 Lesiones no Fatales contra Niños, Niñas y Adolescentes por Violencia Intrafamiliar" ~ "Violencia intrafamiliar",
+    contexto_de_violencia == "Violencia Contra Niños, Niñas y Adolescentes (VIF)" ~ "Violencia contra niños, niñas y adolescentes",
+    contexto_de_violencia == "Violencia Contra Niños, Niñas y Adolescentes (VIF)" ~ "Violencia contra niños, niñas y adolescentes",
+    contexto_de_violencia == "Violencia Entre Otros Familiares (VIF)" ~ "Violencia intrafamiliar",
+    contexto_de_violencia == "Violencia Contra el Adulto Mayor (VIF)" ~ "Violencia intrafamiliar",
+    TRUE ~ str_to_title(contexto_de_violencia)
+  ))
+```
+
+
+
+# Registros duplicados
 
 ```{r}
 # Buscar registros duplicados
