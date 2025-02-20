@@ -394,8 +394,6 @@ base_datos <- base_datos %>%
 ```
 
 
-
-
 ```{r}
 library(dplyr)
 
@@ -1078,26 +1076,26 @@ base_datos %>%
 
 ```{r}
 # Definir la nueva paleta con más contraste
-colores_contraste <- c("Violencia física" = "#c07dca", 
-                       "Violencia psicológica" = "#f5a25d", 
-                       "Negligencia y abandono" = "#5e35b1", 
-                       "Violencia sexual" = "#e07a5f")
-
-# Crear gráfico mejorado
-ggplot(violencia_por_año, aes(x = factor(año_hecho), y = n, fill = def_naturaleza)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.9), color = "black") +  
-  labs(title = "Casos por año y tipo de violencia",
-       x = "Año",
-       y = "Número de casos",
-       fill = "Tipo de violencia") +
-  theme_minimal(base_size = 14) +
-  scale_fill_manual(values = colores_contraste) +  # Aplicar la nueva paleta
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),  
-    legend.position = "right",
-    legend.text = element_text(size = 12),  
-    legend.title = element_text(size = 14, face = "bold") 
-  )
+# colores_contraste <- c("Violencia física" = "#c07dca", 
+#                        "Violencia psicológica" = "#f5a25d", 
+#                        "Negligencia y abandono" = "#5e35b1", 
+#                        "Violencia sexual" = "#e07a5f")
+# 
+# # Crear gráfico mejorado
+# ggplot(violencia_por_año, aes(x = factor(año_hecho), y = n, fill = def_naturaleza)) +
+#   geom_bar(stat = "identity", position = position_dodge(width = 0.9), color = "black") +  
+#   labs(title = "Casos por año y tipo de violencia",
+#        x = "Año",
+#        y = "Número de casos",
+#        fill = "Tipo de violencia") +
+#   theme_minimal(base_size = 14) +
+#   scale_fill_manual(values = colores_contraste) +  # Aplicar la nueva paleta
+#   theme(
+#     axis.text.x = element_text(angle = 45, hjust = 1),  
+#     legend.position = "right",
+#     legend.text = element_text(size = 12),  
+#     legend.title = element_text(size = 14, face = "bold") 
+#   )
 
 ```
 
