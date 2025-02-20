@@ -136,6 +136,8 @@ data <- data %>% filter(cod_mun_o == 1 & cod_dpto_o == 5)
 Se obtiene un total de `r nrow(data)` registros, descartando
 `r aux_nrow - nrow(data)`.
 
+**Nota:** Al realizar este filtro se van  registros con niveles 8 (no se ve en las fichas) y 11 (Violencia sexual en conflicto armado) en la variable **nat_viosex**. En total son 8 registros.
+
 ## Clasificación del caso
 
 La variable clasificación inicial del caso (**tip_cas_**) puede tomar los
@@ -428,8 +430,7 @@ data <- data %>% filter(uni_med_ != 0)
 ```
 
 Se eliminan `r aux_nrow - nrow(data)` registros, quedando una base de
-datos de `r nrow(data)`. También se encuentra que para algunos registros la unidad de medida son
-incorrectas. 
+datos de `r nrow(data)`. También se encuentra que para algunos registros la unidad de medida son incorrectas. 
 
 ```{r, include = FALSE}
 edad_data <- data %>%
