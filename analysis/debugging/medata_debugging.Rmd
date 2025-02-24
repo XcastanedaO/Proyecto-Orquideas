@@ -238,6 +238,8 @@ esta base la semana epidemiológica corresponde a la semana en que se
 notificó el hecho. Sería de más utilidad en el análisis trabajar con la
 semana epidemiológica en la que ocurrió el hecho.
 
+**FALTA AGREGAR CÓDIGO PARA JUSTIFICAR INSCONSISTENCIAS DE LA SEMANA Y EL AÑO**
+
 Dado a las inconsistencias y que se tiene la fecha exacta de
 notificación, se decide eliminar estas variables
 
@@ -315,6 +317,19 @@ data$fec_hecho <- as.Date(data$fec_hecho, format = "%d/%m/%Y")
 
 El formato de notificación 2024 proporciona para la sistematización del
 caso una serie de condiciones que debe cumplirse en estas variables:
+
+- La fecha de notificación debe ser mayor a la fecha del hecho.
+
+```{r, include = FALSE}
+aux_nrow <- nrow(data)
+```
+
+```{r}
+data <- data %>% filter(is.na(fec_hecho) | is.na(fec_not) | (fec_not >= fec_hecho)) 
+```
+
+`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de
+descartarlos, se obtiene un total de `r nrow(data)`.
 
 -   La fecha de notificación debe ser mayor o igual a la fecha de inicio
     de síntomas y a la fecha de consulta.
@@ -673,6 +688,8 @@ Así, resulta más óptimo eliminarlas.
 data <- data %>% select(-c(uni_med_,edad_,grupo_edad_ciclo,grupo_edad_quinque))
 ```
 
+**HACER CAMBIO PARA CLASIFICACIÓN DEL INMLFC**
+
 Se construye una variable que representa el grupo etario de acuerdo a
 las etapas del ciclo de vida definidas por el MSPS 
 [(Ver)](https://www.minsalud.gov.co/proteccionsocial/Paginas/ciclovida.aspx)
@@ -886,6 +903,8 @@ summary(as.factor(data$estrato_))
 ```
 
 ### Orientación sexual (orient_sex)
+
+**CAMBIAR A COMO MARIANA DIJO**
 
 De acuerdo a las fichas de notificación 2015-2022 y el diccionario de la
 base de datos, los niveles de esta variable son:
@@ -1784,7 +1803,7 @@ información en comuna.
 
 ```{r}
 data <- data %>%
-  mutate(nmun_resi = ifelse(nmun_resi == "" | !is.na(nombre_comuna),
+  mutate(nmun_resi = ifelse((nmun_resi == "" | is.na(nmun_resi)) & !is.na(nombre_comuna),
                             "Medellín",
                             nmun_resi ))
 ```
@@ -1877,6 +1896,20 @@ data %>%
 
 ```
 
+
+#### Grupos poblacionales
+
+<!-- Según la ficha de notificación, si la víctima no pertenece a los grupos listados (**gp_discapa, gp_desplaz,etc**) se debe llenar con "Sí" la variable **gp_otros** para indicar que pertenece a otro grupo poblacional. Por lo tanto, si **gp_otros** es NA pero algunos de los otros grupos toman valor de "Sí" gp_otros se le asigna "No" y viceversa.  -->
+
+```{r}
+# data <- data %>%
+#   mutate(gp_otros = coalesce(gp_otros, 
+#                              pmax(gp_discapa, gp_desplaz, gp_migrant, gp_carcela, 
+#                                   gp_gestan, gp_indigen, gp_pobicbf, gp_mad_com, 
+#                                   gp_desmovi, gp_psiquia, gp_vic_vio, na.rm = TRUE)))
+```
+
+
 Se puede observar que disminuyó la cantidad de celdas vacías.
 
 ```{r}
@@ -1926,6 +1959,8 @@ vacías, ya sea porque no se registró la información o porque esa
 variable no es considerada en todas las fichas de notificación del
 SIVIGILA. Como es el caso de **edad agresor**, **estrato_**, y **hora
 del hecho** que según lo investigado no se piden en fichas recientes.
+
+**Nota:** La edad del agresor aparece hasta la ficha 2015 pero en esta base de datos hay valores para los años de ocurriencia hasta el 2018.
 
 ```{r, include=FALSE}
 # Filtrar nombre de las variables con el 50% de celdas vacías
