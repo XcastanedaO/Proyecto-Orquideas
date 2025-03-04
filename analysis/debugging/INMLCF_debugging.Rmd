@@ -17,11 +17,7 @@ editor_options:
 
 # Información de la bases de datos
 
-Se cuenta con dos bases que registran casos de lesiones fatales
-[(Ver)](https://www.datos.gov.co/Justicia-y-Derecho/Lesiones-fatales-de-causa-externa-Informaci-n-prel/2kpj-cktv/about_data)
-y no fatales
-[(Ver)](https://www.datos.gov.co/Justicia-y-Derecho/Lesiones-no-fatales-de-causa-externa-Informaci-n-p/79dd-d24f/about_data)
-de causa externa entre 01/enero y 30/noviembre del 2024 atendidos por
+Se cuenta con dos bases que registran casos de lesiones fatales [(Ver)](https://www.datos.gov.co/Justicia-y-Derecho/Lesiones-fatales-de-causa-externa-Informaci-n-prel/2kpj-cktv/about_data) y no fatales [(Ver)](https://www.datos.gov.co/Justicia-y-Derecho/Lesiones-no-fatales-de-causa-externa-Informaci-n-p/79dd-d24f/about_data) de causa externa entre 01/enero y 30/noviembre del 2024 atendidos por
 Instituto Nacional de Medicina Legal y Ciencias Forenses. 
 
 Cada base de datos pertenece a un sistema de información diferente del INMLCF. La base de lesiones NO fatales al Sistema de Información de Clínica y Odontología Forense (SICLICO) y la base de lesiones fatales al Sistema de Información Red de Desaparecidos y Cadáveres (SIRDEC).
