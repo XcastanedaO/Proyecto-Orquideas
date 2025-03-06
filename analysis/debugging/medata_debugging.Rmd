@@ -702,7 +702,8 @@ data <- data %>%
           difftime(fec_hecho, fecha_nto_, units = "days")
         ) / 365.25),
       
-      TRUE ~ NA_real_
+      # En caso de que no cumpla ninguna de las condiciones, se deja la edad original
+      TRUE ~ edad_
     )
   )
 ```
