@@ -2151,7 +2151,7 @@ final_data <- final_data %>%
 
     -   edad del agresor
 
-6.  **Variables que están en fichas actuales:**
+6.  **Variables que NO están en fichas actuales:**
 
     -   estrato de la víctima
 
@@ -2182,7 +2182,7 @@ final_data <- final_data %>%
 
 9.  La base de datos después de los filtros, tratar las variables,
     quitar columnas con 50% o más de valores faltantes y duplicados,
-    quedó compuesta por **49250 filas.** Las columnas se especifican en
+    quedó compuesta por **`r nrow(final_data)` filas.** Las columnas se especifican en
     [*inventario
     variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing).
     En esta base están registros con algunos NA correspondientes a las
@@ -2194,8 +2194,7 @@ final_data <- final_data %>%
     asignar un valor característico a estos casos.
 
 10. Quitando los registros mencionados en el item anterior, la base
-    final quedaría con las mismas columnas pero **24394 registros
-    completos.**
+    final quedaría con las mismas columnas pero **`r aux_nrow` registros completos.**
 
     **Nota:** Los únicos NA que se encontarían son los presentes en las
     tres columnas mencionadas.
