@@ -97,6 +97,8 @@ library(janitor)
 
 ```{r}
 # Bases de datos de lesiones fatales 2024
+#f_data_24 <- load_data("INMLCF/fatales_INMLCF_2024.csv", type = "raw")
+
 f_data_24 <- load_data("INMLCF/fatales_INMLCF_2024.csv", type = "raw")
 ```
 
@@ -2151,3 +2153,11 @@ setdiff(
 # summary(as.factor(n_f_data$factor_desencadenante_de_la_agresion))
 
 ```
+
+
+Bases de datos
+
+```{r}
+
+```
+
