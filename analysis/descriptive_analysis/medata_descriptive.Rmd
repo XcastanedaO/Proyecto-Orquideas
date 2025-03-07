@@ -29,9 +29,13 @@ library(stringi)
 
 \newpage
 
+# Lectura de la base de datos
+
 ```{r}
 base_datos <- load_data("medata_1900_2022_debugged.csv", type = "interim")
 ```
+
+# Conversión de tipo dato
 
 ```{r}
 # Cambiar tipo de dato a Date
@@ -52,19 +56,7 @@ base_datos <- base_datos %>%
 
 ```
 
-
-
-```{r}
-# base_datos <- final_data
-# base_datos <- base_datos %>% filter(
-#   is.na(fec_not) |
-#     is.na(ini_sin_) |
-#     is.na(fec_con_) |
-#     (fec_not >= ini_sin_ &
-#        fec_not >= fec_con_ &
-#        fec_not >= fec_hecho) # Se asegura que la notificación no sea antes del hecho
-# )
-```
+# Agrupaciones para el análisis
 
 ```{r}
 base_datos <- base_datos %>%
@@ -85,6 +77,8 @@ base_datos <- base_datos %>%
     `14` = "Violencia sexual"
   ))
 ```
+
+# Análisis descriptivo
 
 ## Análisis temporal
 

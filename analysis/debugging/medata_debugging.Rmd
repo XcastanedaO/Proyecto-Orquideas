@@ -2115,7 +2115,7 @@ final_data <- final_data %>%
 
 ```{r}
 # Guardar base de datos con valores faltantes
-# save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "csv")
+save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "csv")
 ```
 
 # Resumen
