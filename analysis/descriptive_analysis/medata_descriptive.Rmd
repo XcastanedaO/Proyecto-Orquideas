@@ -13,17 +13,17 @@ editor_options:
     wrap: sentence
 ---
 
-```{r}
+```{r, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE)
 library(dplyr)
 library(ggplot2)
 source("../../utils/load_data.R")
 library(here)
 library(hms)
-library(dplyr)
 library(forcats)
 library(lubridate)
 library(stringr)
+library(tidyr)
 library(stringi)
 ```
 
@@ -31,7 +31,7 @@ library(stringi)
 
 # Lectura de la base de datos
 
-```{r}
+```{r, echo=TRUE}
 base_datos <- load_data("medata_1900_2022_debugged.csv", type = "interim")
 ```
 
@@ -58,7 +58,7 @@ base_datos <- base_datos %>%
 
 # Agrupaciones para el análisis
 
-```{r}
+```{r, echo=TRUE}
 base_datos <- base_datos %>%
   mutate(def_naturaleza = recode(
     def_naturaleza,
@@ -84,12 +84,9 @@ base_datos <- base_datos %>%
 
 ```{r}
 summary(base_datos$fec_hecho)
-summary(base_datos$fec_not)
-
 ```
-
-Vemos que la fecha mínima para la **fecha de hecho** es `r min(base_datos$fec_hecho)`, mientras que el primer cuartil (Q1) es "2018-08-07".
-Esto indica que al menos el 25% de los datos tienen fechas anteriores a "2018-08-07", pero su distribución no es uniforme.
+Vemos que la fecha mínima para la **fecha de hecho** es `r min(base_datos$fec_hecho)`, mientras que el primer cuartil (Q1) es "2018-10-22".
+Esto indica que al menos el 25% de los datos tienen fechas anteriores a "2018-10-22", pero su distribución no es uniforme.
 Por otro lado, la media (`r mean(base_datos$fec_hecho)`) y la mediana (`r median(base_datos$fec_hecho)`) sugieren que la mayoría de los registros se concentran en años recientes, lo que confirma que las fechas más antiguas podrían ser casos aislados o errores de registro.
 A continuación se ve un conteo de los casos presentados por año, y se ve que para años menores a 2017 los casos son muy pocos, por lo que se decide estudiar únicamente los casos cuyo año sea mayor o igual a 2017
 
@@ -101,7 +98,7 @@ base_datos %>% group_by(año_hecho) %>% count(año_hecho)
 ```{r}
 # dejar registros unicamente de 2017 en adelante
 base_datos <- base_datos %>%
-  mutate(año_hecho = as.numeric(as.character(año_hecho))) %>%  # Asegurar que es numérico
+  mutate(año_hecho = as.numeric(as.character(año_hecho))) %>%  #
   filter(año_hecho >= 2017)  
 
 ```
@@ -128,7 +125,7 @@ base_datos %>%
 
 Se ve en este caso que, después de filtrar y depurar la base de datos, el año en el que se presentó mayor cantidad de casos fue el año 2018, el cual excede los 7000 reportes en el SIVIGILA.
 Sin embargo, debemos evaluarla bien porque antes de filtrar la base de datos, el año que más presentaba reportes era el 2019.
-Además parece un poco inconsistente que en el 2020 hayan reducido tanto y que a partir de ahí no se den tantos en comparación a 2018 y 2019, ¿sí es cierto que para esos años hubo una disminución en los reportes al SIVIGILA?
+Además parece un poco inconsistente que en el 2020 hayan reducido tanto y que a partir de ahí no se den tantos en comparación a 2018 y 2019
 
 ### Frecuencia Casos por mes
 
@@ -154,7 +151,7 @@ base_datos %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-Aunque podría considerarse una distribución de casos por mes muy uniforme, se ve que, para el mes de enero es cuando se reportan más casos de violencia de género hacia la mujer durante los años 2018 y 2022, lo que es congruente con la semana, pues la primera semana del año es en la que más se reportan hechos **¿no es una fecha genérica REVISAR**
+Aunque podría considerarse una distribución de casos por mes muy uniforme, se ve que, para el mes de enero es cuando se reportan más casos de violencia de género hacia la mujer durante los años 2018 y 2022, lo que es congruente con la semana, pues la primera semana del año es en la que más se reportan hechos
 
 ### Tiempo entre el hecho y la notificación
 Vemos claramente que existe la distribucón del tiempo de notificación, indica que la mayoría de los casos ocurren en los primeros 30 días, con una caída significativa en los intervalos siguientes.
@@ -368,66 +365,66 @@ Un 18.85% de los casos se registraron en la categoría "Otro", lo que sugiere qu
 La vía pública (8.44%) es el tercer lugar más frecuente, lo que indica que la violencia no se limita al ámbito privado.
 Los demás escenarios, como establecimientos educativos, lugares de trabajo y comercios, presentan una incidencia menor, pero no por ello menos relevantes, ya que reflejan agresiones en contextos sociales y laborales.
 
-###### Comparación entre ambas (se podrían juntar)
+<!-- ###### Comparación entre ambas -->
 
-```{r}
-table(base_datos$ambito_lug, base_datos$escenario)
-```
+<!-- ```{r} -->
+<!-- table(base_datos$ambito_lug, base_datos$escenario) -->
+<!-- ``` -->
 
-```{r}
-library(dplyr)
+<!-- ```{r} -->
+<!-- library(dplyr) -->
 
-base_datos <- base_datos %>%
-  mutate(ambito_lug = case_when(
-    ambito_lug == "Otros" ~ escenario, # Si el ámbito es "Otros", tomar el escenario
-    escenario == "Otro" ~ ambito_lug,  # Si el escenario es "Otro", mantener el ámbito
-    TRUE ~ ambito_lug # Mantener el valor original en otros casos
-  ))
-
-
-```
+<!-- base_datos <- base_datos %>% -->
+<!--   mutate(ambito_lug = case_when( -->
+<!--     ambito_lug == "Otros" ~ escenario, # Si el ámbito es "Otros", tomar el escenario -->
+<!--     escenario == "Otro" ~ ambito_lug,  # Si el escenario es "Otro", mantener el ámbito -->
+<!--     TRUE ~ ambito_lug # Mantener el valor original en otros casos -->
+<!--   )) -->
 
 
-```{r}
-library(dplyr)
+<!-- ``` -->
 
-base_datos <- base_datos %>%
-  mutate(categoria_ambito = case_when(
-    ambito_lug %in% c("Vía pública", "Otros espacios abiertos", "Área deportiva", "Bares", "Comunitario") |
-    escenario %in% c("Vía pública", "Otros espacios abiertos", "Área deportiva", "Bares", "Comunitario") ~ "Espacios públicos",
-    
-    ambito_lug %in% c("Establecimiento educativo", "Institucional", "Escolar") |
-    escenario %in% c("Establecimiento educativo", "Institucional", "Escolar") ~ "Entornos educativos",
-    
-    ambito_lug %in% c("Vivienda", "Hogar") |
-    escenario %in% c("Vivienda", "Hogar") ~ "Hogar",
-    
-    ambito_lug %in% c("Laboral", "Comercio", "Lugar de trabajo") |
-    escenario %in% c("Laboral", "Comercio", "Lugar de trabajo") ~ "Ambiente laboral y comercial",
-    
-    ambito_lug %in% c("Institución de la salud") |
-    escenario %in% c("Institución de la salud") ~ "Institución de la salud",
-    
-    ambito_lug %in% c("Virtual") |
-    escenario %in% c("Virtual") ~ "Virtual",
-    
-    ambito_lug %in% c("Otro") |
-    escenario %in% c("Otro") ~ "Otro",
-    
-    TRUE ~ "Otro"  # Para valores no clasificados o NA
-  ))
-```
 
-```{r}
-base_datos %>%
-  count(categoria_ambito) %>%
-  arrange(desc(n)) %>%
-  mutate(proporcion = round( n / sum(n) * 100, 2))
-```
+<!-- ```{r} -->
+<!-- library(dplyr) -->
 
-La mayoría de los casos de violencia (68.26%) ocurren en el hogar, lo que resalta la vulnerabilidad de las víctimas en su entorno familiar y la necesidad de fortalecer medidas de prevención y protección. Un 18.50% de los casos están en la categoría "Otro", lo que sugiere una clasificación poco definida que podría ocultar patrones importantes y lo que sugiere la necesidad de mayor precisión en la clasificación de los espacios donde ocurre la violencia.
+<!-- base_datos <- base_datos %>% -->
+<!--   mutate(categoria_ambito = case_when( -->
+<!--     ambito_lug %in% c("Vía pública", "Otros espacios abiertos", "Área deportiva", "Bares", "Comunitario") | -->
+<!--     escenario %in% c("Vía pública", "Otros espacios abiertos", "Área deportiva", "Bares", "Comunitario") ~ "Espacios públicos", -->
 
-Los espacios públicos, entornos educativos y laborales presenta menores reportes de violencia sin embargo, sigue siendo relevante, indicando que las agresiones también ocurren fuera del hogar, aunque en menor proporción.
+<!--     ambito_lug %in% c("Establecimiento educativo", "Institucional", "Escolar") | -->
+<!--     escenario %in% c("Establecimiento educativo", "Institucional", "Escolar") ~ "Entornos educativos", -->
+
+<!--     ambito_lug %in% c("Vivienda", "Hogar") | -->
+<!--     escenario %in% c("Vivienda", "Hogar") ~ "Hogar", -->
+
+<!--     ambito_lug %in% c("Laboral", "Comercio", "Lugar de trabajo") | -->
+<!--     escenario %in% c("Laboral", "Comercio", "Lugar de trabajo") ~ "Ambiente laboral y comercial", -->
+
+<!--     ambito_lug %in% c("Institución de la salud") | -->
+<!--     escenario %in% c("Institución de la salud") ~ "Institución de la salud", -->
+
+<!--     ambito_lug %in% c("Virtual") | -->
+<!--     escenario %in% c("Virtual") ~ "Virtual", -->
+
+<!--     ambito_lug %in% c("Otro") | -->
+<!--     escenario %in% c("Otro") ~ "Otro", -->
+
+<!--     TRUE ~ "Otro"  # Para valores no clasificados o NA -->
+<!--   )) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- base_datos %>% -->
+<!--   count(categoria_ambito) %>% -->
+<!--   arrange(desc(n)) %>% -->
+<!--   mutate(proporcion = round( n / sum(n) * 100, 2)) -->
+<!-- ``` -->
+
+<!-- La mayoría de los casos de violencia (68.26%) ocurren en el hogar, lo que resalta la vulnerabilidad de las víctimas en su entorno familiar y la necesidad de fortalecer medidas de prevención y protección. Un 18.50% de los casos están en la categoría "Otro", lo que sugiere una clasificación poco definida que podría ocultar patrones importantes y lo que sugiere la necesidad de mayor precisión en la clasificación de los espacios donde ocurre la violencia. -->
+
+<!-- Los espacios públicos, entornos educativos y laborales presenta menores reportes de violencia sin embargo, sigue siendo relevante, indicando que las agresiones también ocurren fuera del hogar, aunque en menor proporción. -->
 
 ## Caracterización de los agresores
 
@@ -529,7 +526,7 @@ La alta proporción de convivencia con el agresor resalta la dificultad de mucha
 
 
 
-## Datos del hecho
+## Caracterización del hecho
 
 #### Tipos de violencia reportados
 
@@ -630,7 +627,7 @@ Lo anterior que evidencia su severidad y la necesidad de atención médica espec
 Aunque la violencia física es la más frecuente, su tasa de hospitalización es considerablemente menor.
 Esto resalta la importancia de reforzar la respuesta en salud para las víctimas de violencia sexual, ya que sus efectos suelen ser más graves en términos de atención médica.
 
-## ANÁLISIS MULTIVARIADO
+## Análisis multivariado
 
 #### Proporción de atenciones en salud realizadas hasta la notificación de los casos al Sivigila según tipo de violencia
 
@@ -670,10 +667,6 @@ Por otro lado, el informe a autoridades (inf_aut) es más alto en violencia sexu
 
 
 ```{r}
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
 # Suponiendo que la tabla está en formato largo
 # ggplot(tabla_salud_long, aes(x = tipo_violencia, y = atencion, fill = proporcion)) +
 #   geom_tile(color = "white", size = 0.5) +  # Agregar bordes a las celdas
@@ -951,40 +944,40 @@ base_datos %>%
 
 #### Convivencia
 
-##### Ámbito vs convivencia
+<!-- ##### Ámbito vs convivencia -->
 
-```{r}
-base_datos %>%
-  filter(conv_agre != "") %>% 
-  group_by(categoria_ambito, conv_agre) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(categoria_ambito) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2)) 
-```
-
-
-
-```{r}
-base_datos %>%
-  filter(conv_agre != "") %>%
-  group_by(categoria_ambito, conv_agre) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(categoria_ambito) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2)) %>%
-  ggplot(aes(x = categoria_ambito, y = proporcion, fill = conv_agre)) +
-  geom_bar(stat = "identity", position = "fill") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  labs(title = "Proporción de Convivencia con el Agresor por Ámbito",
-       x = "Ámbito",
-       y = "Proporción",
-       fill = "Convivencia con el Agresor") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-```
+<!-- ```{r} -->
+<!-- base_datos %>% -->
+<!--   filter(conv_agre != "") %>%  -->
+<!--   group_by(categoria_ambito, conv_agre) %>% -->
+<!--   summarise(n = n(), .groups = "drop") %>% -->
+<!--   group_by(categoria_ambito) %>% -->
+<!--   mutate(proporcion = round(n / sum(n) * 100, 2))  -->
+<!-- ``` -->
 
 
-El gráfico muestra que la convivencia con el agresor es más frecuente en el hogar (40.69%), lo que resalta la vulnerabilidad de las víctimas dentro del entorno familiar y sugiere un mayor riesgo de revictimización. En instituciones de salud, aunque el número de casos es menor, el 36.36% implica convivencia, posiblemente debido a relaciones de dependencia entre pacientes y cuidadores. En contraste, en espacios públicos (12.90%), laborales (12.98%) y educativos (11.78%), la convivencia con el agresor es baja, lo que indica que la violencia en estos ámbitos suele ser ejercida por personas sin un vínculo cercano con la víctima. Estos hallazgos sugieren la necesidad de fortalecer redes de apoyo en los entornos familiares y garantizar mecanismos de protección accesibles en contextos donde la convivencia con el agresor es frecuente.
+
+<!-- ```{r} -->
+<!-- base_datos %>% -->
+<!--   filter(conv_agre != "") %>% -->
+<!--   group_by(categoria_ambito, conv_agre) %>% -->
+<!--   summarise(n = n(), .groups = "drop") %>% -->
+<!--   group_by(categoria_ambito) %>% -->
+<!--   mutate(proporcion = round(n / sum(n) * 100, 2)) %>% -->
+<!--   ggplot(aes(x = categoria_ambito, y = proporcion, fill = conv_agre)) + -->
+<!--   geom_bar(stat = "identity", position = "fill") + -->
+<!--   scale_y_continuous(labels = scales::percent_format()) + -->
+<!--   labs(title = "Proporción de Convivencia con el Agresor por Ámbito", -->
+<!--        x = "Ámbito", -->
+<!--        y = "Proporción", -->
+<!--        fill = "Convivencia con el Agresor") + -->
+<!--   theme_minimal() + -->
+<!--   theme(axis.text.x = element_text(angle = 45, hjust = 1)) -->
+
+<!-- ``` -->
+
+
+<!-- El gráfico muestra que la convivencia con el agresor es más frecuente en el hogar (40.69%), lo que resalta la vulnerabilidad de las víctimas dentro del entorno familiar y sugiere un mayor riesgo de revictimización. En instituciones de salud, aunque el número de casos es menor, el 36.36% implica convivencia, posiblemente debido a relaciones de dependencia entre pacientes y cuidadores. En contraste, en espacios públicos (12.90%), laborales (12.98%) y educativos (11.78%), la convivencia con el agresor es baja, lo que indica que la violencia en estos ámbitos suele ser ejercida por personas sin un vínculo cercano con la víctima. Estos hallazgos sugieren la necesidad de fortalecer redes de apoyo en los entornos familiares y garantizar mecanismos de protección accesibles en contextos donde la convivencia con el agresor es frecuente. -->
 
 
 
@@ -1035,7 +1028,6 @@ El análisis muestra que la convivencia con el agresor varía según la naturale
 
 ##### Relación entre el parentesco y la convivencia
 
-------------------------------------------------------------------------
 
 ```{r}
 base_datos %>% filter(conv_agre !="") %>% 
@@ -1064,8 +1056,6 @@ base_datos %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-
-
 
 
 ```{r}
