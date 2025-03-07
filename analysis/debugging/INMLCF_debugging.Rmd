@@ -1044,11 +1044,11 @@ f_final_data <- f_final_data %>%
     def_naturaleza,
     circunstancia_del_hecho,
     mecanismo_causal,
-    presunto_agresor,
     escenario_del_hecho,
     actividad_durante_el_hecho,
     manera_de_muerte,
     diagnostico_topografico_de_la_lesion,
+    presunto_agresor,
     razon_del_suicidio
   )
 ```
@@ -1057,7 +1057,7 @@ f_final_data <- f_final_data %>%
 
 <!-- ```{r} -->
 <!-- # Guardar base de datos  -->
-<!-- # save_data(f_final_data, "INMLCF_fatales_debugged", type = "interim", format = "csv") -->
+<!-- # save_data(f_final_data, "INMLCF_fatales_debugged_2015_2024", type = "interim", format = "csv") -->
 <!-- ``` -->
 
 
@@ -1129,18 +1129,12 @@ interp_data <- load_data("INMLCF/interpersonal_INMLCF_2015_2023.csv", type = "ra
 intraf_data <- load_data("INMLCF/intrafamiliar_INMLCF_2015_2023.csv", type = "raw")
 ```
 
-Las bases de datos relacionadas con lesiones no fatales están compuestas
-así: - **Lesiones por presunto delito sexual** tiene `r nrow(se_data)`
-registros y `r ncol(se_data)` columnas. - **Lesiones por violencia
-interpersonal** tiene `r nrow(interp_data)` registros y
-`r ncol(interp_data)` columnas. - **Lesiones por violencia
-intrafamiliar** tiene `r nrow(intraf_data)` registros y
-`r ncol(intraf_data)` columnas.
+Las bases de datos relacionadas con lesiones no fatales están compuestas así:
+-   **Lesiones por presunto delito sexual** tiene `r nrow(se_data)` registros y `r ncol(se_data)` columnas. 
+-   **Lesiones por violencia interpersonal** tiene `r nrow(interp_data)` registros y `r ncol(interp_data)` columnas. 
+-   **Lesiones por violencia intrafamiliar** tiene `r nrow(intraf_data)` registros y `r ncol(intraf_data)` columnas. 
 
-Con respecto a la base del 2024, en ella se encuentran registros que no
-están relacionados con el indicador VGB: presunto delito sexual,
-violencia interpersonal e familiar. Por ende, se seleccionan los casos
-que corresponden a las últimas tres categorías:
+Con respecto a la base del 2024, en ella se encuentran registros que no están relacionados con el indicador VGB: presunto delito sexual, violencia interpersonal e familiar. Por ende, se seleccionan los casos que corresponden a las últimas tres categorías: 
 
 ```{r}
 unique(n_f_data_24$Contexto.de.Violencia)
@@ -1156,9 +1150,7 @@ n_f_data_24 <- n_f_data_24 %>% filter(!(
 )
 ```
 
-Obteniendo una base con `r nrow(n_f_data_24)` registros y
-`r ncol(n_f_data_24)` columnas. Se descartaron
-`r aux_nf_nrow - nrow(n_f_data_24)` registros.
+Obteniendo una base con `r nrow(n_f_data_24)` registros y `r ncol(n_f_data_24)` columnas. Se descartaron `r aux_nf_nrow - nrow(n_f_data_24)` registros. 
 
 ```{r}
 n_f_data_24 <- n_f_data_24 %>% clean_names()
@@ -1167,8 +1159,7 @@ interp_data <- interp_data%>% clean_names()
 intraf_data <- intraf_data%>% clean_names()
 ```
 
-Las bases de datos de 2024 y 2015-2023 no comparten las siguientes
-variables:
+Las bases de datos de 2024 y 2015-2023 no comparten las siguientes variables:
 
 ```{r}
 cols1 <- colnames(n_f_data_24)
@@ -1182,11 +1173,7 @@ unique_cols <- setdiff(
 
 unique_cols
 ```
-
-Dado que todas se encuentran en la base de 2024, al unirlas quedarían
-mínimo `r nrow(se_data) + nrow(interp_data) + nrow(intraf_data)` NA en
-cada una de estas variables. Se decide entonces eliminarlas antes de
-unificar las bases.
+Dado que todas se encuentran en la base de 2024, al unirlas quedarían mínimo `r nrow(se_data) + nrow(interp_data) + nrow(intraf_data)` NA en cada una de estas variables. Se decide entonces eliminarlas antes de unificar las bases.  
 
 ```{r}
 n_f_data_24 <- n_f_data_24 %>% select(-all_of(unique_cols))
@@ -1201,15 +1188,13 @@ colnames(n_f_data)
 
 ## Depuración de las bases de datos
 
-La base unida queda con un total `r n_f_nrow` filas y `r ncol(n_f_data)`
-variables:
+La base unida queda con un total `r n_f_nrow` filas y `r ncol(n_f_data)` variables:
 
 ```{r}
 colnames(n_f_data)
 ```
 
-La mayoría de variables cuenta con un nivel "Sin información" indicando
-que no se conoce la respectiva información, por lo tanto, se cambia a NA
+La mayoría de variables cuenta con un nivel "Sin información" indicando que no se conoce la respectiva información, por lo tanto, se cambia a NA 
 
 ```{r, include=FALSE}
 ## Función para reemplazar los datos de "sin información" a NA
@@ -1228,27 +1213,22 @@ n_f_data <- replace_missing_info(n_f_data)
 ```
 
 ### Selección de variables de interés
-
-Se descartan las siguientes variables porque aplican en caso de que la
-muerte haya sido de forma accidental o por eventos de tránsito
+Se descartan las siguientes variables porque aplican en caso de que la muerte haya sido de forma accidental o por eventos de tránsito
 
 -   Condición de la víctima
--   Medio de Desplazamiento o Transporte
+-   Medio de Desplazamiento o Transporte 
 -   Servicio del Vehículo
 -   Clase o Tipo de Accidente
 -   Objeto de Colisión
 -   Servicio del Objeto de Colisión
 
 Además, se elimina *id* por no ser de relevancia
-
 ```{r}
 n_f_data <- n_f_data %>% select(-c(condicion_de_la_victima,medio_de_desplazamiento_o_transporte,servicio_del_vehiculo,clase_o_tipo_de_accidente,objeto_de_colision,servicio_del_objeto_de_colision, id))
 ```
 
 ### Selección de casos según género
-
-Dado que no se tiene **identidad de género** para todos los registros,
-se filtra por **sexo** los casos en que la víctima sea mujer
+Dado que no se tiene **identidad de género** para todos los registros, se filtra por **sexo** los casos en que la víctima sea mujer
 
 ```{r}
 sort(summary(as.factor(n_f_data$sexo_de_la_victima)))
@@ -1258,48 +1238,29 @@ sort(summary(as.factor(n_f_data$sexo_de_la_victima)))
 n_f_data <- n_f_data %>% filter(sexo_de_la_victima == "Mujer")
 ```
 
-Se obtiene una base de `r nrow(n_f_data)` filas. Se descartaron
-`r n_f_nrow - nrow(n_f_data)`.
+Se obtiene una base de `r nrow(n_f_data)` filas. Se descartaron `r n_f_nrow - nrow(n_f_data)`.
 
 ```{r}
 n_f_nrow <- nrow(n_f_data)
 n_f_data <- n_f_data %>% select(-sexo_de_la_victima)
 ```
 
-### Naturaleza de la violencia
 
-De acuerdo al inventario de información institucional sobre violencia
-por razones de sexo y género
-[(Ver)](https://drive.google.com/drive/folders/1S2whOOYy8lprE9X7PNPouyaonWAtXaMO)
-cuando la lesión no fatal se dio por violencia intrafamiliar, el caso se
-puede sub-clasificar en violencia contra NNA, de pareja, contra adulto
-mayor o entre otros familiares.
+### Naturaleza de la violencia 
 
-Como se vio anteriormente, esta agrupación se encuentra combinada con la
-principal (violencia intrafamiliar, interpersonal y presunto delito
-sexual) en la variable **contexto_de_violencia**.
+De acuerdo al inventario de información institucional sobre violencia por razones de sexo y género [(Ver)](https://drive.google.com/drive/folders/1S2whOOYy8lprE9X7PNPouyaonWAtXaMO) cuando la lesión no fatal se dio por violencia intrafamiliar, el caso se puede sub-clasificar en violencia contra NNA, de pareja, contra adulto mayor o entre otros familiares.
+
+Como se vio anteriormente, esta agrupación se encuentra combinada con la principal (violencia intrafamiliar, interpersonal y presunto delito sexual) en la variable **contexto_de_violencia**. 
 
 ```{r}
 sort(summary(as.factor(n_f_data$contexto_de_violencia)))
 ```
 
-Pensando en separar esa sub-agrupación y en contar con una variable que
-describa la naturaleza de la violencia pero que además se puede unir con
-la base de datos de fatales, se prone lo siguiente:
+Pensando en separar esa sub-agrupación y en contar con una variable que describa la naturaleza de la violencia pero que además se puede unir con la base de datos de fatales, se prone lo siguiente:
 
--   construir una variable llamada **intrafamiliar_sub** con niveles:
-    violencia de pareja, violencia contra adulto mayor, Violencia contra
-    niños, niñas y adolescentes, Violencia entre otros familiares y No
-    aplica cuando sea un tipo de violencia diferente a la intrafamiliar.
+-   construir una variable llamada **intrafamiliar_sub** con niveles: violencia de pareja, violencia contra adulto mayor, Violencia contra niños, niñas y adolescentes, Violencia entre otros familiares y No aplica cuando sea un tipo de violencia diferente a la intrafamiliar.
 
--   Modificar la variable **contexto_de_violencia** para que quede solo
-    con: violencia intrafamiliar, violencia interpersonal y presunto
-    delito sexual. Los dos primeros niveles que también se encuentran en
-    la variable **def_naturaleza** y que permitiría una unión coherente
-    entre las bases. En **def_naturaleza** está el nivel violencia
-    sexual se podría cambiar "presunto delito sexual" por el nombre de
-    ese nivel, pero no se hace para no incurrir en una afirmación
-    errónea.
+-   Modificar la variable **contexto_de_violencia** para que quede solo con: violencia intrafamiliar, violencia interpersonal y presunto delito sexual. Los dos primeros niveles que también se encuentran en la variable **def_naturaleza** y que permitiría una unión coherente entre las bases. En **def_naturaleza** está el nivel violencia sexual se podría cambiar "presunto delito sexual" por el nombre de ese nivel, pero no se hace para no incurrir en una afirmación errónea.
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -1325,9 +1286,11 @@ n_f_data <- n_f_data %>% mutate(
 )
 ```
 
+
 ```{r}
 sort(summary(as.factor(n_f_data$intrafamiliar_sub)))
 ```
+
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -1361,11 +1324,9 @@ n_f_data <- n_f_data %>% mutate(
 ```{r}
 sort(summary(as.factor(n_f_data$contexto_de_violencia)))
 ```
-
 ### Circunstancia del hecho
 
-De acuerdo al diccionario representa la relación entre la víctima y la
-situación del entorno en el momento de los hechos.
+De acuerdo al diccionario representa la relación entre la víctima y la situación del entorno en el momento de los hechos. 
 
 ```{r}
 unique(n_f_data$circunstancia_del_hecho)
@@ -1383,26 +1344,19 @@ n_f_data <- n_f_data %>% mutate(
 )
 ```
 
-**Nota:** hay que tener cuidado porque en la variable **circunstancia
-del hecho** sigue estando niveles que ya están en la variable
-**Contexto**
+**Nota:** hay que tener cuidado porque en la variable **circunstancia del hecho** sigue estando niveles que ya están en la variable **Contexto**
 
 ```{r}
 aux_data <- n_f_data %>% filter(contexto_de_violencia == "Violencia intrafamiliar") %>% select(contexto_de_violencia,intrafamiliar_sub,circunstancia_del_hecho)
 ```
 
-El diccionario indica que esta variable no aplica para los casos de
-violencia intrafamiliar pero como se ve en el resultado anterior, tiene
-niveles relacionados a este tipo de violencia. Exactamente, el
-`r round((nrow(aux_data)*100)/nrow(n_f_data),2)` % de los casos de
-violencia intrafamiliar toman un valor en esta variable
+El diccionario indica que esta variable no aplica para los casos de violencia intrafamiliar pero como se ve en el resultado anterior, tiene niveles relacionados a este tipo de violencia.  Exactamente, el `r round((nrow(aux_data)*100)/nrow(n_f_data),2)` % de los casos de violencia intrafamiliar toman un valor en esta variable
 
 ```{r}
 aux_data %>% group_by(circunstancia_del_hecho) %>% summarise(cantidad = n())
 ```
 
 ### Año del hecho
-
 ```{r}
 table(n_f_data$ano_del_hecho) # Las cifras concuerdan con los datos mostrados en https://www.medicinalegal.gov.co/cifras-de-lesiones-de-causa-externa
 ```
@@ -1451,10 +1405,7 @@ Se unificaron los niveles con escritura diferente.
 
 ### Departamento del hecho
 
-Se cuenta tanto con el código de DIVIPOLA como el nombre del
-departamento. Se comienza verificando cuáles departamentos no
-corresponden a departamentos de colombia con ayuda de la codificación
-Divipola
+Se cuenta tanto con el código de DIVIPOLA como el nombre del departamento. Se comienza verificando cuáles departamentos no corresponden a departamentos de colombia con ayuda de la codificación Divipola 
 
 ```{r, message=FALSE, warning=FALSE}
 DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "raw", col_types = c("numeric", "text", "numeric", 
@@ -1465,10 +1416,7 @@ DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "raw", col_types = c("numeric", "t
 aux_data <- n_f_data %>%
   filter(!codigo_dane_departamento %in% DIVIPOLA$codigo_dane_departamento) %>% select(codigo_dane_departamento,departamento_del_hecho_dane, localidad_del_hecho)
 ```
-
-Son en total `r nrow(aux_data)` registros en los cuales el código no se
-encuentra en la codificación oficial. Sin embargo, todos los casos son
-*999* entonces se asume que es falta de información. Ejemplo:
+Son en total `r nrow(aux_data)` registros en los cuales el código no se encuentra en la codificación oficial. Sin embargo, todos los casos son *999* entonces se asume que es falta de información. Ejemplo:
 
 ```{r}
 aux_data %>% slice_sample(n=5)
@@ -1479,8 +1427,7 @@ aux_data <- n_f_data %>%
   filter(!str_to_lower(departamento_del_hecho_dane) %in% str_to_lower(DIVIPOLA$nombre_departamento)) %>% select(codigo_dane_departamento,departamento_del_hecho_dane,localidad_del_hecho)
 ```
 
-Luego, son en total `r nrow(aux_data)` registros en los cuales el nombre
-no se encuentra en la codificación oficial. Los nombres son:
+Luego, son en total `r nrow(aux_data)` registros en los cuales el nombre no se encuentra en la codificación oficial. Los nombres son:
 
 ```{r}
 unique(aux_data$departamento_del_hecho_dane)
@@ -1497,8 +1444,7 @@ n_f_data <- n_f_data %>%
   ))
 ```
 
-Luego, se verifica si hay casos donde haya discordancia entre el código
-y el nombre del departamento
+Luego, se verifica si hay casos donde haya discordancia entre el código y el nombre del departamento
 
 ```{r}
 n_f_data %>%
@@ -1510,38 +1456,28 @@ n_f_data %>%
 sort(summary(as.factor(n_f_data$departamento_del_hecho_dane)))
 ```
 
-### Municipio del hecho
 
-Se cuenta tanto con el código de DIVIPOLA como el nombre del
-municipio/ciudad/distrito. Se comienza verificando cuáles
-municipio/ciudad/distrito no son de colombia con ayuda de la
-codificación Divipola
+### Municipio del hecho
+Se cuenta tanto con el código de DIVIPOLA como el nombre del municipio/ciudad/distrito. Se comienza verificando cuáles municipio/ciudad/distrito no son de colombia con ayuda de la codificación Divipola 
 
 ```{r}
 aux_data <- n_f_data %>%
   filter(!codigo_dane_municipio %in% DIVIPOLA$codigo_dane_municipio) %>% select(codigo_dane_municipio,municipio_del_hecho_dane, localidad_del_hecho)
 ```
 
-Son en total `r nrow(aux_data)` registros en los cuales el código no se
-encuentra en la codificación oficial. Los códigos son:
+Son en total `r nrow(aux_data)` registros en los cuales el código no se encuentra en la codificación oficial. Los códigos son:
 
 ```{r}
 aux_data %>% group_by(codigo_dane_municipio) %>% summarise(cantidad = n())
 ```
+El código 27086 no aparece en la base de datos por recientes cambios administrativos y de distribución territorial. Este código hace referencia a Belén de Bajirá en el Chocó. 
 
-El código 27086 no aparece en la base de datos por recientes cambios
-administrativos y de distribución territorial. Este código hace
-referencia a Belén de Bajirá en el Chocó.
-
-Con respecto al nombre se encontraron las siguientes discordancias pero
-se comprobó que corresponden a diferencia en la escritura. Por lo tanto,
-se re-nombran estos casos
+Con respecto al nombre se encontraron las siguientes discordancias pero se comprobó que corresponden a diferencia en la escritura. Por lo tanto, se re-nombran estos casos
 
 ```{r}
 n_f_data %>%
   filter(!str_to_lower(municipio_del_hecho_dane) %in% str_to_lower(DIVIPOLA$nombre_municipio)) %>% select(codigo_dane_municipio,municipio_del_hecho_dane) %>% group_by(codigo_dane_municipio) %>%   summarise(municipios_diferentes = paste(unique(municipio_del_hecho_dane), collapse = ", "))
 ```
-
 ```{r}
 n_f_data <- n_f_data %>% mutate(
   municipio_del_hecho_dane = case_when(
@@ -1565,8 +1501,7 @@ n_f_data <- n_f_data %>% mutate(
 )
 ```
 
-Luego, se verifica en cuántos registros no concuerdan el código y el
-nombre del departamento
+Luego, se verifica en cuántos registros no concuerdan el código y el nombre del departamento
 
 ```{r}
 n_f_data %>%
@@ -1582,6 +1517,7 @@ n_f_data %>%
 ```{r}
 sort(summary(as.factor(n_f_data$municipio_del_hecho_dane)))
 ```
+
 
 ### Localidad
 
@@ -1600,42 +1536,32 @@ n_f_data <- n_f_data %>% mutate(
 ) 
 ```
 
-Hace alusión a un lugar específico de una ciudad donde ocurrieron los
-hechos. El diccionario indica que el término localidad se usa para los
-distritos especiales como Bogotá y Cartagena y para las demás ciudades
-se utiliza el término de comuna
+Hace alusión a un lugar específico de una ciudad donde ocurrieron los hechos. El diccionario indica que el término localidad se usa para los distritos especiales como Bogotá y Cartagena y para las demás ciudades se utiliza el término de comuna
 
 ```{r}
 sort(summary(as.factor(n_f_data$localidad_del_hecho)))
 ```
-
-Se observa que efectivamente esta variable registra solo localidades y
-que para esta base solo está registrando localidades de Bogotá.
+Se observa que efectivamente esta variable registra solo localidades y que para esta base solo está registrando localidades de Bogotá.
 
 ```{r}
 aux_data <- n_f_data %>% filter(!is.na(localidad_del_hecho) & localidad_del_hecho != "No aplica") %>% select(departamento_del_hecho_dane,municipio_del_hecho_dane,localidad_del_hecho)
 
 unique(aux_data$departamento_del_hecho_dane)
 ```
-
 Para los demás distritos están tomando valor de "No aplica" o "NA"
 
 ```{r}
 n_f_data %>% filter(municipio_del_hecho_dane %in% c("Barranquilla","Cartagena de indias","Medellín","Santiago de Cali","Riohacha")) %>% select(departamento_del_hecho_dane,municipio_del_hecho_dane,localidad_del_hecho) %>% slice_sample(n = 5)
 ```
+**Nota:** Dado lo anterior, es viable eliminar esta variable. Sin embargo, se dejará para verificar si ayuda a completar información faltante en municipio y departamento del hecho. Sino se elimina.
 
 ### Zona del hecho
-
-Clasificación del territorio que diferencia los espacios comprendidos
-dentro del casco urbano de un municipio y los centros poblados (zona
-urbana), de los que están fuera de él (zona rural).
+Clasificación del territorio que diferencia los espacios comprendidos dentro del casco urbano de un municipio y los centros poblados (zona urbana), de los que están fuera de él (zona rural).
 
 ```{r}
 sort(summary(as.factor(n_f_data$zona_del_hecho)))
 ```
-
 Se unificaron niveles que representan lo mismo.
-
 ```{r}
 n_f_data <- n_f_data %>% mutate(
   zona_del_hecho = case_when(
@@ -1646,9 +1572,7 @@ n_f_data <- n_f_data %>% mutate(
 ```
 
 ### Escenario del hecho
-
-Hace referencia al escenario donde ocurrieron los hechos. Se unifican
-niveles que representan lo mismo.
+Hace referencia al escenario donde ocurrieron los hechos. Se unifican niveles que representan lo mismo.
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -1659,6 +1583,7 @@ n_f_data <- n_f_data %>% mutate(
 ```{r}
 sort(summary(as.factor(n_f_data$escenario_del_hecho)))
 ```
+
 
 ### Actividad durante el hecho
 
@@ -1679,14 +1604,13 @@ n_f_data <- n_f_data %>% mutate(
 )
 ```
 
+
 ```{r}
 sort(summary(as.factor(n_f_data$actividad_durante_el_hecho)))
 ```
 
 ### Mecanismo causal
-
-Corresponde a la clasificación de los tipos de mecanismos
-fisiopatológicos que conllevaron a la lesión de la persona
+Corresponde a la clasificación de los tipos de mecanismos fisiopatológicos que conllevaron a la lesión de la persona
 
 ```{r}
 unique(n_f_data$mecanismo_causal)
@@ -1710,19 +1634,13 @@ n_f_data <- n_f_data %>% mutate(
 aux_data <- n_f_data %>% filter(contexto_de_violencia == "Presunto delito sexual") %>% select(contexto_de_violencia,mecanismo_causal)
 ```
 
-El diccionario indica que esta variable no aplica para los casos de
-presunto delito sexual. Se encontró que el
-`r round((nrow(aux_data)*100)/nrow(n_f_data),2)` % de los casos de
-presunto abuso sexual toman un valor en esta variable
+El diccionario indica que esta variable no aplica para los casos de presunto delito sexual. Se encontró que el `r round((nrow(aux_data)*100)/nrow(n_f_data),2)` % de los casos de presunto abuso sexual toman un valor en esta variable
 
 ```{r}
 aux_data %>% group_by(mecanismo_causal) %>% summarise(cantidad = n())
 ```
 
-Por lo tanto, al no coincidir la cantidad de "No aplica" con la cantidad
-de casos de presunto delito sexual, se asume que los casos "No aplica"
-corresponden a casos donde la víctima no sufrió un trauma o lesión
-externa durante el episodio de presunto delito sexual
+Por lo tanto, al no coincidir la cantidad de "No aplica" con la cantidad de casos de presunto delito sexual, se asume que los casos "No aplica" corresponden a casos donde la víctima no sufrió un trauma o lesión externa durante el episodio de presunto delito sexual
 
 ```{r}
 # #Por lo anterior, se decide cambiar los casos "No aplica" a NA
@@ -1740,8 +1658,7 @@ sort(summary(as.factor(n_f_data$mecanismo_causal)))
 
 ### Parte agredida
 
-Zona anatómica general establecida por la valoración médico legal, donde
-se produjo la lesión.
+Zona anatómica general establecida por la valoración médico legal, donde se produjo la lesión.
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -1755,25 +1672,16 @@ sort(summary(as.factor(n_f_data$diagnostico_topografico_de_la_lesion)))
 aux_data <- n_f_data %>% filter(contexto_de_violencia == "Presunto delito sexual") %>% select(contexto_de_violencia,diagnostico_topografico_de_la_lesion)
 ```
 
-El diccionario indica que esta variable no aplica para los casos de
-presunto delito sexual. Se encontró que el
-`r round((nrow(aux_data)*100)/nrow(n_f_data),2)` % de los casos de
-presunto abuso sexual toman un valor en esta variable
+El diccionario indica que esta variable no aplica para los casos de presunto delito sexual. Se encontró que el `r round((nrow(aux_data)*100)/nrow(n_f_data),2)` % de los casos de presunto abuso sexual toman un valor en esta variable
 
 ```{r}
 aux_data %>% group_by(diagnostico_topografico_de_la_lesion) %>% summarise(cantidad = n())
 ```
 
-Por lo tanto, al no coincidir la cantidad de "No aplica" con la cantidad
-de casos de presunto delito sexual, se asume que los casos "No aplica"
-corresponden a casos donde la víctima no sufrió un trauma o lesión
-externa durante el episodio de presunto delito sexual
+Por lo tanto, al no coincidir la cantidad de "No aplica" con la cantidad de casos de presunto delito sexual, se asume que los casos "No aplica" corresponden a casos donde la víctima no sufrió un trauma o lesión externa durante el episodio de presunto delito sexual
 
 ### Días de incapacidad
-
-Es el parámetro forense en Colombia basado en el tiempo en días que toma
-la reparación de las lesiones, en el marco de un proceso judicial por
-lesiones no fatales
+Es el parámetro forense en Colombia basado en el tiempo en días que toma la reparación de las lesiones, en el marco de un proceso judicial por lesiones no fatales
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -1792,19 +1700,14 @@ unique(n_f_data$dias_de_incapacidad_medicolegal)
 aux_data <- n_f_data %>% filter(contexto_de_violencia == "Presunto delito sexual") %>% select(contexto_de_violencia,dias_de_incapacidad_medicolegal)
 ```
 
-El diccionario indica que esta variable no aplica para los casos de
-presunto delito sexual. Exactamente, el
-`r round((nrow(aux_data)*100)/nrow(n_f_data),2)`% de los casos de de
-presunto delito sexual toman un valor en esta variable
+El diccionario indica que esta variable no aplica para los casos de presunto delito sexual. Exactamente, el `r round((nrow(aux_data)*100)/nrow(n_f_data),2)`% de los casos de de presunto delito sexual toman un valor en esta variable
 
 ```{r}
 aux_data %>% group_by(dias_de_incapacidad_medicolegal) %>% summarise(cantidad = n())
 ```
 
 ### Presunto agresor
-
-Caracterización de la persona que se presume, o se sabe, ha sido el
-causante de la lesión.
+Caracterización de la persona que se presume, o se sabe, ha sido el causante de la lesión. 
 
 ```{r}
 reemplazos <- c(
@@ -1868,11 +1771,9 @@ n_f_data <- n_f_data %>% mutate(
 sort(summary(as.factor((n_f_data$sexo_del_presunto_agresor))))
 ```
 
+
 ### Clasificación de la edad
-
-Se clasifica a la víctima como menor edad (\< 18 años) y mayor de edad
-(\> 18 años)
-
+Se clasifica a la víctima como menor edad (< 18 años) y mayor de edad (> 18 años)
 ```{r}
 n_f_data <- n_f_data %>% mutate(
   grupo_mayor_menor_de_edad = case_when(
@@ -1888,34 +1789,26 @@ sort(summary(as.factor(n_f_data$grupo_mayor_menor_de_edad)))
 ```
 
 ### Edad agrupada
-
-Niveles de desagregación de la edad que presentaba la víctima al momento
-de la valoración médico legal.
+Niveles de desagregación de la edad que presentaba la víctima al momento de la valoración médico legal. 
 
 ```{r}
 sort(summary(as.factor(n_f_data$grupo_de_edad_de_la_victima)))
 ```
 
 ### Edad judicial
-
-Se agrupa la edad en rangos que son de interés judicial
-
+Se agrupa la edad en rangos que son de interés judicial 
 ```{r}
 sort(summary(as.factor(n_f_data$edad_judicial)))
 ```
 
-La diferencia entre los rangos de las variables **edad judicial** y
-**grupo de edad** varía muy poco, por lo tanto, se utiliza **grupo de
-edad** dado que los rangos están mejor formados.
+La diferencia entre los rangos de las variables **edad judicial** y **grupo de edad** varía muy poco, por lo tanto, se utiliza **grupo de edad** dado que los rangos están mejor formados. 
 
 ```{r}
 n_f_data <- n_f_data %>% select(-edad_judicial)
 ```
 
-### Ciclo vital
-
-Corresponde a la etapa de desarrollo vital en que se encontraba la
-víctima, al momento del fallecimiento.
+### Ciclo vital 
+Corresponde a la etapa de desarrollo vital en que se encontraba la víctima, al momento del fallecimiento.
 
 -   Primera infancia: 0-5 años
 -   Infancia: 6-11 años
@@ -1939,7 +1832,6 @@ summary(as.factor(n_f_data$pais_de_nacimiento_de_la_victima))
 ```
 
 ### Grupo poblacional
-
 Se cambia escritura de algunos niveles.
 
 ```{r}
@@ -1960,10 +1852,9 @@ n_f_data <- n_f_data %>% mutate(
 unique(n_f_data$pertenencia_grupal)
 ```
 
-### Ancestro racial
 
-Se refiere a la identificación de las personas como integrantes de
-alguno de los cuatro grupos étnicos reconocidos en Colombia
+### Ancestro racial
+Se refiere a la identificación de las personas como integrantes de alguno de los cuatro grupos étnicos reconocidos en Colombia
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -1987,7 +1878,7 @@ sort(summary(as.factor((n_f_data$tipo_de_discapacidad))))
 
 ### Escolaridad
 
-Se unifican niveles iguales.
+Se unifican niveles iguales. 
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -2002,7 +1893,7 @@ n_f_data <- n_f_data %>% mutate(
 sort(summary(as.factor(n_f_data$escolaridad)))
 ```
 
-### Estado civil
+###   Estado civil
 
 ```{r}
 n_f_data <- n_f_data %>%
@@ -2015,12 +1906,13 @@ n_f_data <- n_f_data %>%
   ))
 ```
 
+
 ```{r}
 sort(summary(as.factor(n_f_data$estado_civil)))
 ```
 
-### Valores faltantes
 
+### Valores faltantes
 ```{r}
 # Buscar valores faltantes y celdas vacias ("")
 na_empty <- data.frame(
@@ -2046,12 +1938,65 @@ na_empty <- na_empty %>%
 na_empty
 ```
 
-Se podría pensar en que algunos valores faltantes en determinas columnas
-se pueden relacionar con los datos de otras columnas para intentar
-disminuir la cantidad de NA. *(PENDIENTE)*
+Se podría pensar en que algunos valores faltantes en determinas columnas se pueden relacionar con los datos de otras columnas para intentar disminuir la cantidad de NA.
 
-Ahora, algunas variables tienen más del 50% de los registros con celdas
-vacías, las cuales son:
+#### Variable pertenencia grupal a partir de pertenencia étnica:
+
+Teniendo en cuenta que la variable pertenencia grupal tiene la categoría "Grupos étnicos",
+```{r}
+unique(n_f_data$pertenencia_grupal)
+```
+
+```{r}
+aux_data <- n_f_data %>% filter(is.na(pertenencia_grupal) & (pertenencia_etnica != "Sin pertenencia étnica" & !is.na(pertenencia_etnica))) %>% select(pertenencia_etnica,pertenencia_grupal)
+```
+
+Se podrían asignar esta categoría a los `r nrow(aux_data)` casos donde esta variable es NA pero la variable pertenencia étnica indica que pertenecen a alguno de los cuatro grupos étnicos reconocidos en Colombia
+
+```{r}
+summary(as.factor(n_f_data$pertenencia_etnica))
+```
+```{r}
+n_f_data <- n_f_data %>% mutate(
+  pertenencia_grupal = ifelse(is.na(pertenencia_grupal) & (pertenencia_etnica != "Sin pertenencia étnica" & !is.na(pertenencia_etnica)),"Grupos étnicos",pertenencia_grupal)
+)
+```
+
+
+
+#### Variable municipio a partir de localidad del hecho o código del municipio:
+Se observa que para los casos donde no se tiene información del municipio, todos toman valor "No aplica" en localidad
+
+```{r}
+n_f_data %>% filter(!is.na(localidad_del_hecho) & (is.na(municipio_del_hecho_dane))) %>% select(municipio_del_hecho_dane,localidad_del_hecho) %>% group_by(localidad_del_hecho) %>% summarise(cantidad = n())
+```
+Por lo tanto, no se puede completar información. Lo mismo sucede con el código del municipio que en todos los NA toma el valor *999* que se asume representa falta de información. Así, se decide eliminar la variable **codigo_dane_municipio**
+
+```{r}
+n_f_data <- n_f_data %>% select(-codigo_dane_municipio)
+```
+
+
+
+#### Variable departamento a partir de localidad del hecho o código del departamento:
+Se observa que para los casos donde no se tiene información del departamento, todos toman valor "No aplica" en localidad
+
+```{r}
+n_f_data %>% filter(!is.na(localidad_del_hecho) & (is.na(departamento_del_hecho_dane))) %>% select(departamento_del_hecho_dane,localidad_del_hecho) %>% group_by(localidad_del_hecho) %>% summarise(cantidad = n())
+```
+Por lo tanto, no se puede completar información. o mismo sucede con el código del departamento que en todos los NA toma el valor *999* que se asume representa falta de información. Así, se decide eliminar la variable **codigo_dane_departamento**
+
+```{r}
+n_f_data <- n_f_data %>% select(-codigo_dane_departamento)
+```
+
+Ahora, como se mencionó en el apartado de localidad, esta variable está tomando valores solo cuando se trata de Bogotá, por lo que se decide eliminarla porque no aportaría información relevante a nivel nacional
+
+```{r}
+n_f_data <- n_f_data %>% select(-localidad_del_hecho)
+```
+
+Ahora, algunas variables tienen más del 50% de los registros con celdas vacías, las cuales son:
 
 ```{r, include=FALSE}
 # Filtrar nombre de las variables con el 50% de celdas vacías
@@ -2067,31 +2012,30 @@ n_f_final_data <- n_f_data %>%
   select(-all_of(c(NA_columns)))
 ```
 
-Así, se obtiene una base de datos con **`r nrow(n_f_final_data)`
-registros** y **`r ncol(n_f_final_data)` variables**, teniendo en cuenta
-que dos de las variables fueron calculadas en el proceso
+Así, se obtiene una base de datos con **`r nrow(n_f_final_data)` registros** y **`r ncol(n_f_final_data)` variables**, teniendo en cuenta que dos de las variables fueron calculadas en el proceso
+
 
 ### Registros duplicados
 
 ```{r}
 # Buscar registros duplicados
-n_f_final_data %>%
-  filter(duplicated(.)) %>%
-  nrow()
+# n_f_final_data %>%
+#   filter(duplicated(.)) %>%
+#   nrow()
 ```
 
 ```{r}
-n_f_final_data <- n_f_final_data %>%
-    distinct()
+# n_f_final_data <- n_f_final_data %>%
+#     distinct()
 ```
 
 Finalmente, al eliminar los registros duplicados se obtiene una base de
-datos depurada con **`r nrow(n_f_final_data)` registros.** y las
-siguientes variables:
+datos depurada con **`r nrow(n_f_final_data)` registros.** y las siguientes variables:
 
 ```{r}
 colnames(n_f_final_data)
 ```
+
 
 ```{r}
 aux_nrow <- n_f_final_data %>%
@@ -2100,12 +2044,11 @@ aux_nrow <- n_f_final_data %>%
 
 ```
 
-**Importante:** Si se seleccionan las filas con registros totalmente
-completos se tiene una base de datos con **`r aux_nrow` filas**.
+**Importante:** Si se seleccionan las filas con registros totalmente completos se tiene una base de datos con **`r aux_nrow` filas**.
 
 ## Conversión a factor
 
-A excepción de edad, semana del hecho, y fechas.
+A excepción de edad, semana del hecho, y fechas. 
 
 ```{r}
 n_f_final_data <- n_f_final_data %>%
@@ -2117,47 +2060,64 @@ n_f_final_data <- n_f_final_data %>%
 ## Orden de las columnas
 
 Se establece un nuevo orden en la base de datos para mayor facilidad en
-el proceso de análisis. *(PENDIENTE)*
+el proceso de análisis. 
+
+```{r}
+n_f_final_data <- n_f_final_data %>%
+  select(
+    pais_de_nacimiento_de_la_victima,
+    grupo_de_edad_de_la_victima,
+    grupo_mayor_menor_de_edad,
+    ciclo_vital,
+    estado_civil,
+    escolaridad,
+    pertenencia_grupal,
+    pertenencia_etnica,
+    tipo_de_discapacidad,
+    ano_del_hecho,
+    mes_del_hecho,
+    dia_del_hecho,
+    rango_de_hora_del_hecho_x_3_horas,
+    departamento_del_hecho_dane,
+    municipio_del_hecho_dane,
+    zona_del_hecho,
+    circunstancia_del_hecho,
+    contexto_de_violencia,
+    intrafamiliar_sub,
+    mecanismo_causal,
+    escenario_del_hecho,
+    actividad_durante_el_hecho,
+    diagnostico_topografico_de_la_lesion,
+    dias_de_incapacidad_medicolegal,
+    sexo_del_presunto_agresor,
+    presunto_agresor,
+  )
+```
+
 
 ## Base de datos depurada
 
 ```{r}
 # Guardar base de datos 
-# save_data(final_data, "INMLCF_nfatales_debugged", type = "interim", format = "csv")
+# save_data(n_f_final_data, "INMLCF_nfatales_debugged_2015_2024", type = "interim", format = "csv")
 ```
 
 ## Resumen
-
 *(PENDIENTE)*
 
 # Unificación de casos de lesiones fatales y no fatales
 
-## Columnas NO en común entre las bases de lesiones fatales y no fatales
+La base de datos de lesiones fatales quedó con `r nrow(f_final_data)` registros y `r ncol(f_final_data)` variables. Mientras que la base de datos de NO fatales quedó con `r nrow(n_f_final_data)` registros y `r ncol(n_f_final_data)`
 
-hay que mirar el nombre de algunas columnas que son como lo mismo pero
-escrito de forma diferente (esto para unir lesiones fatales y no
-fatales).
+## Columnas NO comunes entre las bases 
 
-Por ejemplo: ancestro racial y pertenencia étnica. def_naturaleza y
-contexto de violencia
+hay que mirar el nombre de algunas columnas que son como lo mismo pero escrito de forma diferente (esto para unir lesiones fatales y no fatales).
+
+Por ejemplo: ancestro racial y pertenencia étnica. def_naturaleza y contexto de violencia
 
 ```{r}
 setdiff(
   union(colnames(f_final_data), colnames(n_f_final_data)),(intersect(colnames(f_final_data),  colnames(n_f_final_data)))  
 )
-```
-
-```{r}
-# ## Unificar razon del suicidio con factor_desencadenante_de_la_agresion en una nueva variable?
-# summary(as.factor(f_final_data$razon_del_suicidio))
-# summary(as.factor(n_f_data$factor_desencadenante_de_la_agresion))
-
-```
-
-
-Bases de datos
-
-```{r}
-
 ```
 
