@@ -138,6 +138,7 @@ este municipio.
 
 ```{r, include=FALSE}
 table(as.factor(data$cod_mun_o),as.factor(data$cod_dpto_o))
+aux_nrow <- nrow(data)
 ```
 
 ```{r, echo=TRUE}
@@ -579,7 +580,7 @@ edad_data %>% filter((uni_med_ == 2 &
 Luego, comparando la edad original, la edad al momento del hecho y al
 momento de notificación, se puede observar que en la edad original
 coincide con las otras dos porque sucedió y se notificó el evento el
-mismo día. O la edad coincide con la edad al momento de notificar
+mismo día. O la edad original coincide con la edad al momento de notificar
 
 ```{r}
 # Incluyendo los registros con unidad de medida incorrecta
@@ -604,6 +605,8 @@ Teniendo en cuenta las inconsistencias mostradas, que se puede deducir
 que la edad corresponde a la edad al momento de notificación, y que el
 objetivo es prevenir, se decide calcular la edad en años al momento del
 hecho.
+
+**Nota:** Sin embargo, hasta este punto la diferencia entre el momento del hecho y notificación no excede `r floor(data %>% summarise(max_dif = max(as.numeric(difftime(fec_not, fec_hecho, units = "days")) / 365.25)) %>% pull(max_dif))` en la mayoría de los casos. La diferencia entre la edad que había originalmente en la base y en la edad calculada solo sería de esa cantidad de años para esos casos. 
 
 ```{r}
 aux_nrow <- edad_data  %>% filter((month(fecha_nto_) == 1 &
@@ -664,7 +667,7 @@ Para manejar estas situaciones se decide:
 data <- data %>%
   mutate(
     edad = case_when(
-      # 1. Fecha de nacimiento válida y no genérica
+      # 1. Fecha de nacimiento válida y no genérica se calcula en años
       !is.na(fecha_nto_) &
       !is.na(fec_hecho) &
         !(month(fecha_nto_) == 1 & day(fecha_nto_) == 1) ~
@@ -672,19 +675,19 @@ data <- data %>%
           difftime(fec_hecho, fecha_nto_, units = "days")
         ) / 365.25),
       
-      # 2. Fecha de nacimiento genérica, unidad en años, y fechas coinciden
+      # 2. Fecha de nacimiento genérica, unidad en años, y fechas coinciden se deja original
       uni_med_ == 1 &
         (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) &
         fec_not == fec_hecho ~ edad_,
       
-      # 3. Fecha de nacimiento genérica y diferencia mayor a 1 (unidad en años)
+      # 3. Fecha de nacimiento genérica y diferencia mayor a 1 (unidad en años) se deja la original
       uni_med_ == 1 &
         (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) &
         abs(edad_ - floor(as.numeric(
           difftime(fec_hecho, fecha_nto_, units = "days")
         ) / 365.25)) > 1 ~ edad_,
       
-      # 4. Fecha del hecho o nacimiento son NA, pero fec_hecho = fec_not
+      # 4. Fecha del hecho o nacimiento son NA, pero fec_hecho = fec_not se deja la original pasada años
       (is.na(fecha_nto_) |
          is.na(fec_hecho)) & fec_not == fec_hecho ~ case_when(
            uni_med_ == 1 ~ edad_,
@@ -695,7 +698,7 @@ data <- data %>%
            TRUE ~ NA_real_
          ),
       
-      # 5. Fechas válidas, pero fec_hecho != fec_not
+      # 5. Fechas válidas, pero fec_hecho != fec_not se calcula
       !is.na(fecha_nto_) & !is.na(fec_hecho) &
       fec_not != fec_hecho ~
         floor(as.numeric(
@@ -707,8 +710,6 @@ data <- data %>%
     )
   )
 ```
-
-Finalmente, se reduce a `r sum(is.na(data$edad))` registros con NA.
 
 ### Edad agrupada (grupo_edad_quinque - grupo_edad_cliclo)
 
@@ -970,6 +971,10 @@ sí, lo que puede explicar porqué la gran cantidad de NA
 ```{r}
 summary(as.factor(data$estrato_))
 ```
+```{r}
+table(as.factor(data$estrato_),as.factor(year(data$fec_not)))
+```
+
 
 ### Sexo (sexo\_)
 
@@ -1023,7 +1028,7 @@ data %>% filter(ocupacion_ %in% c("99999.01","LIM","Cl")) %>% select(ocupacion_)
 ```
 
 Entonces se verifica que los valores tomados en esta variable se
-encuentran en la clasificación mediante la siguiente base de datos que
+encuentran en la clasificación mediante una base de datos que
 contiene las 676 ocupaciones posibles (código de 5 dígitos) y en caso
 que el valor de la variable no coincida con los códigos posibles se
 convierte el valor a NA.
@@ -1270,7 +1275,7 @@ data <- data %>% select(-bar_ver_, -localidad_, -cen_pobla_, -vereda_,-ver_cen,-
 ### Hora del hecho
 
 Esta variable no se solicita en las versiones recientes de la ficha, lo
-que explica los `r sum(is.na(data$hora_hecho))` registros con NA.
+que explica los `r sum(is.na(data$hora_hecho) | data$hora_hecho == "")` registros con NA.
 
 ```{r}
 data <- data %>% mutate(hora_hecho = ifelse(hora_hecho == "", NA_character_, hora_hecho))
@@ -1298,11 +1303,8 @@ data <- data %>% select(-c(naturaleza,nat_viosex))
 ```
 
 ### Mecanismo utilizado para la agresión
-
-Esta variable tiene `r sum(is.na(data$armas))` NA.
-
 Se observa que en todos los casos de violencia física se utilizó un
-mecanismo. También en algunos caos de violencia psicológica, abandono y
+mecanismo. También en algunos casos de violencia psicológica, abandono y
 otras violencias sexuales.
 
 ```{r}
@@ -1310,7 +1312,7 @@ otras violencias sexuales.
 ```
 
 Se tiene `r sum(is.na(data$armas))` registros con valores faltantes en
-esta variable.
+esta variable. Analizando el tipo de violencia de estos casos, se obtiene:
 
 ```{r}
 aux <- data %>% filter(is.na(data$armas)) %>% select(armas,def_naturaleza)
@@ -1318,10 +1320,8 @@ aux <- data %>% filter(is.na(data$armas)) %>% select(armas,def_naturaleza)
 summary(as.factor(aux$def_naturaleza))
 ```
 
-Entonces si se decide que los casos donde la violencia sea física, y
-tenga NA en armas se podrían cambiar a otro mecanismo (15). Pero para
-los otros casos no sabemos si se uso o no un arma como para poner "No
-aplica".
+Entonces se podría pensar que en los casos donde la violencia sea física, y
+tenga NA en armas, se cambie NA a otro mecanismo (15). Sin embargo, vemos que los casos donde no se conoce si utilizó un arma, son muy pocos de violencia física a comparación de los otros tipos de violencia
 
 ```{r}
 aux_nrow <- data %>%
@@ -1357,7 +1357,6 @@ data <- data %>%
       que_genita, que_tronco, que_miesup, que_mieinf, cla_gra, ext_que),
     ~ ifelse(is.na(armas) | armas %in% c(12, 13, 14), ., "No aplica")
   ))
-
 ```
 
 ## Información del agresor
@@ -1406,6 +1405,13 @@ necesario eliminarla del análisis.
 
 **Nota:** Hay registros que se notificaron con valor en esta variable
 hasta 2018.
+
+```{r}
+aux_data <- data %>% filter(year(data$fec_hecho) >= 2015)
+
+table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
+```
+
 
 ```{r}
 data <- data %>%
@@ -1882,19 +1888,27 @@ data %>%
 
 ```
 
-<!-- #### Grupos poblacionales -->
+#### Grupos poblacionales
 
-<!-- Según la ficha de notificación, si la víctima no pertenece a los grupos listados (**gp_discapa, gp_desplaz,etc**) se debe llenar con "Sí" la variable **gp_otros** para indicar que pertenece a otro grupo poblacional. Por lo tanto, si **gp_otros** es NA pero algunos de los otros grupos toman valor de "Sí" gp_otros se le asigna "No" y viceversa.  -->
+Según la ficha de notificación, si la víctima no pertenece a los grupos listados (**gp_discapa, gp_desplaz,etc**) se debe llenar con "Sí" la variable **gp_otros** para indicar que pertenece a otro grupo poblacional. 
 
 ```{r}
-# data <- data %>%
-#   mutate(gp_otros = coalesce(gp_otros, 
-#                              pmax(gp_discapa, gp_desplaz, gp_migrant, gp_carcela, 
-#                                   gp_gestan, gp_indigen, gp_pobicbf, gp_mad_com, 
-#                                   gp_desmovi, gp_psiquia, gp_vic_vio, na.rm = TRUE)))
+gp_ <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+             "gp_gestan", "gp_indigen", "gp_pobicbf", "gp_mad_com", 
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio")
+lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
 ```
 
-Se puede observar que disminuyó la cantidad de celdas vacías.
+Por lo tanto, si alguno de los grupos listados es NA y **gp_otros** tiene valor igual a 1 (Sí) se cambia ese NA por 2(No). Mientras que sí es Na **gp_otros** tiene valor igual a 2(No) se deja igual
+
+```{r}
+data <- data %>%
+  mutate(across(all_of(gp_), ~ ifelse(is.na(.x) & gp_otros == 1, 2, .x)))
+
+lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
+```
+
+Luego, de completar valores faltantes, se puede observar que disminuyó la cantidad de celdas vacías.
 
 ```{r}
 aux_data <- data %>% select(-all_of(c(ex_columns, "fec_hos_", "fec_def_","sem_ges_")))
@@ -1932,8 +1946,7 @@ row_na_empty <- data %>% select(-all_of(ex_columns)) %>%
   )
 ```
 
-Luego de rellenar las celdas vacías a partir de información relacionada
-queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo
+Hecho esto queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo
 que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)`% de
 la base de datos. Es decir, se pueden utilizar
 `r nrow(data) - nrow(row_na_empty)` registros completos.
@@ -1943,9 +1956,6 @@ vacías, ya sea porque no se registró la información o porque esa
 variable no es considerada en todas las fichas de notificación del
 SIVIGILA. Como es el caso de **edad agresor**, **estrato\_**, y **hora
 del hecho** que según lo investigado no se piden en fichas recientes.
-
-**Nota:** La edad del agresor aparece hasta la ficha 2015 pero en esta
-base de datos hay valores para los años de ocurriencia hasta el 2018.
 
 ```{r, include=FALSE}
 # Filtrar nombre de las variables con el 50% de celdas vacías
@@ -2002,8 +2012,15 @@ aux_nrow <- final_data %>%
   filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.))) %>% nrow()
 ```
 
-**Importante:** Si se seleccionan las filas con registros totalmente
+**Importante 1:** Si se seleccionan las filas con registros totalmente
 completos se tiene una base de datos con **`r aux_nrow` filas**.
+
+**Importante 2:** 
+```{r}
+summary(as.factor(year(final_data$fec_hecho)))
+```
+
+Si se filtran los casos que sucedieron a partir del 2017, quedaría una base con **`r final_data %>% filter(year(fec_hecho) >= 2017) %>% nrow()`**
 
 ## Conversión a factor
 
@@ -2144,13 +2161,15 @@ final_data <- final_data %>%
 
     -   parentesco el agresor con la víctima
 
-5.  **Variables con inconsistencias:**
+5.  **Variables con inconsistencias o problemáticas:**
 
-    -   todas las fechas
+    -   todas las fechas 
 
-    -   variables relacionadas con la edad de la víctima
+    -   variables relacionadas con la edad de la víctima 
 
     -   edad del agresor
+    
+    -   orientación sexual
 
 6.  **Variables que NO están en fichas actuales:**
 
@@ -2199,3 +2218,5 @@ final_data <- final_data %>%
 
     **Nota:** Los únicos NA que se encontarían son los presentes en las
     tres columnas mencionadas.
+
+11. Si se filtran los casos que sucedieron a partir del 2017, quedaría una base con **`r final_data %>% filter(year(fec_hecho) >= 2017) %>% nrow()`**
