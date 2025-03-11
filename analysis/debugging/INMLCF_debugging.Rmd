@@ -768,7 +768,7 @@ f_data <- f_data %>%
 sort(summary(as.factor(f_data$presunto_agresor)))
 ```
 
-**Nota:** Los casos de "No aplica"corresponden a los casos de suicidio
+**Nota:** Los casos de "No aplica" corresponden a los casos de suicidio
 
 ### Presunto agresor agrupado
 
@@ -781,7 +781,7 @@ notificación*](https://www.hosdenar.gov.co/dependencias/iamii/wp-content/upload
 Esto dado que con la primera clasificación se puede ocultar niveles
 relevantes como: compañero(a) de trabajo y vecino.
 
-**Nota:** Los casos de "No aplica"corresponden a los casos de suicidio
+**Nota:** Los casos de "No aplica" corresponden a los casos de suicidio
 
 ```{r}
 f_data <- f_data %>% mutate(
@@ -1256,11 +1256,11 @@ Como se vio anteriormente, esta agrupación se encuentra combinada con la princi
 sort(summary(as.factor(n_f_data$contexto_de_violencia)))
 ```
 
-Pensando en separar esa sub-agrupación y en contar con una variable que describa la naturaleza de la violencia pero que además se puede unir con la base de datos de fatales, se prone lo siguiente:
+Pensando en separar esa sub-agrupación y en contar con una variable que describa la naturaleza de la violencia pero que además se puede unir con la base de datos de fatales, se propone lo siguiente:
 
 -   construir una variable llamada **intrafamiliar_sub** con niveles: violencia de pareja, violencia contra adulto mayor, Violencia contra niños, niñas y adolescentes, Violencia entre otros familiares y No aplica cuando sea un tipo de violencia diferente a la intrafamiliar.
 
--   Modificar la variable **contexto_de_violencia** para que quede solo con: violencia intrafamiliar, violencia interpersonal y presunto delito sexual. Los dos primeros niveles que también se encuentran en la variable **def_naturaleza** y que permitiría una unión coherente entre las bases. En **def_naturaleza** está el nivel violencia sexual se podría cambiar "presunto delito sexual" por el nombre de ese nivel, pero no se hace para no incurrir en una afirmación errónea.
+-   Modificar la variable **contexto_de_violencia** para que quede solo con: violencia intrafamiliar, violencia interpersonal y presunto delito sexual. Los dos primeros niveles también se encuentran en la variable **def_naturaleza** y permitirían una unión coherente entre las bases. En **def_naturaleza** está el nivel violencia sexual que se podría cambiar "presunto delito sexual" por el nombre de ese nivel, pero no se hace para no incurrir en una afirmación errónea.
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -2110,14 +2110,47 @@ n_f_final_data <- n_f_final_data %>%
 La base de datos de lesiones fatales quedó con `r nrow(f_final_data)` registros y `r ncol(f_final_data)` variables. Mientras que la base de datos de NO fatales quedó con `r nrow(n_f_final_data)` registros y `r ncol(n_f_final_data)`
 
 ## Columnas NO comunes entre las bases 
-
-hay que mirar el nombre de algunas columnas que son como lo mismo pero escrito de forma diferente (esto para unir lesiones fatales y no fatales).
-
-Por ejemplo: ancestro racial y pertenencia étnica. def_naturaleza y contexto de violencia
-
 ```{r}
 setdiff(
   union(colnames(f_final_data), colnames(n_f_final_data)),(intersect(colnames(f_final_data),  colnames(n_f_final_data)))  
 )
 ```
+Sin embargo, algunas de estas variables representan lo mismo en ambas bases pero están escritas de manera diferente
+
+### Pertenencia étnica
+
+**ancestro_racial** pertenece a la base de lesiones fatales
+
+```{r}
+levels(f_final_data$ancestro_racial)
+```
+Mientras que **pertenencia_etnica** en la base de lesiones no fatales
+
+```{r}
+levels(n_f_final_data$pertenencia_etnica)
+```
+
+### Clasificación de violencia
+
+Recordar que el inventario de información institucional sobre violencia por razones
+de sexo y género [(Ver)](https://drive.google.com/drive/folders/1S2whOOYy8lprE9X7PNPouyaonWAtXaMO) establece la siguiente clasificación de violencia según el tipo de lesión
+
+-     **Fatales:** homicidio y suicidio
+-     **No fatales:** exámenes por presunto delito sexual, violencia interpersonal e intrafamiliar. Esta última, a su vez puede ser de pareja, entre otros familiares, contra NNA y adulto mayor
+
+y a partir de los boletines el INMLCF se permitió clasificar las lesiones no fatales en: autolesión voluntaria, feminicidio, violencia económica, interpersonal, intrafamiliar, sexual, sociopolítica y otra.
+
+
+Esta última clasificación podría pensarse como un primer nivel de clasificación para la violencia ejercida, teniendo en cuenta que tiene categorías comunes en ambas bases. En la base de fatales es indicada por la variable creada durante la depuración **def_naturaleza**
+
+```{r}
+levels(f_final_data$def_naturaleza)
+```
+
+y en no fatales por la variable modificada **contexto_de_violencia**
+
+```{r}
+levels(n_f_final_data$contexto_de_violencia)
+```
+
 

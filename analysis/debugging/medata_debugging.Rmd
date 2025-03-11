@@ -275,171 +275,37 @@ data <- data %>%
 
 ## Fechas
 
-El formato inicial es dd/mm/yyyy pero al convertir a objeto Date se
-cambia al formato por defecto: yyyy-mm-dd.
+Se cuenta con las siguientes fechas:
 
-### Notificación (fec_not)
+-     **Fecha de notificiación (fec_not)**: fecha en la que se está informando el evento al siguiente nivel por cualquier mecanismo, en especial para los eventos de notificación inmediata.
+-     **Consulta (fec_con_)**: fecha en la que consultó el paciente.
+-     **Inicio de síntomas (ini_sin_)**: fecha del primer día en que el paciente inició síntomas.
+-     **Hospitalización (fec_hos_)**: fecha en la que el paciente fue hospitalizado como consecuencia del evento.
+-     **Defunción (fec_def_)**: fecha en la que el paciente fallece como consecuencia del evento.
+-     **Nacimiento (fecha_nto_)**
+-     **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento.
 
-Fecha en la que se está informando el evento al siguiente nivel por
-cualquier mecanismo, en especial para los eventos de notificación
-inmediata.
 
-```{r}
-# Cambiar tipo de dato a Date
-data$fec_not <- as.Date(data$fec_not, format = "%d/%m/%Y")
-```
-
-### Consulta (fec_con\_)
-
-Fecha en la que consultó el paciente.
+El formato inicial es dd/mm/yyyy pero al convertir a objeto Date se cambia al formato por defecto: yyyy-mm-dd.
 
 ```{r}
-# Cambiar tipo de dato a Date
-data$fec_con_ <- as.Date(data$fec_con_, format = "%d/%m/%Y")
+date <- c("fec_con_","ini_sin_","fec_hos_","fec_def_","fecha_nto_","fec_hecho","fec_not")
+
+data <- data %>%
+  mutate(across(all_of(date), ~ as.Date(., format = "%d/%m/%Y")))
 ```
 
-### Inicio de síntomas (ini_sin\_)
 
-Fecha del primer día en que el paciente inició síntomas.
+### Inconsistencias
 
 ```{r}
-# Cambiar tipo de dato a Date
-data$ini_sin_ <- as.Date(data$ini_sin_, format = "%d/%m/%Y")
+aux_nrow <- data  %>% filter((month(fecha_nto_) == 1 &
+                                     day(fecha_nto_) == 1)) %>% nrow()
 ```
 
-### Hospitalización (fec_hos\_)
+Se encontró que algunos registros parecen tomar fechas genéricas en la fecha de nacimiento **(fecha_nto\_)** y en la fecha del hecho **(fec_hecho)**. Teniendo en cuenta lo anterior y que las demás fechas no son de mucho interés, se decide quedarse solo con las **fecha de notificación**
 
-Fecha en la que el paciente fue hospitalizado como consecuencia del
-evento.
-
-```{r}
-# Cambiar tipo de dato a Date
-data$fec_hos_ <- as.Date(data$fec_hos_, format = "%d/%m/%Y")
-```
-
-### Defunción (fec_def\_)
-
-Fecha en la que el paciente fallece como consecuencia del evento.
-
-```{r}
-# Cambiar tipo de dato a Date
-data$fec_def_ <- as.Date(data$fec_def_, format = "%d/%m/%Y")
-```
-
-### Nacimiento (fecha_nto\_)
-
-```{r}
-# Cambiar tipo de dato a Date
-data$fecha_nto_ <- as.Date(data$fecha_nto_, format = "%d/%m/%Y")
-```
-
-### Hecho (fec_hecho)
-
-Fecha en que ocurrió el hecho o evento.
-
-```{r}
-# Cambiar tipo de dato a Date
-data$fec_hecho <- as.Date(data$fec_hecho, format = "%d/%m/%Y")
-```
-
-### Condiciones
-
-El formato de notificación 2024 proporciona para la sistematización del
-caso una serie de condiciones que debe cumplirse en estas variables:
-
--   La fecha de notificación debe ser mayor a la fecha del hecho.
-
-```{r, include = FALSE}
-aux_nrow <- nrow(data)
-```
-
-```{r}
-data <- data %>% filter(is.na(fec_hecho) | is.na(fec_not) | (fec_not >= fec_hecho)) 
-```
-
-`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de
-descartarlos, se obtiene un total de `r nrow(data)`.
-
--   La fecha de notificación debe ser mayor o igual a la fecha de inicio
-    de síntomas y a la fecha de consulta.
-
-```{r, include = FALSE}
-aux_nrow <- nrow(data)
-```
-
-```{r, include=FALSE}
-data <- data %>% filter(
-  is.na(fec_not) |
-  is.na(ini_sin_) |
-  is.na(fec_con_) |
-  (fec_not >= ini_sin_ &
-   fec_not >= fec_con_ &
-   fec_not >= fec_hecho) 
-)
-```
-
-`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de
-descartarlos, se obtiene un total de `r nrow(data)`.
-
--   La fecha de inicio de síntomas NO debe ser superior a la fecha de
-    consulta.
-
-```{r, include= FALSE}
-aux_nrow <- nrow(data)
-```
-
-```{r, include=FALSE}
-data <- data %>% filter(is.na(fec_con_) |
-                          is.na(ini_sin_) |
-                          ini_sin_ <= fec_con_)
-```
-
-`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de
-descartarlos, se obtiene un total de `r nrow(data)`.
-
--   La fecha de hospitalización NO puede ser inferior a la fecha de
-    consulta, ni a la fecha de notificación.
-
-```{r, include = FALSE}
-aux_nrow <- nrow(data)
-```
-
-```{r, include=FALSE}
-data <- data %>% filter(
-  is.na(fec_hos_) |
-    is.na(fec_con_) |
-    is.na(fec_not) |
-    (fec_hos_ >= fec_con_ & fec_hos_ >= fec_not)
-) 
-```
-
-`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de
-descartarlos, se obtiene un total de `r nrow(data)`.
-
--   La fecha de nacimiento debe ser inferior a todas las demás fechas.
-
-```{r, include = FALSE}
-aux_nrow <- nrow(data)
-```
-
-```{r, include=FALSE}
-data <- data %>% filter(
-  ((fecha_nto_ < fec_not) | is.na(fecha_nto_) | is.na(fec_not)) &
-    ((fecha_nto_ < fec_con_) |
-       is.na(fecha_nto_) | is.na(fec_con_)) &
-    ((fecha_nto_ < ini_sin_) |
-       is.na(fecha_nto_) | is.na(ini_sin_)) &
-    ((fecha_nto_ < fec_hos_) |
-       is.na(fecha_nto_) | is.na(fec_hos_)) &
-    ((fecha_nto_ < fec_def_) |
-       is.na(fecha_nto_) | is.na(fec_def_)) &
-    ((fecha_nto_ < fec_hecho) |
-       is.na(fecha_nto_) | is.na(fec_hecho))
-) 
-```
-
-`r aux_nrow - nrow(data)` registros no cumplen esta condición. Luego de
-descartarlos, se obtiene un total de `r nrow(data)`.
+**Nota: no se eliminan aún para hacer el análisis de la edad**
 
 ## Información de la víctima
 
@@ -478,7 +344,7 @@ datos de `r nrow(data)`. También se encuentra que para algunos registros
 la unidad de medida son incorrectas.
 
 ```{r, include = FALSE}
-edad_data <- data %>%
+data <- data %>%
   mutate(
     edad_hecho = case_when(
       uni_med_ == 1 ~ floor(as.numeric(
@@ -525,24 +391,7 @@ edad_data <- data %>%
       )),
       # Minutos
       TRUE ~ NA_real_
-    ),
-    comp = case_when(
-      edad_ == edad_hecho & edad_ != edad_notif ~ "Hecho",
-      edad_ == edad_notif & edad_ != edad_hecho ~ "Notificación",
-      edad_ == edad_hecho & edad_ == edad_notif ~ "Ambas",
-      edad_ != edad_hecho & edad_ != edad_notif ~ "Inconsistencia"
-    )
-  ) %>% select(
-    uni_med_,
-    edad_,
-    fecha_nto_,
-    fec_hecho,
-    fec_not,
-    grupo_edad_ciclo,
-    edad_hecho,
-    edad_notif,
-    comp
-  )
+    )) 
 
 ```
 
@@ -553,163 +402,54 @@ compara la edad original con las edades calculadas la diferencia es
 evidente, demostrando que la unidad de medida es incorrecta.
 
 ```{r}
-edad_data %>% filter((uni_med_ == 2 &
-                        (
-                          abs(edad_ - edad_hecho) > 12 & abs(edad_ - edad_notif) > 12
-                        )) |
-                       (uni_med_ == 3 &
-                          (
-                            abs(edad_ - edad_hecho) > 30 & abs(edad_ - edad_notif) > 30
-                          )) |
-                       (uni_med_ == 4 &
-                          (
-                            abs(edad_ - edad_hecho) > 24 & abs(edad_ - edad_notif) > 24
-                          )) |
-                       (uni_med_ == 5 &
-                          (
-                            abs(edad_ - edad_hecho) > 60 & abs(edad_ - edad_notif) > 60
-                          ))) %>% arrange(desc(edad_hecho)) %>% select(uni_med_,
-                                                                       edad_,
-                                                                       edad_hecho,
-                                                                       edad_notif,
-                                                                       fecha_nto_,
-                                                                       fec_hecho,
-                                                                       fec_not)
+data %>% filter(
+  (uni_med_ == 2 & abs(edad_ - edad_notif) > 12) |
+    (uni_med_ == 3 & abs(edad_ - edad_notif) > 30) |
+    (uni_med_ == 4 & abs(edad_ - edad_notif) > 24) |
+    (uni_med_ == 5 & abs(edad_ - edad_notif) > 60)
+) %>% arrange(desc(edad_hecho)) %>% select(uni_med_,
+                                           edad_,
+                                           edad_hecho,
+                                           edad_notif,
+                                           fecha_nto_,
+                                           fec_hecho,
+                                           fec_not)
 ```
-
-Luego, comparando la edad original, la edad al momento del hecho y al
-momento de notificación, se puede observar que en la edad original
-coincide con las otras dos porque sucedió y se notificó el evento el
-mismo día. O la edad original coincide con la edad al momento de notificar
-
-```{r}
-# Incluyendo los registros con unidad de medida incorrecta
-summary(as.factor(edad_data$comp))
-```
-
-Los registros clasificados como inconsistencia, son registros donde la
-edad original no coincide con ninguna de las calculadas. Por ejemplo:
-
-```{r}
-edad_data %>% filter(comp == "Inconsistencia" & (abs(edad_ - edad_hecho) > 1 &
-                                                   abs(edad_ - edad_notif) > 1)) %>% arrange(desc(fecha_nto_)) %>% select(uni_med_,
-                                                                                                                           edad_,
-                                                                                                                           edad_hecho,
-                                                                                                                           edad_notif,
-                                                                                                                           fecha_nto_,
-                                                                                                                           fec_hecho,
-                                                                                                                           fec_not) %>% head(5)
-```
-
-Teniendo en cuenta las inconsistencias mostradas, que se puede deducir
-que la edad corresponde a la edad al momento de notificación, y que el
-objetivo es prevenir, se decide calcular la edad en años al momento del
-hecho.
-
-**Nota:** Sin embargo, hasta este punto la diferencia entre el momento del hecho y notificación no excede `r floor(data %>% summarise(max_dif = max(as.numeric(difftime(fec_not, fec_hecho, units = "days")) / 365.25)) %>% pull(max_dif))` en la mayoría de los casos. La diferencia entre la edad que había originalmente en la base y en la edad calculada solo sería de esa cantidad de años para esos casos. 
-
-```{r}
-aux_nrow <- edad_data  %>% filter((month(fecha_nto_) == 1 &
-                                     day(fecha_nto_) == 1)) %>% nrow()
-```
-
-Sin embargo, `r aux_nrow` registros parecen tomar fechas genéricas en la
-fecha de nacimiento **(fecha_nto\_)** y además, tiene
-`r sum(is.na(data$fecha_nto_))` NA.
-
-```{r}
-edad_data  %>% filter((month(fecha_nto_) == 1 &
-                         day(fecha_nto_) == 1) & (abs(edad_ - edad_hecho) > 1 &
-                                                   abs(edad_ - edad_notif) > 1)) %>%
-  select(uni_med_,
-         edad_,
-         edad_hecho,
-         edad_notif,
-         fecha_nto_,
-         fec_hecho,
-         fec_not) %>% head(5)
-```
+Dado que son pocos registros se decide eliminarlos.
 
 ```{r, include = FALSE}
-aux_nrow <- edad_data  %>% filter((month(fec_hecho) == 1 &
-                                     day(fec_hecho) == 1)) %>% nrow()
+aux_nrow <- nrow(data)
 ```
-
-Mientras que la fecha del hecho **(fec_hecho)** tiene
-`r sum(is.na(data$fec_hecho))` NA y al parecer también tiene
-`r aux_nrow` filas con fechas genéricas
 
 ```{r}
-edad_data  %>% filter((month(fec_hecho) == 1 &
-                         day(fec_hecho) == 1)) %>%
-  select(uni_med_,
-         edad_,
-         fecha_nto_,
-         fec_hecho,
-         fec_not) %>% head(5)
+data <- data %>% filter(!(
+  (uni_med_ == 2 & abs(edad_ - edad_notif) > 12) |
+  (uni_med_ == 3 & abs(edad_ - edad_notif) > 30) |
+  (uni_med_ == 4 & abs(edad_ - edad_notif) > 24) |
+  (uni_med_ == 5 & abs(edad_ - edad_notif) > 60)
+))
 ```
 
-Por los valores faltantes no se podrían calcular la edad al momento del
-hecho para `r sum(is.na(data$fecha_nto_)) + sum(is.na(data$fec_hecho))`
-registros y las fechas genéricas podrían sesgar el calculo de la edad
-
-Para manejar estas situaciones se decide:
-
--   Dado que la edad original de la mayoría de registros con fechas
-    genéricas fue registrada en años, si se tiene este caso y la
-    diferencia entre la edad original y la edad calculada es mayor a 1,
-    se conserva la edad original.
-
--   Si la fecha de nacimiento es genérica o NA y la fecha del hecho y
-    notificación es igual, se conserva la edad original pasada a años.
+Se eliminan `r aux_nrow - nrow(data)` registros, quedando una base de datos de `r nrow(data)`, se eliminan las columnas de fechas a excepción de fecha de notificación y para un mejor manejo se pasa la edad a años.
 
 ```{r}
-data <- data %>%
-  mutate(
-    edad = case_when(
-      # 1. Fecha de nacimiento válida y no genérica se calcula en años
-      !is.na(fecha_nto_) &
-      !is.na(fec_hecho) &
-        !(month(fecha_nto_) == 1 & day(fecha_nto_) == 1) ~
-        floor(as.numeric(
-          difftime(fec_hecho, fecha_nto_, units = "days")
-        ) / 365.25),
-      
-      # 2. Fecha de nacimiento genérica, unidad en años, y fechas coinciden se deja original
-      uni_med_ == 1 &
-        (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) &
-        fec_not == fec_hecho ~ edad_,
-      
-      # 3. Fecha de nacimiento genérica y diferencia mayor a 1 (unidad en años) se deja la original
-      uni_med_ == 1 &
-        (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) &
-        abs(edad_ - floor(as.numeric(
-          difftime(fec_hecho, fecha_nto_, units = "days")
-        ) / 365.25)) > 1 ~ edad_,
-      
-      # 4. Fecha del hecho o nacimiento son NA, pero fec_hecho = fec_not se deja la original pasada años
-      (is.na(fecha_nto_) |
-         is.na(fec_hecho)) & fec_not == fec_hecho ~ case_when(
-           uni_med_ == 1 ~ edad_,
-           uni_med_ == 2 ~ floor(edad_ / 12),
-           uni_med_ == 3 ~ floor(edad_ / 365.25),
-           uni_med_ == 4 ~ floor(edad_ / 8760),
-           uni_med_ == 5 ~ floor(edad_ / 525600),
-           TRUE ~ NA_real_
-         ),
-      
-      # 5. Fechas válidas, pero fec_hecho != fec_not se calcula
-      !is.na(fecha_nto_) & !is.na(fec_hecho) &
-      fec_not != fec_hecho ~
-        floor(as.numeric(
-          difftime(fec_hecho, fecha_nto_, units = "days")
-        ) / 365.25),
-      
-      # En caso de que no cumpla ninguna de las condiciones, se deja la edad original
-      TRUE ~ edad_
-    )
-  )
+datos <- datos %>%
+  mutate(edad_en_anios = case_when(
+    unidad == 1 ~ edad,                           # Años, se mantiene igual
+    unidad == 2 ~ edad / 12,                      # Meses a años
+    unidad == 3 ~ edad / 365.25,                  # Días a años (más preciso)
+    unidad == 4 ~ edad / (365.25 * 24),           # Horas a años
+    unidad == 5 ~ edad / (365.25 * 24 * 60)       # Minutos a años
+  ) %>% floor())
 ```
+
+
+
+```{r}
+data <- data %>% select(-c(edad_hecho,edad_notif,fecha_nto_,fec_def_,fec_hos_,fec_con_,ini_sin_,uni_med_ ))
+```
+
+
 
 ### Edad agrupada (grupo_edad_quinque - grupo_edad_cliclo)
 
@@ -717,11 +457,9 @@ Se comprobó que estas variables tienen los cálculos erróneos para
 algunas filas, pues, al realizar el cálculo de forma manual de la edad
 desde la fecha de nacimiento hasta la fecha del hecho (o notificación),
 en ninguno de los dos casos, corresponde al grupo que se le asigna en
-cada una de estas variables. Así, resulta más óptimo eliminarlas, para
-también garantizar que sea acorde a la nueva edad calculada.
+cada una de estas variables. 
 
-Los niveles de estas variables (grupo_edad_quinque y grupo_edad_cliclo)
-son:
+Los niveles de estas variables (grupo_edad_quinque y grupo_edad_cliclo) son:
 
 ```{r}
 summary(as.factor(data$grupo_edad_quinque))
@@ -731,8 +469,7 @@ summary(as.factor(data$grupo_edad_quinque))
 summary(as.factor(data$grupo_edad_ciclo))
 ```
 
-En la primera agrupación los rangos son de 4 edades mientras que en el
-último no son de igual longitud.
+En la primera agrupación los rangos son de 4 edades mientras que en el último no son de igual longitud.
 
 En los boletines del INMLCF se presentan los análisis con la edad
 agrupada también en rango de 4 edades a excepción de la edad 15-19 que
@@ -744,38 +481,31 @@ lo hace el INMLCF.
 ```{r, echo=TRUE}
 data <- data %>% mutate(
   grupo_edad = case_when(
-    edad >= 0 & edad <= 4 ~ "0-4",
-    edad >= 5 & edad <= 9 ~ "5-9",
-    edad >= 10 & edad <= 14 ~ "10-14",
-    edad >= 15 & edad <= 17 ~ "15-17",
-    edad >= 18 & edad <= 19 ~ "18-19",
-    edad >= 20 & edad <= 24 ~ "20-24",
-    edad >= 25 & edad <= 29 ~ "25-29",
-    edad >= 30 & edad <= 34 ~ "30-34",
-    edad >= 35 & edad <= 39 ~ "35-39",
-    edad >= 40 & edad <= 44 ~ "40-44",
-    edad >= 45 & edad <= 49 ~ "45-49",
-    edad >= 50 & edad <= 54 ~ "50-54",
-    edad >= 55 & edad <= 59 ~ "55-59",
-    edad >= 60 & edad <= 64 ~ "60-64",
-    edad >= 65 & edad <= 69 ~ "65-69",
-    edad >= 70 & edad <= 74 ~ "70-74",
-    edad >= 75 & edad <= 79 ~ "75-79",
-    edad >= 80 ~ "80 y más",
+    edad_ >= 0 & edad_ <= 4 ~ "0-4",
+    edad_ >= 5 & edad_ <= 9 ~ "5-9",
+    edad_ >= 10 & edad_ <= 14 ~ "10-14",
+    edad_ >= 15 & edad_ <= 17 ~ "15-17",
+    edad_ >= 18 & edad_ <= 19 ~ "18-19",
+    edad_ >= 20 & edad_ <= 24 ~ "20-24",
+    edad_ >= 25 & edad_ <= 29 ~ "25-29",
+    edad_ >= 30 & edad_ <= 34 ~ "30-34",
+    edad_ >= 35 & edad_ <= 39 ~ "35-39",
+    edad_ >= 40 & edad_ <= 44 ~ "40-44",
+    edad_ >= 45 & edad_ <= 49 ~ "45-49",
+    edad_ >= 50 & edad_ <= 54 ~ "50-54",
+    edad_ >= 55 & edad_ <= 59 ~ "55-59",
+    edad_ >= 60 & edad_ <= 64 ~ "60-64",
+    edad_ >= 65 & edad_ <= 69 ~ "65-69",
+    edad_ >= 70 & edad_ <= 74 ~ "70-74",
+    edad_ >= 75 & edad_ <= 79 ~ "75-79",
+    edad_ >= 80 ~ "80 y más",
     TRUE ~ NA_character_
   )
 )  
 ```
 
 ```{r, include=FALSE}
-summary(as.factor(data$edad))
-```
-
-**Nota:** Esta variable queda con valores faltantes porque está
-construída con la edad calculada que también generó valores faltantes.
-
-```{r, include=FALSE}
-data <- data %>% select(-c(uni_med_,edad_,grupo_edad_ciclo,grupo_edad_quinque))
+summary(as.factor(data$grupo_edad))
 ```
 
 ### Nombre del país de residencia (npais_resi)
@@ -1407,7 +1137,7 @@ necesario eliminarla del análisis.
 hasta 2018.
 
 ```{r}
-aux_data <- data %>% filter(year(data$fec_hecho) >= 2015)
+aux_data <- data %>% filter(year(data$fec_not) >= 2015)
 
 table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
 ```
@@ -1713,7 +1443,7 @@ ex_columns <- c(
 
 # Se quitan también fec_hos_,fec_def_ y sem_ges_ porque son evento que dependen de un evento, entonces tendrán muchos NA pero no es porque falte info sino que no aplica
 aux_data <- data %>% select(-all_of(c(
-  ex_columns, "fec_hos_", "fec_def_", "sem_ges_"
+  ex_columns, "sem_ges_"
 )))
 ```
 
@@ -1743,14 +1473,6 @@ na_empty
 ```
 
 ```{r}
-NA_hos <- data %>% filter(
-  (pac_hos_ == 1 & is.na(fec_hos_))
-) %>% nrow()
-
-NA_def <- data %>% filter(
-  (con_fin_ == 2 & is.na(fec_def_))
-) %>% nrow()
-
 NA_sem_ges <- data %>% filter(
   (gp_gestan == 1 & is.na(sem_ges_))
 ) %>% nrow()
@@ -1769,13 +1491,8 @@ poniendo "".
 ```{r, include=FALSE}
 # Filtrar filas con uno o más valores faltantes o celdas vacias
 row_na_empty <- data %>% select(-all_of(ex_columns)) %>%
-  filter(
-    if_any(everything(), ~ is.na(.)) |
-      (pac_hos_ == 1 &
-         is.na(fec_hos_)) |
-      (con_fin_ == 2 &
-         is.na(fec_def_)) | (gp_gestan == 1 & is.na(sem_ges_))
-  )
+  filter(if_any(everything(), ~ is.na(.)) |
+           (gp_gestan == 1 & is.na(sem_ges_)))
 # %>%  nrow()
 ```
 
@@ -1911,7 +1628,7 @@ lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
 Luego, de completar valores faltantes, se puede observar que disminuyó la cantidad de celdas vacías.
 
 ```{r}
-aux_data <- data %>% select(-all_of(c(ex_columns, "fec_hos_", "fec_def_","sem_ges_")))
+aux_data <- data %>% select(-all_of(c(ex_columns,"sem_ges_")))
 ```
 
 ```{r, echo=FALSE}
@@ -1937,13 +1654,8 @@ na_empty
 
 ```{r, include=FALSE}
 row_na_empty <- data %>% select(-all_of(ex_columns)) %>%
-  filter(
-    if_any(everything(), ~ is.na(.)) |
-      (pac_hos_ == 1 &
-         is.na(fec_hos_)) |
-      (con_fin_ == 2 &
-         is.na(fec_def_)) | (gp_gestan == 1 & is.na(sem_ges_))
-  )
+  filter(if_any(everything(), ~ is.na(.)) |
+           (gp_gestan == 1 & is.na(sem_ges_)))
 ```
 
 Hecho esto queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo
@@ -1973,13 +1685,7 @@ NA_columns
 ```{r}
 final_data <- data %>%
   select(-all_of(c(ex_columns, NA_columns))) %>%
-  filter(!(pac_hos_ == 1 & is.na(fec_hos_)))
-
-final_data <- final_data %>%
-  filter(!(con_fin_ == 2 & is.na(fec_def_))) # 51391
-
-final_data <- final_data %>%
-  filter(!(gp_gestan == 1 & is.na(sem_ges_))) # 49749
+  filter(!(gp_gestan == 1 & is.na(sem_ges_)))
 ```
 
 Al eliminar estas variables, se obtiene una base de datos con
@@ -2009,7 +1715,7 @@ colnames(final_data)
 
 ```{r}
 aux_nrow <- final_data %>%
-  filter(if_all(-c(sem_ges_, fec_hos_, fec_def_), ~ !is.na(.))) %>% nrow()
+  filter(if_all(-c(sem_ges_), ~ !is.na(.))) %>% nrow()
 ```
 
 **Importante 1:** Si se seleccionan las filas con registros totalmente
@@ -2030,8 +1736,8 @@ hecho, y fechas.
 ```{r}
 final_data <- final_data %>%
   mutate(across(
-    .cols = !all_of(c("edad", "semana_hecho", "fec_not", "fec_hecho",
-                      "fec_con_", "fec_hos_", "fec_def_", "año_hecho","ini_sin_","fecha_nto_")),  
+    .cols = !all_of(c("edad_", "semana_hecho", "fec_not", "fec_hecho",
+                      "año_hecho")),  
     .fns = as.factor                     
   ))
 
@@ -2051,14 +1757,9 @@ final_data <- final_data %>%
     semana_hecho,
     mes_hecho,
     año_hecho,
-    fec_con_,
-    ini_sin_,
-    fec_hos_,
-    fec_def_,
-    fecha_nto_,
     sexo_,
     orient_sex,
-    edad,
+    edad_,
     grupo_edad,
     actividad,
     tip_ss_,
@@ -2113,12 +1814,22 @@ final_data <- final_data %>%
 
 # Base de datos depurada
 
+Se guarda como base final la base con todos los registros completos y sin filtrar por año
+
+```{r}
+final_data <- final_data %>%
+  filter(if_all(-c(sem_ges_), ~ !is.na(.)))
+```
+
+
 ```{r}
 # Guardar base de datos con valores faltantes
 save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "csv")
 ```
 
 # Resumen
+
+1.  Analizando la fecha del hecho se observó que la base original tiene registros de casos del 1900 al 2022. Mientras que los años de notificación van desde 2016 hasta 2023. Es decir que el periodo de tiempo que se menciona en la descripción de MEData corresponde es a los años de notificación. Se nombró la base final con 1900_2022 para identificar los casos por el año del hecho
 
 1.  Se filtró la base inicial por personas que se identifican como
     mujeres o mujer trans y que los casos hayan ocurrido en Medellín,
@@ -2206,8 +1917,8 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
     [*inventario
     variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing).
     En esta base están registros con algunos NA correspondientes a las
-    columnas con valores faltantes menos del 50% y a las columnas de
-    semana de gestación, fecha de defunción y fecha de hospitalización.
+    columnas con valores faltantes menos del 50% y a la columna de
+    semana de gestación
 
     **Nota:** Se dejaron los NA de estas tres variables porque toman
     valores en casos especificos y dado al tipo de dato no es posible
@@ -2216,7 +1927,7 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
 10. Quitando los registros mencionados en el item anterior, la base
     final quedaría con las mismas columnas pero **`r aux_nrow` registros completos.**
 
-    **Nota:** Los únicos NA que se encontarían son los presentes en las
-    tres columnas mencionadas.
+    **Nota 1:** Los únicos NA que se encontarían son los presentes en la columna mencionada
+    **Nota 2:** Esta es la base final que se guarda en data/interim
 
 11. Si se filtran los casos que sucedieron a partir del 2017, quedaría una base con **`r final_data %>% filter(year(fec_hecho) >= 2017) %>% nrow()`**
