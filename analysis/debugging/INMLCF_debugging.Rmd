@@ -1055,10 +1055,10 @@ f_final_data <- f_final_data %>%
 
 ## Base de datos depurada
 
-<!-- ```{r} -->
-<!-- # Guardar base de datos  -->
-<!-- # save_data(f_final_data, "INMLCF_fatales_debugged_2015_2024", type = "interim", format = "csv") -->
-<!-- ``` -->
+```{r}
+# Guardar base de datos
+save_data(f_final_data, "INMLCF_fatales_debugged_2015_2024", type = "interim", format = "csv")
+```
 
 
 ## Resumen
@@ -2099,7 +2099,7 @@ n_f_final_data <- n_f_final_data %>%
 
 ```{r}
 # Guardar base de datos 
-# save_data(n_f_final_data, "INMLCF_nfatales_debugged_2015_2024", type = "interim", format = "csv")
+save_data(n_f_final_data, "INMLCF_nfatales_debugged_2015_2024", type = "interim", format = "csv")
 ```
 
 ## Resumen
