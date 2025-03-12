@@ -2523,10 +2523,7 @@ setdiff(
 ```
 
 Las variables **manera de muerte y razón del suicidio** pertenece solo a la
-base de datos de lesiones fatales. Mientras que las variables **hora del
-hecho, tipo de violencia intrafamiliar, sexo del agresión, tipo de
-discapacidad, contexto de violencia y días de incapacidad** pertenecen
-solo a la base de datos de lesiones no fatales.
+base de datos de lesiones fatales. Mientras que la variable **días de incapacidad** pertenece solo a la base de datos de lesiones no fatales.
 
 Por lo tanto, para la unificación se asignará valor de "No aplica" a los
 registros que no tienen información de estas variables.
@@ -2622,7 +2619,7 @@ INMLCF_data <- INMLCF_data %>%
   mutate(
     razon_del_suicidio = if_else(tipo_lesion == "No fatal", "No aplica", razon_del_suicidio),
     manera_de_muerte = if_else(tipo_lesion == "No fatal", "No aplica", manera_de_muerte),
-    dias_de_incapacidad_medicolegal = if_else(tipo_lesion == "No fatal","No aplica",
+    dias_de_incapacidad_medicolegal = if_else(tipo_lesion == "Fatal","No aplica",
       dias_de_incapacidad_medicolegal
     )
   )
