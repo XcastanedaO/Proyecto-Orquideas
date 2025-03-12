@@ -1,0 +1,88 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-03-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(janitor)
+```
+
+```{r}
+fatales_deb <- load_data("INMLCF_fatales_debugged_2015_2024.csv",type = "interim")
+```
+
+Se eliminan los registros donde la naturaleza del hecho es NAN (esto para poder tener más claridad de que sí sea un caso de VBG) y en caso de que sean Autolesión Voluntaria se eliminan los registros donde Razón del Suicidio en NAN.
+
+```{r}
+fatales_deb <- fatales_deb %>%
+  filter(!is.na(def_naturaleza) & (!def_naturaleza == "Otra") )
+```
+
+```{r}
+sort(summary(as.factor(fatales_deb$def_naturaleza)))
+```
+
+```{r}
+unique(fatales_deb %>%
+  filter(def_naturaleza=="Autolesión voluntaria") %>% select(razon_del_suicidio))
+```
+Se procede a eliminar los registros donde la naturaleza es "Autolesión Voluntaria" pero la razón del suicidio es NA
+
+```{r}
+fatales_deb <- fatales_deb %>%
+  filter(!(def_naturaleza == "Autolesión voluntaria" & is.na(razon_del_suicidio)))
+```
+
+Eliminar razón del suicidio
+```{r}
+fatales_deb <- fatales_deb %>% select(-razon_del_suicidio)
+```
+
+```{r}
+na_empty <- data.frame(
+  Column = names(fatales_deb),
+  total_na = sapply(fatales_deb, function(col)
+    sum(is.na(col))),
+  total_empty = sapply(fatales_deb, function(col)
+    sum(col == "", na.rm = TRUE)),
+  percent_na = sapply(fatales_deb, function(col)
+    round(sum(is.na(
+      col
+    )) / nrow(fatales_deb) * 100, 2)),
+  percent_empty = sapply(fatales_deb, function(col)
+    round(
+      sum(col == "", na.rm = TRUE) / nrow(fatales_deb) * 100, 2
+    )),
+  row.names = NULL
+)
+
+na_empty <- na_empty %>%
+  filter(total_na > 0 | total_empty > 0) %>% arrange(desc(percent_na))
+
+na_empty
+```
+
+
+Valores Faltantes por registros
+```{r}
+fatales_deb$NA_Count <- rowSums(is.na(fatales_deb))
+```
+
+
+```{r}
+summary(as.factor(fatales_deb$NA_Count))
+```
+
