@@ -424,6 +424,8 @@ f_data <- f_data %>% mutate(
 sort(summary(as.factor(f_data$intrafamiliar_sub)))
 ```
 
+
+
 Finalmente, la variable **circunstancia_del_hecho** sigue tomando
 valores de categorías que ya están en **def_naturaleza** y
 **intrafamiliar_sub**. Para estos casos se cambia el valor a NA en
@@ -446,6 +448,9 @@ f_data <- f_data %>% mutate(
   )
 )
 ```
+
+
+
 
 ### Año del hecho
 
@@ -1024,6 +1029,44 @@ sort(summary(as.factor(f_data$escolaridad)))
 sort(summary(as.factor(f_data$estado_civil)))
 ```
 
+### Eliminación de registros no asociados a VBG
+
+Se eliminan los registros donde la naturaleza del hecho es NAN u "Otra" (esto para poder tener más claridad de que sí sea un caso de VBG).
+
+```{r}
+f_data <- f_data %>%
+  filter(!is.na(def_naturaleza) & (!def_naturaleza == "Otra") )
+```
+
+```{r}
+sort(summary(as.factor(f_data$def_naturaleza)))
+```
+
+También, en caso de que la natuleza del hecho sea "Autolesión Voluntaria" (correspondiente a suicidio), se eliminan los registros donde Razón del Suicidio es NAN.
+
+```{r}
+f_data %>%
+  filter(def_naturaleza=="Autolesión voluntaria") %>% group_by(razon_del_suicidio) %>% summarise(n = n())
+```
+```{r}
+f_data <- f_data %>%
+  filter(!(def_naturaleza == "Autolesión voluntaria" & is.na(razon_del_suicidio)))
+```
+
+```{r}
+f_data %>%
+  filter(def_naturaleza=="Autolesión voluntaria") %>% group_by(razon_del_suicidio) %>% summarise(n = n())
+```
+También, se procede a eliminar el nivel "Violencia Interpersonal" de la variable **def_naturaleza**, esto debido a que las circunstancias del hecho asociadas a este tipo de violencia tampoco son VBG.
+
+```{r}
+f_data %>% filter(def_naturaleza=="Violencia interpersonal") %>% group_by(circunstancia_del_hecho) %>% summarise(n = n())
+```
+```{r}
+f_data <- f_data %>% filter(def_naturaleza!="Violencia interpersonal")
+```
+
+
 ### Valores faltantes
 
 ```{r}
@@ -1082,9 +1125,9 @@ que tres de las variables fueron calculadas en el proceso
 
 ```{r}
 # Buscar registros duplicados
-# f_final_data %>%
-#   filter(duplicated(.)) %>%
-#   nrow()
+f_final_data %>%
+  filter(duplicated(.)) %>%
+  nrow()
 ```
 
 ```{r}
@@ -1156,7 +1199,12 @@ f_final_data <- f_final_data %>%
   )
 ```
 
+
+
+
+
 ## Base de datos depurada
+
 
 ```{r}
 # Guardar base de datos
@@ -1226,6 +1274,11 @@ f_final_data <- f_final_data %>%
 7.  Quitando los registros mencionados en el item anterior, la base
     final quedaría con las mismas columnas pero **`r aux_nrow` registros
     completos.**
+    
+8. Se eliminaron los registros en donde la naturaleza del hecho no estaban asociados a Violencia de Género: 
+  - Donde la naturaleza del hecho era NA.
+  - Si era Autolesión Voluntaria y la razón del suicidio era NA
+  - En el caso que fuera Violencia Interpersonal(debido a que las circunstancias del hecho no se consideran VBG.)
 
 # Lesiones no fatales
 
@@ -2233,6 +2286,41 @@ n_f_data <- n_f_data %>%
 ```{r}
 sort(summary(as.factor(n_f_data$estado_civil)))
 ```
+### Eliminación de registros no asociados a VBG
+
+Siguiendo el mismo criterio aplicado a la base de fatales, se eliminan los registros en los que el contexto de violencia es Violencia Interpersonal, ya que las circunstancias del hecho no están relacionadas con VBG, excepto en los casos de Machismo, Violencia Económica y Violencia Sociopolítica.
+
+```{r}
+n_f_data %>%
+  filter(contexto_de_violencia=="Violencia interpersonal") %>% select(circunstancia_del_hecho) %>% unique()
+```
+De este modo, se desagregan los registros de Violencia Interpersonal, y la variable de contexto de violencia adoptará los valores de Violencia Económica y Violencia Sociopolítica (en los casos que aplique según circunstacia del hecho), y se eliminará el nivel de Violencia Interpersonal. En el caso de Machismo, se mantiene dentro de Violencia Interpersonal, pero finalmente se elimina, ya que esta categoría quedaría con muy pocos registros.
+
+```{r}
+sort(summary(as.factor(n_f_data$contexto_de_violencia)))
+```
+
+
+```{r}
+# n_f_data <- n_f_data %>%
+#   mutate(contexto_de_violencia = case_when(
+#     circunstancia_del_hecho == "Económica" ~ "Violencia económica",
+#     circunstancia_del_hecho == "Sociopolítica" ~ "Violencia sociopolítica",
+#     TRUE ~ contexto_de_violencia  # Mantiene los valores originales para los demás casos
+#   ))
+```
+
+```{r}
+# sort(summary(as.factor(n_f_data$contexto_de_violencia)))
+```
+```{r}
+n_f_data %>% filter(circunstancia_del_hecho %in% c("Económica","Sociopolítica", "Machismo")) %>% group_by(contexto_de_violencia) %>% summarise(n=n())
+```
+
+```{r}
+n_f_data <- n_f_data %>%
+  filter(contexto_de_violencia !="Violencia interpersonal")
+```
 
 ### Valores faltantes
 
@@ -2332,10 +2420,6 @@ NA_columns <- na_empty %>%
 NA_columns
 ```
 
-```{r}
-# Base de datos para unificar
-nfatales_uni <- n_f_data
-```
 
 ```{r}
 n_f_final_data <- n_f_data %>%
@@ -2346,13 +2430,35 @@ Así, se obtiene una base de datos con **`r nrow(n_f_final_data)`
 registros** y **`r ncol(n_f_final_data)` variables**, teniendo en cuenta
 que dos de las variables fueron calculadas en el proceso
 
+
 ### Registros duplicados
 
 ```{r}
 # # Buscar registros duplicados
-# n_f_final_data %>%
-#   filter(duplicated(.)) %>%
-#   nrow()
+n_f_final_data %>%
+  filter(duplicated(.)) %>%
+  nrow()
+```
+
+```{r}
+n_f_final_data %>%
+  filter(duplicated(.)) %>% nrow()
+```
+
+```{r}
+dup <- n_f_final_data %>%
+  group_by(across(everything())) %>% # Agrupar por todas las columnas
+  filter(n() > 1) %>% # Mantener solo los grupos con más de una ocurrencia
+  ungroup()
+```
+
+¿Si se debería eliminar los resgistros duplicados?, ya que no hay un identificador único por persona, ¿podría deberse a situaciones iguales dadas en diferentes personas?. 
+
+```{r}
+dup %>% group_by(departamento_del_hecho_dane) %>% summarise(n=n())
+```
+```{r}
+dup %>% group_by(ano_del_hecho) %>% summarise(n=n())
 ```
 
 ```{r}
@@ -2394,6 +2500,8 @@ n_f_final_data <- n_f_final_data %>%
 Se establece un nuevo orden en la base de datos para mayor facilidad en
 el proceso de análisis.
 
+
+
 ```{r}
 n_f_final_data <- n_f_final_data %>%
   select(
@@ -2409,13 +2517,12 @@ n_f_final_data <- n_f_final_data %>%
     ano_del_hecho,
     mes_del_hecho,
     dia_del_hecho,
-    rango_de_hora_del_hecho_x_3_horas,
+    # rango_de_hora_del_hecho_x_3_horas,
     codigo_dane_departamento,
     departamento_del_hecho_dane,
     codigo_dane_municipio,
     municipio_del_hecho_dane,
     zona_del_hecho,
-    circunstancia_del_hecho,
     contexto_de_violencia,
     intrafamiliar_sub,
     mecanismo_causal,
@@ -2435,7 +2542,10 @@ n_f_final_data <- n_f_final_data %>%
 # Guardar base de datos 
 # save_data(n_f_final_data, "INMLCF_nfatales_debugged_2015_2024", type = "interim", format = "csv")
 ```
-
+```{r}
+# Base de datos para unificar
+nfatales_uni <- n_f_data
+```
 ## Resumen
 
 1.  Se filtró la base por mujeres utilizando la variable
@@ -2505,6 +2615,8 @@ n_f_final_data <- n_f_final_data %>%
 7.  Quitando los registros mencionados en el item anterior, la base
     final quedaría con las mismas columnas pero **`r aux_nrow` registros
     completos.**
+
+8. Se elimina los registros donde en contexto de violencia toman el valor de Violencia Interpersonal dado que las circunstacias del hecho no parecen indicar que sean una VBG.
 
 
 # Unificación de casos de lesiones fatales y no fatales
@@ -2672,14 +2784,26 @@ registros** y **`r ncol(INMLCF_data)` variables**.
 
 ```{r}
 # Buscar registros duplicados
-# INMLCF_data %>%
-#   filter(duplicated(.)) %>%
-#   nrow()
+INMLCF_data %>%
+  filter(duplicated(.)) %>%
+  nrow()
+```
+```{r}
+dup <- INMLCF_data %>%
+  group_by(across(everything())) %>% # Agrupar por todas las columnas
+  filter(n() > 1) %>% # Mantener solo los grupos con más de una ocurrencia
+  ungroup()
 ```
 
 ```{r}
-INMLCF_data <- INMLCF_data %>%
-    distinct()
+dup %>% group_by(tipo_lesion) %>% summarise(n = n())
+```
+Sí las bases por indivudual se les elimina los duplicados, ¿por qué al unirlas aparecen más?, ¿son realmente valores duplicados o son casos donde se repite las mismas circunstancias? 
+
+
+```{r}
+# INMLCF_data <- INMLCF_data %>%
+#     distinct()
 ```
 
 Finalmente, al eliminar los registros duplicados se obtiene una base de

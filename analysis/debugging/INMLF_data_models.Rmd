@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-# source("../../utils/load_data.R")
+source("../../utils/load_data.R")
 library(here)
 library(hms)
 library(dplyr)
@@ -21,10 +21,10 @@ library(janitor)
 ```
 
 ```{r}
-fatales_deb <- load_data("INMLCF_fatales_debugged_2015_2024.csv",type = "interim")
+fatales_deb <- load_data("INMLCF/INMLCF_fatales_debugged_2015_2024.csv",type = "interim")
 ```
 
-Se eliminan los registros donde la naturaleza del hecho es NAN (esto para poder tener más claridad de que sí sea un caso de VBG) y en caso de que sean Autolesión Voluntaria se eliminan los registros donde Razón del Suicidio en NAN.
+Se eliminan los registros donde la naturaleza del hecho es NAN (esto para poder tener más claridad de que sí sea un caso de VBG) y en caso de que sean Autolesión Voluntaria se eliminan los registros donde Razón del Suicidio sea NAN.
 
 ```{r}
 fatales_deb <- fatales_deb %>%
@@ -34,6 +34,16 @@ fatales_deb <- fatales_deb %>%
 ```{r}
 sort(summary(as.factor(fatales_deb$def_naturaleza)))
 ```
+
+```{r}
+unique(fatales_deb$def_naturaleza)
+```
+
+```{r}
+unique(fatales_deb %>%
+  filter(def_naturaleza=="Violencia interpersonal") %>% select(circunstancia_del_hecho))
+```
+
 
 ```{r}
 unique(fatales_deb %>%
@@ -46,10 +56,10 @@ fatales_deb <- fatales_deb %>%
   filter(!(def_naturaleza == "Autolesión voluntaria" & is.na(razon_del_suicidio)))
 ```
 
-Eliminar razón del suicidio
 ```{r}
-fatales_deb <- fatales_deb %>% select(-razon_del_suicidio)
+sort(summary(as.factor(fatales_deb$razon_del_suicidio)))
 ```
+
 
 ```{r}
 na_empty <- data.frame(
@@ -75,7 +85,6 @@ na_empty <- na_empty %>%
 na_empty
 ```
 
-
 Valores Faltantes por registros
 ```{r}
 fatales_deb$NA_Count <- rowSums(is.na(fatales_deb))
@@ -85,4 +94,59 @@ fatales_deb$NA_Count <- rowSums(is.na(fatales_deb))
 ```{r}
 summary(as.factor(fatales_deb$NA_Count))
 ```
+ 
+```{r}
+summary(as.factor(fatales_deb$presunto_agresor))
+```
+```{r}
+# fatales_deb %>% filter(def_naturaleza=="Violencia interpersonal") %>% group_by(intrafamiliar_sub) %>% summarise(n =n())
+
+```
+
+## No fatales
+
+```{r}
+n_fatales_deb <- load_data("INMLCF/INMLCF_nfatales_debugged_2015_2024.csv",type = "interim")
+```
+
+```{r}
+sort(summary(as.factor(n_fatales_deb$intrafamiliar_sub)))
+```
+```{r}
+sort(summary(as.factor(n_fatales_deb$contexto_de_violencia)))
+```
+```{r}
+sort(summary(as.factor(n_fatales_deb$circunstancia_del_hecho)))
+```
+Eliminar violencia interpersonal
+
+```{r}
+n_fatales_deb %>%
+  filter(contexto_de_violencia=="Violencia interpersonal") %>% select(circunstancia_del_hecho) %>% unique()
+```
+```{r}
+n_fatales_deb <- n_fatales_deb %>%
+  filter(contexto_de_violencia!="Violencia interpersonal" | circunstancia_del_hecho %in% c("Machismo", "Sociopolítica", "Económica") )# %>% select(circunstancia_del_hecho) %>% unique()
+```
+
+```{r}
+sort(summary(as.factor(n_fatales_deb$contexto_de_violencia)))
+```
+```{r}
+n_fatales_deb %>%
+  filter(contexto_de_violencia=="Violencia interpersonal") %>% group_by(circunstancia_del_hecho) %>% summarise(n = n())
+```
+
+```{r}
+n_fatales_deb %>%
+  filter(intrafamiliar_sub=="No aplica") %>% group_by(contexto_de_violencia) %>% summarise(n = n())
+```
+
+```{r}
+n_fatales_deb %>%
+  filter(intrafamiliar_sub=="No aplica", contexto_de_violencia == "Presunto delito sexual") 
+```
+
+### BASE UNIFICADA
+
 
