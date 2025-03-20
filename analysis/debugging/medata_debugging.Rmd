@@ -21,7 +21,7 @@ La base de datos, titulada *Vigilancia Integrada de la Violencia de
 Género*, está alojada en el portal MEData
 [(Ver)](https://medata.gov.co/dataset/1-026-22-000170). Este recurso
 recopila información sobre los casos sospechosos de violencia de género
-ocurridos en Antioquia, los cuales fueron reportados al SIVIGILA.
+que fueron reportados al SIVIGILA.
 
 -   **Última actualización:** 20 de septiembre de 2023.
 -   **Información sobre las variables:** Adicional al diccionario que
@@ -43,10 +43,12 @@ library(forcats)
 library(lubridate)
 library(stringr)
 library(stringi)
+library(readr)
+library(sf)
 ```
 
 ```{r}
-data <- load_data("medata_1900_2022.csv", type = "raw")
+data <- load_data("medata_1900_2022.csv", type = "raw",col_types = cols(cod_mun_r = col_character(), cod_dpto_r = col_character(), ocupacion_ = col_character(), cbmte_ = col_character()))
 ```
 
 ```{r, include=FALSE}
@@ -99,22 +101,7 @@ data <- data %>%
 
 ## Filtros
 
-El diccionario de la base de datos indica que hay variables del país,
-departamento y municipio de procedencia y del hecho. Lo considera como
-variables separadas para cada uno. Sin embargo, en la ficha solo se
-tiene un campo con el siguiente nombre: **"Departamento y municipio de
-procedencia/ocurrencia"** e indica que se refiere al lugar donde
-posiblemente el paciente adquirió o al cual se atribuye la exposición al
-agente o factor de riesgo que ocasionó el evento.
-
-Se comprobó que estas variables son totalmente iguales, se eliminan las
-variables denominadas como procedencia:
-
-```{r}
-data <- data %>% select(-c(npais_proce,ndep_proce,nmun_proce))
-```
-
-Ahora bien, dado que el interés son los casos de violencia en mujeres
+Dado que el interés son los casos de violencia en mujeres
 que ocurren en Colombia se filtra la base para analizar solo estos
 casos. Según el formato de notificación 2024 cuando la variable
 **identidad de género (ident_gene)** es igual a 2 corresponde a mujer y
@@ -133,24 +120,28 @@ data <- data %>% filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
 Se obtiene un total de `r nrow(data)` registros, descartando
 `r aux_nrow - nrow(data)`.
 
-Luego, como la mayoría de casos ocurrieron en Medellín, se filtra por
-este municipio.
+Luego, se encuentran casos que no fueron notificados en Medellín, como era de esperarse dado lo indicado en el diccionario de la base y que la fuente corresponde al portal de datos de Medellín
 
 ```{r, include=FALSE}
-table(as.factor(data$cod_mun_o),as.factor(data$cod_dpto_o))
 aux_nrow <- nrow(data)
+summary(as.factor(data$nmun_notif))
 ```
 
+Se decide entonces filtrar los casos donde la notificación se hizo en Medellín
+
 ```{r, echo=TRUE}
-data <- data %>% filter(cod_mun_o == 1 & cod_dpto_o == 5)
+data <- data %>% filter(nmun_notif == "MEDELLIN")
 ```
 
 Se obtiene un total de `r nrow(data)` registros, descartando
 `r aux_nrow - nrow(data)`.
 
-**Nota:** Al realizar este filtro se van registros con niveles 8 (no se
-ve en las fichas) y 11 (Violencia sexual en conflicto armado) en la
-variable **nat_viosex**. En total son 8 registros.
+**Nota 1:** Una vez filtrados los casos que se notificaron en Medellín, se elimina las variables **nmun_notif y ndep_notif**
+
+```{r}
+data <- data %>% select(-c(nmun_notif,ndep_notif))
+```
+
 
 ## Clasificación del caso
 
@@ -299,11 +290,12 @@ data <- data %>%
 ### Inconsistencias
 
 ```{r}
-aux_nrow <- data  %>% filter((month(fecha_nto_) == 1 &
-                                     day(fecha_nto_) == 1)) %>% nrow()
+data  %>% filter(
+  (month(fecha_nto_) == 1 & day(fecha_nto_) == 1) | (month(fec_hecho) == 1 & day(fec_hecho) == 1)
+) %>% select(fecha_nto_,fec_hecho,fec_not) %>% head(5)
 ```
 
-Se encontró que algunos registros parecen tomar fechas genéricas en la fecha de nacimiento **(fecha_nto\_)** y en la fecha del hecho **(fec_hecho)**. Teniendo en cuenta lo anterior y que las demás fechas no son de mucho interés, se decide quedarse solo con las **fecha de notificación**
+Se encontró que algunos registros parecen tomar fechas genéricas en la fecha de nacimiento **(fecha_nto\_)** y en la fecha del hecho **(fec_hecho)**. Teniendo en cuenta lo anterior y que las demás fechas también presentan inconsistencias, se decide quedarse solo con la **fecha de notificación**
 
 **Nota: no se eliminan aún para hacer el análisis de la edad**
 
@@ -433,20 +425,19 @@ data <- data %>% filter(!(
 Se eliminan `r aux_nrow - nrow(data)` registros, quedando una base de datos de `r nrow(data)`, se eliminan las columnas de fechas a excepción de fecha de notificación y para un mejor manejo se pasa la edad a años.
 
 ```{r}
-datos <- datos %>%
-  mutate(edad_en_anios = case_when(
-    unidad == 1 ~ edad,                           # Años, se mantiene igual
-    unidad == 2 ~ edad / 12,                      # Meses a años
-    unidad == 3 ~ edad / 365.25,                  # Días a años (más preciso)
-    unidad == 4 ~ edad / (365.25 * 24),           # Horas a años
-    unidad == 5 ~ edad / (365.25 * 24 * 60)       # Minutos a años
+data <- data %>%
+  mutate(edad = case_when(
+    uni_med_ == 1 ~ edad_,                           # Años, se mantiene igual
+    uni_med_ == 2 ~ edad_ / 12,                      # Meses a años
+    uni_med_ == 3 ~ edad_ / 365.25,                  # Días a años (más preciso)
+    uni_med_ == 4 ~ edad_ / (365.25 * 24),           # Horas a años
+    uni_med_ == 5 ~ edad_ / (365.25 * 24 * 60)       # Minutos a años
   ) %>% floor())
 ```
 
 
-
 ```{r}
-data <- data %>% select(-c(edad_hecho,edad_notif,fecha_nto_,fec_def_,fec_hos_,fec_con_,ini_sin_,uni_med_ ))
+data <- data %>% select(-c(edad_hecho,edad_notif,fecha_nto_,fec_def_,fec_hos_,fec_con_,ini_sin_,uni_med_,edad_ ))
 ```
 
 
@@ -475,30 +466,30 @@ En los boletines del INMLCF se presentan los análisis con la edad
 agrupada también en rango de 4 edades a excepción de la edad 15-19 que
 se divide en dos rangos.
 [*(Ejemplo)*](https://www.medicinalegal.gov.co/documents/20143/696494/8+Suicidio+Masatugo+sep+7-21.pdf).
-Teniendo en cuenta esto, se decide agrupar la edad de igual manera que
+Teniendo en cuenta esto, y que se pasaron las edades a años, se decide agrupar la edad de igual manera que
 lo hace el INMLCF.
 
 ```{r, echo=TRUE}
 data <- data %>% mutate(
   grupo_edad = case_when(
-    edad_ >= 0 & edad_ <= 4 ~ "0-4",
-    edad_ >= 5 & edad_ <= 9 ~ "5-9",
-    edad_ >= 10 & edad_ <= 14 ~ "10-14",
-    edad_ >= 15 & edad_ <= 17 ~ "15-17",
-    edad_ >= 18 & edad_ <= 19 ~ "18-19",
-    edad_ >= 20 & edad_ <= 24 ~ "20-24",
-    edad_ >= 25 & edad_ <= 29 ~ "25-29",
-    edad_ >= 30 & edad_ <= 34 ~ "30-34",
-    edad_ >= 35 & edad_ <= 39 ~ "35-39",
-    edad_ >= 40 & edad_ <= 44 ~ "40-44",
-    edad_ >= 45 & edad_ <= 49 ~ "45-49",
-    edad_ >= 50 & edad_ <= 54 ~ "50-54",
-    edad_ >= 55 & edad_ <= 59 ~ "55-59",
-    edad_ >= 60 & edad_ <= 64 ~ "60-64",
-    edad_ >= 65 & edad_ <= 69 ~ "65-69",
-    edad_ >= 70 & edad_ <= 74 ~ "70-74",
-    edad_ >= 75 & edad_ <= 79 ~ "75-79",
-    edad_ >= 80 ~ "80 y más",
+    edad >= 0 & edad <= 4 ~ "0-4",
+    edad >= 5 & edad <= 9 ~ "5-9",
+    edad >= 10 & edad <= 14 ~ "10-14",
+    edad >= 15 & edad <= 17 ~ "15-17",
+    edad >= 18 & edad <= 19 ~ "18-19",
+    edad >= 20 & edad <= 24 ~ "20-24",
+    edad >= 25 & edad <= 29 ~ "25-29",
+    edad >= 30 & edad <= 34 ~ "30-34",
+    edad >= 35 & edad <= 39 ~ "35-39",
+    edad >= 40 & edad <= 44 ~ "40-44",
+    edad >= 45 & edad <= 49 ~ "45-49",
+    edad >= 50 & edad <= 54 ~ "50-54",
+    edad >= 55 & edad <= 59 ~ "55-59",
+    edad >= 60 & edad <= 64 ~ "60-64",
+    edad >= 65 & edad <= 69 ~ "65-69",
+    edad >= 70 & edad <= 74 ~ "70-74",
+    edad >= 75 & edad <= 79 ~ "75-79",
+    edad >= 80 ~ "80 y más",
     TRUE ~ NA_character_
   )
 )  
@@ -508,13 +499,15 @@ data <- data %>% mutate(
 summary(as.factor(data$grupo_edad))
 ```
 
-### Nombre del país de residencia (npais_resi)
+### País de residencia 
 
-Se cambia la estructura de escritura
+Se cuenta con el código y el nombre del país donde reside la víctima. El código corresponde a la norma ISO 3166-1 numérico (*Ver*)[https://www.datosmundial.com/codigos-de-pais.php]
 
-```{r, include=FALSE}
-unique(data$npais_resi)
+```{r}
+table(as.factor(data$cod_pais_r),as.factor(data$npais_resi))
 ```
+
+Se verificó que los códigos son correctos y están bien relacionados con su respectivo nombre. Solo se cambia la escritura de algunos nombres
 
 ```{r, include=FALSE}
 data <- data %>%
@@ -523,51 +516,24 @@ data <- data %>%
     npais_resi = case_when(
       npais_resi == "" ~ NA_character_,
       npais_resi == "ESTADOS UNIDOS DE AMÉRICA" ~ "ESTADOS UNIDOS",
+      npais_resi == "BANGLADESH" ~ "Bangladés",
       TRUE ~ npais_resi
     ),
     npais_resi = str_to_title(tolower(npais_resi))
   )
 ```
 
-### Nombre del departamento de residencia (ndep_resi)
+### Departamento de residencia 
 
-La variable presentaba errores de escritura en algunos nombres de
-departamentos, como la ausencia de tildes y nombres incompletos, estos
-errores fueron corregidos asegurando la consistencia de los nombres de
-los departamentos. Además, habían algunos niveles que representaban
-entidades por fuera de Colombia, como "COJEDES" (Venezuela) y "PANAMÁ"
-(Panamá), que fueron asignados como NA, al igual que el nivel de "DEPTO
-DESCONOCIDO". Por último, los niveles que correspondían a ciudades
-específicas, como "BOGOTA", "CARTAGENA" y "BARRANQUILLA", fueron
+**ndep_resi** representa el nombre del departamento. Esta variable presentaba los siguientes problemas:
+
+-     Niveles como "" o DEPTO DESCONOCIDO". Fueron cambiados a NA.
+-     Algunos niveles que representaban entidades por fuera de Colombia, como "COJEDES" (Venezuela) y "PANAMÁ" (Panamá). Fueron cambiados a "Depto[País]".
+-     En algunos nombres ausencia de tildes y nombres incompletos
+-     Niveles que correspondían a ciudades específicas, como "CARTAGENA" y "BARRANQUILLA". Fueron
 reemplazados por el nombre del departamento al que pertenecen.
 
-```{r, include=FALSE}
-unique(data$ndep_resi)
-```
-
-```{r, include=FALSE}
-data <- data %>%
-  mutate(
-    ndep_resi = as.character(ndep_resi),
-    ndep_resi = recode(
-      ndep_resi,
-      "DEPTO DESCONOCIDO" = NA_character_,
-      "STA MARTA D.E." = "MAGDALENA",
-      "BOGOTA" = "CUNDINAMARCA",
-      "CARTAGENA" = "BOLÍVAR",
-      "BARRANQUILLA" = "ATLÁNTICO",
-      "BOLIVAR" = "BOLÍVAR",
-      "CHOCO" = "CHOCÓ",
-      "BOYACA" = "BOYACÁ",
-      "CORDOBA" = "CÓRDOBA",
-      "ATLANTICO" = "ATLÁNTICO",
-      "QUINDIO" = "QUINDÍO",
-      "GUAJIRA" = "LA GUAJIRA",
-      "NORTE SANTANDER" = "NORTE DE SANTANDER"
-    ),
-    ndep_resi = str_to_title(tolower(ndep_resi))
-  )
-
+```{r}
 data <- data %>%
   mutate(
     ndep_resi = case_when(
@@ -577,29 +543,117 @@ data <- data %>%
       TRUE ~ ndep_resi
     )
   )
-```
 
-### Nombre del municipio de residencia (nmun_resi)
+data <- data %>%
+  mutate(
+    ndep_resi = as.character(ndep_resi),
+    ndep_resi = recode(
+      ndep_resi,
+      "DEPTO DESCONOCIDO" = NA_character_,
+      "BOGOTA" = "BOGOTÁ, D.C.",
+      "STA MARTA D.E." = "MAGDALENA",
+      "CARTAGENA" = "BOLÍVAR",
+      "BARRANQUILLA" = "ATLÁNTICO",
+      "BOLIVAR" = "BOLÍVAR",
+      "CHOCO" = "CHOCÓ",
+      "BOYACA" = "BOYACÁ",
+      "CORDOBA" = "CÓRDOBA",
+      "ATLANTICO" = "ATLÁNTICO",
+      "QUINDIO" = "QUINDÍO",
+      "GUAJIRA" = "LA GUAJIRA",
+      "NORTE SANTANDER" = "NORTE DE SANTANDER",
+      "VALLE" = "VALLE DEL CAUCA"
+    ),
+    ndep_resi = str_to_title(tolower(ndep_resi))
+  )
+```
 
 ```{r, include=FALSE}
-unique(data$nmun_resi)
+unique(data$ndep_resi)
 ```
 
-La variable presentaba inconsistencias en los nombres de los municipios.
-Se reemplazaron los niveles que no tenían un nombre específico de
-municipio o que eran desconocidos por NA, así como aquellos que
-correspondían a países o ciudades fuera de Colombia. Además, algunas
-filas correspondientes al municipio de Bogotá incluían nombres de
-barrios o localidades, por lo que se estandarizó asignando únicamente el
-nombre de la ciudad.
+Luego, **cod_dpto_r** representa el código Divipola de cada departamento presente en la base
+
+```{r}
+summary(as.factor(data$cod_dpto_r))
+```
+Ese par de niveles que son letras se cambian a NA, teniendo en cuenta que es una cantidad mínima de registros
+
+```{r}
+data <- data %>% mutate(cod_dpto_r = case_when(cod_dpto_r %in% c("AY", "CL") ~ NA_character_, TRUE ~ cod_dpto_r))
+```
+
+Ahora, se verifica la concordancia de los códigos y nombres con ayuda de la codificación Divipola.
+
+```{r, message=FALSE, warning=FALSE}
+DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text", "text", "text", 
+        "text", "text","text"))
+```
+
+1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+
+```{r}
+data %>%
+  filter(!cod_dpto_r %in% DIVIPOLA$codigo_dane_departamento) %>% group_by(cod_dpto_r,ndep_resi) %>% summarise(cantidad = n(), .groups = "drop")
+
+```
+
+En los casos de departamentos fuera de Colombia se cambia **cod_dpto_r** a 0 para indicar que no aplica. Cuando el código es 01 y departamento NA, se cambia a NA en código. Y en los demás casos se verificó que esos códigos efectivamente no corresponden a los códigos de esos departamentos. Se cambia a los códigos correctos
+
+```{r}
+data <- data %>%
+  mutate(
+    cod_dpto_r = case_when(
+      cod_dpto_r == "01" ~ NA,  
+      str_detect(ndep_resi, "^Depto\\[.*\\]$") ~ "0",
+      ndep_resi == "Atlántico" ~ "08",
+      ndep_resi == "Bolívar" ~ "13",
+      ndep_resi == "Magdalena" ~ "47",
+      TRUE ~ cod_dpto_r
+    )
+  )
+```
+
+2.    Los departamentos que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!str_to_lower(ndep_resi) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% group_by(cod_dpto_r,ndep_resi) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+Se observa que los nombres que no están en la lista son los correspondientes a departamentos de otros países y NA. Los únicos casos que se pueden cambiar son los casos en que el código es 05 (Antioquia) y el departamento NA
+
+```{r}
+data <- data %>% mutate(
+  ndep_resi = ifelse(is.na(ndep_resi) & cod_dpto_r == "05","Antioquia",ndep_resi)
+)
+```
+
+3.    Los casos donde hay discordancia entre el código y el nombre del departamento son:
+
+```{r}
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_departamento, .keep_all = TRUE),
+    by = c("cod_dpto_r" = "codigo_dane_departamento")
+  ) %>% filter(str_to_lower(ndep_resi) != str_to_lower(nombre_departamento)) %>% group_by(cod_dpto_r, ndep_resi) %>% summarise(cantidad = n(), .groups = "drop")
+```
+No hay discordancias.
+
+```{r, include=FALSE}
+unique(data$ndep_resi)
+```
+
+
+### Municipio de residencia
+
+**nmun_resi** representa el nombre del municipio. Esta variable presentaba inconsistencias en los nombres de los municipios. Se reemplazaron los niveles que no tenían un nombre específico de
+municipio o que eran desconocidos por NA, así como aquellos que correspondían a países fuera de Colombia se cambiaron a Mun[País]
 
 ```{r, include=FALSE}
 data <- data %>%
   mutate(
     nmun_resi = as.character(nmun_resi),
-    
-    # Eliminar el punto de "ANZOÁTEGUI (COJEDES)."
-    nmun_resi = str_replace(nmun_resi, "ANZOÁTEGUI \\(COJEDES\\)\\.", "ANZOÁTEGUI (COJEDES)"),
     
     nmun_resi = recode(
       nmun_resi,
@@ -607,19 +661,22 @@ data <- data %>%
       "COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR" = NA_character_,
       "* ANTIOQUIA. MUNICIPIO DESCONOCIDO" = NA_character_,
       
-      "Bogotá - Suba-El Prado" = "BOGOTÁ",
-      "Bogotá - Kennedy-Calandaima" = "BOGOTÁ",
-      "Bogotá - Teusaquillo-Parque Simón Bolívar - Can" = "BOGOTÁ",
       
+      # "Bogotá - Suba-El Prado" = "BOGOTÁ",
+      # "Bogotá - Kennedy-Calandaima" = "BOGOTÁ",
+      # "Bogotá - Teusaquillo-Parque Simón Bolívar - Can" = "BOGOTÁ",
+      "SANTUARIO" = "EL SANTUARIO",
       "STA MARTA D.E." = "SANTA MARTA",
       "ITAGUI" = "ITAGÜÍ",
-      "CUCUTA" = "CÚCUTA",
-      "BOGOTA" = "BOGOTÁ",
+      "CUCUTA" = "SAN JOSÉ DE CÚCUTA",
+      "CÚCUTA" = "SAN JOSÉ DE CÚCUTA",
+      "BOGOTA" = "BOGOTÁ, D.C.",
       "PUERTO BOYACA" = "PUERTO BOYACÁ",
       "TULUA" = "TULUÁ",
       "APARTADO" = "APARTADÓ",
       "TITIRIBI" = "TITIRIBÍ",
       "POPAYAN" = "POPAYÁN",
+      "CARMEN DE VIBORAL" = "EL CARMEN DE VIBORAL",
       "SAN ANDRES" = "SAN ANDRÉS",
       "MEDELLIN" = "MEDELLÍN",
       "AMAGA" = "AMAGÁ",
@@ -631,7 +688,7 @@ data <- data %>%
       "JERICO" = "JERICÓ",
       "MONTERIA" = "MONTERÍA",
       "CHIGORODO" = "CHIGORODÓ",
-      "DON MATIAS" = "DON MATÍAS",
+      "DON MATIAS" = "DONMATÍAS",
       "ABRIAQUI" = "ABRIAQUÍ",
       "VALPARAISO" = "VALPARAÍSO",
       "CHIA" = "CHÍA",
@@ -652,7 +709,9 @@ data <- data %>%
       "MAGANGUE" = "MAGANGUÉ",
       "BOYACA" = "BOYACÁ",
       "SAHAGUN" = "SAHAGÚN",
-      "EBEJICO" = "EBÉJICO"
+      "EBEJICO" = "EBÉJICO",
+      "CARTAGENA" = "CARTAGENA DE INDIAS",
+      "CALI" = "SANTIAGO DE CALI"
     ),
     # Convertir a título después de todas las transformaciones
     nmun_resi = str_to_title(tolower(nmun_resi))
@@ -666,10 +725,11 @@ data <- data %>%
       nmun_resi == "" ~ NA_character_,
       npais_resi == "España" ~ paste0("Mun[", npais_resi, "]"),
       npais_resi == "Eslovenia" ~ paste0("Mun[", npais_resi, "]"),
+      npais_resi == "Panamá" ~ paste0("Mun[", npais_resi, "]"),
       npais_resi == "Venezuela" ~ paste0("Mun[", npais_resi, "]"),
       npais_resi == "Estados Unidos" ~ paste0("Mun[", npais_resi, "]"),
       npais_resi == "Montserrat" ~ paste0("Mun[", npais_resi, "]"),
-      npais_resi == "Bangladesh" ~ paste0("Mun[", npais_resi, "]"),
+      npais_resi == "Bangladés" ~ paste0("Mun[", npais_resi, "]"),
 
       TRUE ~ nmun_resi
     )
@@ -678,18 +738,383 @@ data <- data %>%
 
 ```
 
-### Nombre comuna de residencia
+```{r, include=FALSE}
+unique(data$nmun_resi)
+```
 
-Esta variable sirve para imputar datos faltantes del municipio
+
+También se cuenta con la columna **cod_mun_r**, que representa el código Divipola de cada municipio presente en la base
+
+```{r}
+unique(data$cod_mun_r)
+```
+Ahora, se verifica la concordancia de los códigos y nombres con ayuda de la codificación Divipola:
+
+1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+
+```{r}
+data %>%
+  mutate(cod_mun_rt = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r)) %>%
+  filter(!paste0(cod_dpto_r,cod_mun_r) %in% DIVIPOLA$codigo_dane_municipio)  %>% 
+  count(cod_mun_r, nmun_resi, ndep_resi, name = "cantidad")
+
+```
+En los casos de municipios fuera de Colombia se cambia **cod_mun_r** a 0 para indicar que no aplica 
+
+```{r}
+data <- data %>%
+  mutate(
+    cod_mun_r = case_when(
+      cod_mun_r == "000" ~ NA,  
+      str_detect(nmun_resi, "^Mun\\[.*\\]$") ~ "0",
+      
+      TRUE ~ cod_mun_r
+    )
+  )
+```
+
+
+2.    Los municipios que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!str_to_lower(nmun_resi) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(cod_mun_r,nmun_resi) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+Se observa que los nombres que no están en la lista son los correspondientes a Municipios de otros países y NA. Los últimos casos se tratan en la sección de valores faltantes
+
+3.    Los casos donde hay discordancia entre el código y el nombre del municipio son:
+
+```{r}
+data %>%
+mutate(cod_mun_rt = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r)) %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
+    by = c("cod_mun_rt" = "codigo_dane_municipio")
+  ) %>%
+  filter(str_to_lower(nmun_resi) != str_to_lower(nombre_municipio)) %>%
+  count(cod_mun_rt, nmun_resi, name = "cantidad")
+```
 
 ```{r, include=FALSE}
-# Recodificar "Sin información" como NA y quitar los números al inicio de nombre_comuna
+unique(data$nmun_resi)
+```
+
+### Comuna de residencia
+
+En la ficha de notificación no se encuentra campo para ingresar comuna y barrio de residencia pero si se solicita la dirección, lo que puede suponer que estas columnas fueron creadas para la publicación de la base en el portal MEData. En este caso, se cuenta con el código y el nombre de la comuna.
+
+```{r}
+unique(data$codigo_comuna)
+```
+
+```{r}
+unique(data$nombre_comuna)
+```
+Se observa que en el nombre de la comuna también se especifica el código, se comprueba que en todos los casos ese código coincida con el que aparece en **codigo_comuna***
+
+```{r}
+data %>% filter(str_sub(nombre_comuna, 0,2) != codigo_comuna) %>% count(codigo_comuna,nombre_comuna, name = "cantidad")
+```
+Los únicos casos donde no hay coincidencia es cuando no hay información. Por lo tanto, se cambia este código y nombre a NA, además, se elimina el código del nombre
+
+```{r, include=FALSE}
 data <- data %>%
   mutate(
     nombre_comuna = recode(nombre_comuna, "Sin información" = NA_character_),
-    nombre_comuna = gsub("^[0-9]+\\s+", "", nombre_comuna)
+    nombre_comuna = gsub("^[0-9]+\\s+", "", nombre_comuna),
+    codigo_comuna = ifelse(codigo_comuna == "99",NA,codigo_comuna)
   )
 ```
+
+```{r}
+unique(data$nombre_comuna)
+```
+Ahora, todos los nombres corresponden a comunas de Medellín, sin embargo, se evidenció que hay casos donde la víctima reside en otros municipios de Colombia
+
+```{r}
+data %>% filter(nmun_resi != "Medellín" & !is.na(nombre_comuna)) %>%  count(nmun_resi,codigo_comuna,nombre_comuna, name="cantidad")
+```
+Esta situación de inconsistencia entre el municipio y la comuna no es extraña bajo el contexto del problema ya que el experto de metroSalud explicó que cuando no se especifica en la ficha información como la dirección de residencia, se pone en la plataforma de SIVIGILA información sobre el lugar de notificación. Entonces estas inconsistencias puede deberse en que se puso en SIVIGILA la dirección del lugar de notificación en Medellín y al crear las variables comuna y barrio claramente serían de Medellín
+
+
+Finalmente, se verifica que haya concordancia entre el código y el nombre de la comuna. El recurso utilizado para la verificación proviene del portal [GeoMedellín](https://www.medellin.gov.co/geomedellin/datosAbiertos/243)
+
+```{r}
+comunas <- st_read(file.path(here(), "data/auxiliary/comunas_corregimientos_Medellin"))
+```
+
+1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+
+```{r}
+data %>%
+  filter(!codigo_comuna %in% comunas$codigo)  %>% 
+  count(codigo_comuna,nombre_comuna, name = "cantidad")
+```
+2.    Las comunas que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!str_to_lower(nombre_comuna) %in% str_to_lower(comunas$nombre))  %>% count(codigo_comuna,nombre_comuna, name ="Cantidad")
+```
+Las inconsistencias corresponden a escritura, por ende, solo se cambia a como aparece en la base auxiliar
+
+```{r}
+data <- data %>% mutate(
+  nombre_comuna = case_when(
+    nombre_comuna == "Laureles" ~ "Laureles Estadio",
+    nombre_comuna == "La America" ~ "La América",
+    nombre_comuna == "Corregimiento de Palmitas" ~ "Corregimiento de San Sebastián de Palmitas",
+    nombre_comuna == "Corregimiento de San Cristobal" ~ "Corregimiento de San Cristóbal",
+    TRUE ~ nombre_comuna
+  )
+)
+```
+
+3.    Los casos donde hay discordancia entre el código y el nombre del municipio son:
+
+```{r}
+data %>%
+  left_join(
+    comunas %>% distinct(codigo, .keep_all = TRUE),
+    by = c("codigo_comuna" = "codigo")
+  ) %>%
+  filter(str_to_lower(nombre_comuna) != str_to_lower(nombre)) %>%
+  count(codigo_comuna, nombre_comuna, name = "cantidad")
+```
+
+No hay inconsistencias entre el código y el nombre. 
+
+```{r}
+data %>% count(codigo_comuna,nombre_comuna,name = "Cantidad")
+```
+### Barrio de residencia
+
+En la ficha de notificación no se encuentra campo para ingresar comuna y barrio de residencia pero si se solicita la dirección, lo que puede suponer que estas columnas fueron creadas para la publicación de la base en el portal MEData. En este caso, se cuenta con el código y el nombre del barrio o vereda. Para comenzar se cambian los indicativos de falta de información por NA y se unifica escritura en el variable **nombre_barrio**
+
+```{r}
+data <- data %>% mutate(
+  codigo_barrio = ifelse(codigo_barrio %in% c("999","9999"), NA,codigo_barrio),
+  nombre_barrio = ifelse(nombre_barrio %in% c("Sin información","0"),NA,nombre_barrio)
+)
+```
+
+
+```{r}
+data <- data %>%
+  mutate(
+    nombre_barrio = str_replace_all(nombre_barrio, "\\b(N\\.?|No\\.?)\\s?(\\d+)", "No.\\2"),
+    nombre_barrio = str_squish(nombre_barrio),
+    nombre_barrio = case_when(
+      nombre_barrio == "SUBURB El Plan" ~ "El Plan",
+      nombre_barrio %in% c("Palmitas","Suburbano Palmitas") ~ "Palmitas Sector Central",
+      nombre_barrio %in% c("Santa Elena Central", "Suburbano Santa Elena Central") ~ "Santa Elena Sector Central",
+      nombre_barrio %in% c("La Urquita","Suburbano Urquita") ~ "Urquitá",
+      nombre_barrio == "La Hondanada" ~ "La Hondonada",
+      nombre_barrio == "El Estadio" ~ "Estadio",
+      nombre_barrio %in% c("Barrio Cerro El Volador", "B. Cerro El Volador") ~ "B. Cerro El Volador",
+      nombre_barrio %in% c("Barrios de Jesus", "Barrio de Jesús") ~ "Barrios de Jesús",
+      nombre_barrio %in% c("Bermejal Los Alamos", "Bermejal-Los Alamos") ~ "Bermejal-Los Álamos",
+      nombre_barrio %in% c("Cabecera Urbana San Cristobal", "Cabecera aurbana San Cristobal") ~ "Cabecera Urbana Corregimiento San Cristóbal",
+      nombre_barrio %in% c("Maria Cano Carambolas", "María Cano Carambolas") ~ "María Cano-Carambolas",
+      nombre_barrio %in% c("San Jose Del Manzanillo", "San Jose del Manzanillo") ~ "San José del Manzanillo",
+      nombre_barrio %in% c("La Palma - El Patio","Suburbano Palma - El Patio") ~ "La Palma-El Patio",
+      nombre_barrio %in% c("Suburbano Pedregal alto") ~ "Pedregal Alto",
+      nombre_barrio == "Suburbano el Tesoro" ~ "El Tesoro",
+      nombre_barrio == "Area de Expansion Altos de Calasanz" ~ "Área de Expansión Altos de Calasanz",
+      nombre_barrio == "Área de Exoancsión San Antonio de Prado" ~ "Área de Expansión San Antonio de Prado",
+      nombre_barrio == "Aeroparque Juan Pablo II" ~ "Parque Juan Pablo II",
+      nombre_barrio == "Alejandria" ~ "Alejandría",
+      nombre_barrio == "Alejandro Echavarria" ~ "Alejandro Echavarría",
+      nombre_barrio == "Alfonso Lopez" ~ "Alfonso López",
+      nombre_barrio == "Andalucia" ~ "Andalucía",
+      nombre_barrio == "Area De Expansion Altavista" ~ "Área de Expansión Altavista",
+      nombre_barrio == "Area De Expansion Belen Rincon" ~ "Área de Expansión Belén Rincón",
+      nombre_barrio %in% c("Area De Expansion El Noral", "Área de Expansión El Noral") ~ "Área De Expansión El Noral",
+      nombre_barrio == "Berlin" ~ "Berlín",
+      nombre_barrio == "Aguas Frias" ~ "Aguas Frías",
+      nombre_barrio == "Boqueron" ~ "Boquerón",
+      nombre_barrio == "El Corazon El Morro" ~ "El Corazón El Morro",
+      nombre_barrio == "El Nogal Los Almendros" ~ "El Nogal-Los Almendros",
+      nombre_barrio == "El Progreso No.2" ~ "Progreso No.2",
+      nombre_barrio == "Loma de los Bernal" ~ "La Loma de Los Bernal",
+      nombre_barrio == "La Volcana Guayabal" ~ "Volcana Guayabal",
+      nombre_barrio == "Los Angeles" ~ "Los Ángeles",
+      nombre_barrio == "Nueva Villa de Aburrá" ~ "Nueva Villa del Aburrá",
+      nombre_barrio == "Nueva Villa de la Iguana" ~ "Nueva Villa de La Iguaná",
+      nombre_barrio == "Progreso" ~ "El Progreso",
+      nombre_barrio == "San Jose la Cima No.1" ~ "San José La Cima No.1",
+      nombre_barrio == "San Jose la Cima No.2" ~ "San José La Cima No.2",
+      nombre_barrio == "Santa Lucia" ~ "Santa Lucía",
+      nombre_barrio == "Santa Maria de los Angeles" ~ "Santa María de Los Ángeles",
+      nombre_barrio == "Simón Bolivar" ~ "Simón Bolívar",
+      nombre_barrio %in% c("Travesias","Suburbano Travesias") ~ "Travesías",
+      nombre_barrio == "U.P.B." ~ "U.P.B",
+      nombre_barrio == "Unidad Deportiva Atanasio Girardot" ~ "U.D. Atanasio Girardot",
+      nombre_barrio == "Villa Liliam" ~ "Villa Lilliam",
+      nombre_barrio %in% c("Terminal de Transportes Norte") ~ "Terminal de Transporte",
+      nombre_barrio == "Cabecera San Antonio de Prado" ~ "San Antonio de Prado",
+      
+      TRUE ~ nombre_barrio
+    ))
+```
+
+Luego, se verifica que haya concordancia entre el código y el nombre del barrio. El recurso utilizado para la verificación proviene del portal [GeoMedellín](https://www.medellin.gov.co/geomedellin/datosAbiertos/234). 
+
+**Nota:** Se selecciona este recurso en vez de un recurso que indica barrios y veredas a nivel nacional, porque se intuye que esta variable tendrá solo barrios de Medellín como sucede con la variable de comuna
+
+```{r}
+barrios <- st_read(file.path(here(), "data/auxiliary/barrios_veredas_Medellin"))
+barrios <- barrios %>% mutate(nombre = str_squish(nombre))
+```
+
+1.   Al analizar que códigos no están en la lista, se encontraron los siguientes:
+
+```{r}
+data %>%
+  filter(!is.na(nombre_barrio) & !is.na(codigo_barrio) & !codigo_barrio %in% barrios$identifica)  %>% 
+  count(nmun_resi,codigo_barrio,nombre_barrio, name = "cantidad")
+```
+
+Se busca en el [*catálogo geográfico de Medellín*](https://www.medellin.gov.co/giscatalogacion/srv/spa/catalog.search#/search?facet.q=groupOwner%2F374&resultType=details&sortBy=popularity&from=1&to=100&fast=index&_content_type=json) estos casos tanto por código como nombre para verificar que está generando la inconsistencia y se encontró que:
+
+-   El prefijo "Suburbano" es para referirse a veredas de las 5 corregimientos. Se elimina de los nombres
+-   Medellín cuenta con 20 Áreas institucionales (urbanas) que en la base auxiliar se codifican como "Inst_[#]", diferente a la base que codifica solo con números. Dado que no se encontró la codificación DIVIPOLA para comunas y barrios entonces se cambian los códigos para que sea acorde a la codificación de Medellín
+-   Los códigos que no se encuentran en el listado auxiliar, tampoco se encontró en el geoportal. Para estos casos se cambia al código oficial según el nombre del barrio/vereda
+
+
+```{r}
+data$nombre_barrio <- sub("^Suburbano ", "", data$nombre_barrio)
+
+
+data <- data %>% mutate(
+  codigo_barrio = case_when(
+    # Áreas institucionales
+    nombre_barrio == "Universidad de Antioquia" ~ "Inst_11",
+    nombre_barrio == "Jardín Botánico" ~ "Inst_10",
+    nombre_barrio == "Parque Norte" ~ "Inst_9",
+    nombre_barrio == "Oleoducto" ~ "Inst_2",
+    nombre_barrio == "Cementerio Universal" ~ "Inst_3",
+    nombre_barrio == "Terminal de Transporte" ~ "Inst_4",
+    nombre_barrio == "Universidad Nacional" ~ "Inst_8",
+    nombre_barrio == "Hospital San Vicente de Paúl" ~ "Inst_12",
+    nombre_barrio == "La Alpujarra" ~ "Inst_16",
+    nombre_barrio == "Centro Administrativo" ~ "Inst_17",
+    nombre_barrio == "U.P.B" ~ "Inst_15",
+    nombre_barrio == "U.D. Atanasio Girardot" ~ "Inst_14",
+    nombre_barrio == "El Rodeo" ~ "Inst_20",
+    nombre_barrio == "Parque Juan Pablo II" ~ "Inst_19",
+    
+    # Códigos diferentes (no encontrados en la codificación de Geoportal)
+    codigo_barrio == "6087" & nombre_barrio == "Travesías" ~ "6016",
+    codigo_barrio == "6084" & nombre_barrio == "La Loma" ~ "6014",
+    codigo_barrio == "6086" & nombre_barrio == "La Cuchilla" ~ "6004",
+    codigo_barrio == "6088" & nombre_barrio == "El Patio" ~ "6002",
+    codigo_barrio == "6089" & nombre_barrio == "Pedregal Alto" ~ "6013",
+    codigo_barrio == "0506" & nombre_barrio == "Plaza de Ferias" ~ "6014",
+    codigo_barrio == "7084" & nombre_barrio == "Buga Patio Bonito" ~ "7001",
+    codigo_barrio == "6084" & nombre_barrio == "Altavista" ~ "6014",
+    codigo_barrio == "7088" & nombre_barrio == "El Corazón El Morro" ~ "7003",
+    codigo_barrio == "7089" & nombre_barrio == "San José del Manzanillo" ~ "7007",
+    codigo_barrio == "8089" & nombre_barrio == "Potrerito" ~ "8002",
+    codigo_barrio == "9012" & nombre_barrio == "Piedra Gorda" ~ "9010",
+    codigo_barrio == "9013" & nombre_barrio == "Barro Blanco" ~ "9004",
+    codigo_barrio == "9081" & nombre_barrio == "El Placer" ~ "9005",
+    codigo_barrio == "9086" & nombre_barrio == "El Plan" ~ "9009",
+    codigo_barrio == "7083" & nombre_barrio == "La Esperanza" ~ "7006",
+    codigo_barrio == "7085" & nombre_barrio == "San Pablo" ~ "7004",
+    codigo_barrio == "7087" & nombre_barrio == "Altavista" ~ "7005",
+    codigo_barrio == "5089" & nombre_barrio == "Palmitas Sector Central" ~ "5004",
+    TRUE ~ codigo_barrio
+  )
+)
+```
+
+
+```{r}
+data <- data %>% 
+  mutate(
+    codigo_barrio = case_when(
+      # "La Palma-El Patio" no existe. Existen separados, son veredas continuas de San Cristóbal. No se encontró info en las variables de ocurrencia para relacionar estos casos a cuál de las dos veredas corresponde
+      codigo_barrio == "6085" & nombre_barrio == "La Palma-El Patio" ~ NA_character_,
+      
+      # "El Tesoro" es un barrio del poblado. Tiene ese código de barrio porque limita con Santa Elena. La info de ocurrencia indica que fue en el Poblado
+      codigo_barrio %in% c("9001", "9077") & nombre_barrio == "El Tesoro" ~ "1409", 
+      
+      # "Mirador del Poblado" no existe. El código del barrio indica Santa Elena, el lugar de ocurrencia no está cerca y ese nombre puede ser más de un establecimiento/urbanización
+      codigo_barrio == "9083" & nombre_barrio == "Mirador del Poblado" ~ "9001",
+      
+      TRUE ~ codigo_barrio
+    )
+  )
+
+```
+
+2.    Los nombre de barrios que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!is.na(nombre_barrio) & !is.na(nmun_resi) & !str_to_lower(nombre_barrio) %in% str_to_lower(str_trim(barrios$nombre)))  %>% count(codigo_comuna,codigo_barrio,nombre_barrio, name ="Cantidad")
+```
+
+La inconsistencia se debe en la mayoría de casos a la escritura. En los casos donde se ve hay inconsistencia con **codigo_comuna** se cambia más adelante 
+
+```{r}
+data <- data %>% mutate(
+  nombre_barrio = case_when(
+    # Aparecen diferentes comunas porque limita con comuna 1 y 3
+    nombre_barrio %in% c("Piedras Blancas","Piedras Blancas Represa") ~ "Piedras Blancas - Matasano", 
+    
+    # Esta área de expansión no aparece en shapefile ni en el Geoportal
+    nombre_barrio == "Área de Expansión Altos de Calasanz" ~ "Calasanz",
+    
+    # No existe "La Loma Oriental"
+    nombre_barrio == "La Loma Oriental" ~ "La Loma",
+    
+    # No existe "Pedregal Bajo" dado el código de la comuna se asume que corresponde a "Pedregal Alto"
+    nombre_barrio == "Pedregal Bajo" ~ "Pedregal Alto",
+    
+    # Existe una vereda llamada "El Vergel" pero no aparece en el Geoportal
+    nombre_barrio == "El Vergel" ~ NA,
+    
+    # "La Palma-El Patio" no existe. Existen separados, son veredas continuas de San Cristóbal. Para asignar una vereda especifica nos basamos en el código
+    codigo_barrio == "6001" & nombre_barrio == "La Palma-El Patio" ~ "La Palma",
+    codigo_barrio == "6002" & nombre_barrio == "La Palma-El Patio" ~ "El Patio",
+    codigo_barrio == "6015" & nombre_barrio == "La Palma-El Patio" ~ "Las Playas",
+    is.na(codigo_barrio) & nombre_barrio == "La Palma-El Patio" ~ NA,
+
+    codigo_barrio == "9001" & nombre_barrio == "Mirador del Poblado" ~ "Las Palmas",
+    
+    TRUE ~ nombre_barrio
+  )
+)
+
+# No existe "La oculta" ni similar
+data <- data %>% mutate(
+  codigo_barrio = ifelse(nombre_barrio == "La Oculta", NA, codigo_barrio),
+  nombre_barrio = ifelse(nombre_barrio == "La Oculta", NA, nombre_barrio),
+)
+```
+
+3.    Los casos donde hay discordancia entre el código y el nombre del barrio son:
+
+```{r}
+data %>%
+  filter(str_sub(codigo_barrio,1,2) != codigo_comuna) %>%
+  count(codigo_barrio, nombre_barrio, codigo_comuna,nombre_comuna, name = "cantidad")
+```
+
+
+```{r}
+data %>%
+  left_join(
+    barrios %>% distinct(identifica, .keep_all = TRUE),
+    by = c("codigo_barrio" = "identifica")
+  ) %>%
+  filter(str_to_lower(nombre_barrio) != str_to_lower(nombre)) %>%
+  count(codigo_barrio, nombre_barrio, name = "cantidad")
+```
+
 
 ### Estrato (estrato\_)
 
@@ -764,22 +1189,19 @@ que el valor de la variable no coincida con los códigos posibles se
 convierte el valor a NA.
 
 ```{r}
-CUOC <- load_data("CUOC.csv", type = "raw")
+CUOC <- load_data("CUOC.csv", type = "auxiliary")
 ```
 
 ```{r}
 data <- data %>%
   mutate(ocupacion_ = ifelse(sapply(ocupacion_, function(ocup) {
-    any(grepl(paste0("^", ocup), CUOC$Código.CUOC))
+    any(grepl(paste0("^", ocup), CUOC$`Código
+CUOC`))
   }), ocupacion_, NA))
 ```
 
-Esta variable queda con
-`r sum(is.na(data$ocupacion_) | data$ocupacion_ == "")` celdas vacías.
-Pero puede servir para completar información de los niveles 26 (Otro) y
-33 (Ninguna) de la variable **actividad**. Es importante resaltar que
-esta variable se pide en la ficha de datos básicos mientras que
-actividad en la ficha del evento.
+Esta variable queda con `r sum(is.na(data$ocupacion_) | data$ocupacion_ == "")` celdas vacías.
+Pero puede servir para completar información de los niveles 26 (Otro) y 33 (Ninguna) de la variable **actividad**. Es importante resaltar que esta variable se pide en la ficha de datos básicos mientras que actividad en la ficha del evento.
 
 ### Actividad
 
@@ -904,7 +1326,17 @@ data <- data %>% filter(( sem_ges_ >= 1 &
 
 ## Información del hecho
 
-### Área y barrio
+### Lugar
+Se refiere al lugar donde posiblemente el paciente adquirió o al cual se atribuye la exposición al
+agente o factor de riesgo que ocasionó el evento.
+
+#### País
+
+#### Departamento
+
+#### Municipio
+
+#### Área y barrio
 
 ```{r}
 data %>% select(area_, localidad_, bar_ver_, cen_pobla_, vereda_) %>% head(10)
@@ -1307,63 +1739,6 @@ data <- data %>%
 
 ```{r}
 data <- data %>% select(-c(semana))
-```
-
-### Nombre del departamento de notificación (ndep_noti)
-
-Se cambia la estructura de escritura de las categorías.
-
-```{r}
-unique(data$ndep_notif)
-```
-
-```{r}
-data <- data %>%
-  mutate(
-    ndep_notif = as.character(ndep_notif),
-    ndep_notif = na_if(ndep_notif, ""),
-    ndep_notif = recode(
-      ndep_notif,
-      "BOYACA" = "BOYACÁ",
-      "CORDOBA" = "CÓRDOBA",
-      "ATLANTICO" = "ATLÁNTICO",
-      "QUINDIO" = "QUINDÍO",
-      "NORTE SANTANDER" = "NORTE DE SANTANDER"
-    ),
-    ndep_notif = str_to_title(tolower(ndep_notif))
-
-  )
-```
-
-### Nombre municipio de notificación (nmun_noti)
-
-```{r}
-unique(data$nmun_notif)
-```
-
-```{r}
-data <- data %>%
-  mutate(
-    nmun_notif = as.character(nmun_notif),
-    nmun_notif = na_if(nmun_notif, ""),
-    nmun_notif = recode(
-      nmun_notif,
-      "MEDELLIN" = "MEDELLÍN",
-      "SAMPUES" = "SAMPUÉS",
-      "CHIA" = "CHÍA",
-      "CUCUTA" = "CÚCUTA",
-      "APARTADO" = "APARTADÓ",
-      "CHIGORODO" = "CHIGORODÓ",
-      "BOLIVAR" = "BOLÍVAR",
-      "ITAGUI" = "ITAGÜÍ",
-      "LA UNION" = "LA UNIÓN",
-      "TAMESIS" = "TÁMESIS",
-      "PUERTO BOYACA" = "PUERTO BOYACÁ"
-    ),
-    nmun_notif = str_to_title(tolower(nmun_notif))
-
-  )
-
 ```
 
 ### Atención integral en salud
@@ -1787,6 +2162,10 @@ final_data <- final_data %>%
     nombre_comuna,
     def_naturaleza,
     area_,
+    npais_proce,
+    ndep_proce,
+    nmun_proce,
+    lugar_hecho,
     consum_spa,
     sust_vict,
     zona_conf,
