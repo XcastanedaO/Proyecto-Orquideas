@@ -39,10 +39,7 @@ sort(summary(as.factor(fatales_deb$def_naturaleza)))
 unique(fatales_deb$def_naturaleza)
 ```
 
-```{r}
-unique(fatales_deb %>%
-  filter(def_naturaleza=="Violencia interpersonal") %>% select(circunstancia_del_hecho))
-```
+
 
 
 ```{r}

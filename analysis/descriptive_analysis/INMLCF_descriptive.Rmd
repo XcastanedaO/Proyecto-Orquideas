@@ -1,0 +1,54 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-03-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(janitor)
+library(explore)
+```
+
+
+```{r}
+data <- load_data("INMLCF_debugged_2015_2024.csv", type = "interim")
+```
+
+```{r}
+replace_info <- function(df) {
+  df[] <- lapply(df, function(col) {
+    if (is.character(col) | is.factor(col)) {  # Apply only to text columns
+      col <- ifelse(col == "Sin Información", "Sin información", col)
+    }
+    return(col)
+  })
+  return(df)
+}
+```
+
+```{r}
+data <- replace_info(data)
+```
+
+```{r}
+data |> explore()
+```
+```{r}
+data %>% report(output_dir = tempdir())
+```
+```{r}
+data %>% report(target = tipo_lesion, output_dir = "data")
+```
+

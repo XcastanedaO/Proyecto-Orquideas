@@ -94,7 +94,7 @@ análisis:
 
 ```{r, include=FALSE}
 data <- data %>%
-  select(-nom_upgd,-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado, -fuente)
+  select(-nom_upgd,-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado, -fuente)
 ```
 
 ## Filtros
@@ -113,6 +113,12 @@ variables denominadas como procedencia:
 ```{r}
 data <- data %>% select(-c(npais_proce,ndep_proce,nmun_proce))
 ```
+
+
+```{r}
+data %>% filter(!cer_def_ %in% c("", "- -", "0", "00000","000000000", "999999999", "99999999", "FISCALIA"  )) 
+```
+
 
 Ahora bien, dado que el interés son los casos de violencia en mujeres
 que ocurren en Colombia se filtra la base para analizar solo estos

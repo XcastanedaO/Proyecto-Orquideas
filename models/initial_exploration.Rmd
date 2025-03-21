@@ -1,0 +1,116 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-03-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(here)
+source("utils/load_data.R")
+library(fastDummies)
+library(hms)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(stringi)
+```
+
+```{r}
+df_p <- palmerpenguins::penguins
+glimpse(df_p)
+```
+
+
+```{r}
+df_p_fit <- df_p |> 
+  mutate(island = as.integer(island), sex = as.integer(sex)) |>
+  select(c(-year, -species)) |> 
+  na.omit()
+
+df_p_plot <- df_p |> select(-year) |> na.omit() 
+```
+
+```{r}
+library(tsne)
+fit_pen <- tsne(df_p_fit, epoch_callback = NULL, perplexity=50)
+# Yfit_pen <- readRDS("fit_pen_2D.Rdata")
+```
+
+```{r}
+df_p_plot <- df_p_plot |> mutate(x = fit_pen[, 1], y = fit_pen[, 2])
+
+df_p_plot |> ggplot(aes(x, y, colour = species, shape = island)) +
+  geom_point() +
+  scale_color_manual(values = c("blue", "red", "green")) +
+  ggtitle("2D Embedding of Penguins Data")
+```
+
+```{r}
+base_datos <- load_data("medata_1900_2022_debugged.csv", type = "interim")
+```
+
+```{r}
+# Cambiar tipo de dato a Date
+base_datos$fec_not <- as.Date(base_datos$fec_not, format = "%Y-%m-%d")
+base_datos$fec_hecho <- as.Date(base_datos$fec_hecho, format = "%Y-%m-%d")
+base_datos$fec_con_ <- as.Date(base_datos$fec_con_, format = "%Y-%m-%d")
+base_datos$fec_hos_ <- as.Date(base_datos$fec_hos_, format = "%Y-%m-%d")
+base_datos$fec_def_ <- as.Date(base_datos$fec_def_, format = "%Y-%m-%d")
+base_datos$fecha_nto_ <- as.Date(base_datos$fecha_nto_, format = "%Y-%m-%d")
+
+
+base_datos <- base_datos %>%
+  mutate(across(
+    .cols = !all_of(c("edad", "semana_hecho", "fec_not", "fec_hecho",
+                      "fec_con_", "fec_hos_", "fec_def_", "año_hecho","ini_sin_","fecha_nto_")),  
+    .fns = as.factor                     
+  ))
+```
+
+```{r}
+base_datos <- base_datos %>%
+  mutate(def_naturaleza = recode(
+    def_naturaleza,
+    # violencia no sexual
+    `1` = "Violencia física",
+    `2` = "Violencia psicológica",
+    `3` = "Negligencia y abandono",
+    
+    # violencia sexual
+    `4` = "Violencia sexual",
+    `5` = "Violencia sexual",
+    `6` = "Violencia sexual",
+    `7` = "Violencia sexual",
+    `10` = "Violencia sexual",
+    `12` = "Violencia sexual",
+    `14` = "Violencia sexual"
+  ))
+```
+
+```{r}
+base_datos <- base_datos %>%
+  mutate(año_hecho = as.numeric(as.character(año_hecho))) %>%  #
+  filter(año_hecho == 2020
+         ) 
+```
+
+```{r}
+base_datos <- base_datos %>% select(actividad, edad, pac_hos_)
+
+base_datos$actividad <- as.numeric(as.factor(base_datos$actividad))
+
+base_datos <- base_datos |> mutate(actividad = as.integer(actividad), edad =
+as.integer(edad), pac_hos_ = as.integer(pac_hos_)) |> na.omit()
+```
+
+```{r}
+data_fit <- tsne(base_datos, epoch_callback = NULL, perplexity=50)
+```
+
