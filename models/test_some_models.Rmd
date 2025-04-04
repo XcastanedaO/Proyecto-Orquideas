@@ -1,0 +1,182 @@
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r, include=FALSE}
+library(dplyr)
+library(ggplot2)
+source("../utils/load_data.R")
+library(here)
+library(hms)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(stringi)
+library(caret)
+library(factoextra)
+
+```
+
+```{r}
+medata <- load_data("medata_1900_2022_debugged.csv", type = "interim")
+```
+
+```{r}
+medata |> is.na() |> sum()
+```
+
+```{r}
+summary(as.factor(medata$def_naturaleza))
+```
+
+```{r}
+# fec_def_ |> is.na() |> sum()
+```
+
+```{r}
+medata <- medata |> select(-c(fec_def_, fec_hos_, sem_ges_, fec_hecho, fec_con_ ))
+```
+
+```{r}
+medata |> is.na() |> colSums() |> data.frame()
+```
+
+```{r}
+medata <- medata %>%
+  mutate(año_hecho = as.numeric(as.character(año_hecho))) %>%  #
+  filter(año_hecho >= 2017)  
+```
+
+```{r}
+# Registros sin valores faltantes
+
+df <- medata[, colSums(is.na(medata)) == 0]
+```
+
+```{r}
+## Datos numéricos
+df[, sapply(df, is.numeric)]
+```
+
+```{r}
+df$año_hecho <- as.factor(df$año_hecho)
+```
+
+```{r}
+df[, sapply(df, is.character)]
+```
+
+```{r}
+# Convertir caracter a factor
+df[] <-lapply(df, function(x) if(is.character(x)) as.factor(x) else x)
+```
+
+```{r}
+df[, sapply(df, is.factor)]
+```
+### Asignando niveles a las variables categoricas
+```{r}
+# Niveles de las variables categóricas
+factor_mappings <- lapply(df, function(x) {
+  if (is.factor(x)) {
+    data.frame(Level = levels(x), Code = seq_along(levels(x)))
+  } else {
+    NULL
+  }
+})
+```
+
+```{r}
+factor_mappings
+```
+
+```{r}
+df <- df %>%
+  mutate_if(is.factor, as.numeric)
+```
+
+```{r}
+df
+```
+### One-Hot-Encoding 
+
+```{r}
+dummy  <- dummyVars(" ~ .",df[, sapply(df, is.factor)])
+data.frame(predict(dummy, df[, sapply(df, is.factor)])) ## dada la cantidad de niveles de las categorias no es posible usar esta técnica por ahora
+```
+
+
+## Cor
+
+```{r}
+as.data.frame(as.table(cor(df))) |> subset( abs(Freq) > 0.7 & abs(Freq) < 1 )
+```
+
+Se procede a remover la variable grupo edad por su correlación con edad, las demás variables se dejan dado que tiene sentido medir correlación entre fechas
+
+```{r}
+## Removing correlation data 
+df <- df |> select(-grupo_edad)
+```
+
+## PCA
+```{r}
+# df <- df |>  mutate(across(ac_mental, ~ ifelse(. == 2, 0, .)))
+```
+
+```{r}
+pca_resultado <- prcomp(df, 
+                        center = TRUE,  # Por defecto TRUE
+                        scale. = TRUE) 
+```
+
+```{r}
+summary(pca_resultado)
+```
+
+```{r}
+plot(pca_resultado$sdev^2, 
+     type = "b", 
+     main = "Varianza explicada por componente",
+     xlab = "Componentes", 
+     ylab = "Varianza")
+```
+
+```{r}
+# Biplot (variables y observaciones)
+ggplot(data.frame(pca_resultado$x[, 3:5]), aes(PC3, PC4, PC5)) +
+  geom_point() +
+  geom_text(aes(label = rownames(df)), check_overlap = TRUE) +
+  theme_minimal()
+
+```
+```{r}
+var_acumulada <- cumsum(pca_resultado$sdev^2 / sum(pca_resultado$sdev^2))
+num_componentes <- which(var_acumulada >= 0.90)[1]
+print(paste("Número óptimo de componentes:", num_componentes))
+```
+
+
+## K - MEANS
+
+```{r}
+library(factoextra)
+
+
+fviz_nbclust(
+  df,
+  kmeans, 
+  k.max = 25,
+  method = "wss",
+  diss = get_dist(df, method = "spearman")
+)
+```
+
+```{r}
+df
+
+kmeans(df, centers = 10, nstart = 10
+       )
+```
+
