@@ -1830,11 +1830,11 @@ data <- data %>% select(-bar_ver_, -localidad_, -cen_pobla_, -vereda_,-ver_cen,-
 -     Se unifica la escritura para evitar repeticiones
 
 ```{r}
-arreglada <- data %>%
+data <- data %>%
   mutate(
     lugar_hecho = str_trim(lugar_hecho))
     
-arreglada <- arreglada %>%
+data <- data %>%
   mutate(
     lugar_hecho = case_when(
     lugar_hecho %in% c("DOCE OCTUBRE", "DPCE DE OCTUBRE", "DOCE DE OCTUBRE COMUNA 6", "DOCE DE OCTUBRE","12 OCTUBRE","12 DE OCTUBRE","12  DE OCTUBRE","12 De OCTUBTRE","DOCE DE OCTUNRE") ~ NA_character_,
@@ -1944,7 +1944,7 @@ str_detect(lugar_hecho,"\\b(ÁREA\\sURBANA\\sCGTO\\.\\sSAN\\sANTONIO\\sDE\\sPRAD
     )
   )
 
-arreglada <- arreglada %>%
+data <- data %>%
   mutate(lugar_hecho = case_when(
     lugar_hecho == "Pablo Vi" ~ "Pablo VI",
     lugar_hecho == "Aldea Pablo Vi" ~ "Aldea Pablo VI",
@@ -1956,7 +1956,7 @@ arreglada <- arreglada %>%
 
 ```{r}
 #is.na(nombre_barrio) & !is.na(lugar_hecho) & 
-aux_data <- arreglada %>%
+data <- data %>%
    filter(!str_to_lower(lugar_hecho) %in% str_to_lower(str_trim(barrios$nombre))) 
 ```
 
