@@ -2686,6 +2686,121 @@ No hay manera de completar código y nombre del país de residencia entre sí
 
 #### País de ocurrencia a partir de departamento:
 
+
+
+
+### Crear nuevas variables de georeferencia
+
+#### Barrio
+
+Si **nombre_barrio** no es NA, la n ueva variable toma su valor. En caso de ser NA, se la asigna a la nueva variable valor de **lugar_hecho**:
+
+```{r}
+# Nombre del barrio
+data <- data %>%
+  mutate(barrio_nuevo = coalesce(nombre_barrio, lugar_hecho) %>% str_to_title())
+
+```
+
+
+```{r}
+data <- data %>%
+  mutate(
+    barrio_nuevo = recode(
+      barrio_nuevo,
+      # "[Otro]" = NA_character_,
+      # "13" = NA_character_,
+      # "9" = NA_character_,
+      # "Todos Los Barrios" = NA_character_,
+      # "Mall" = NA_character_,
+      # "Medellib" = NA_character_,
+      # "05001" = NA_character_,
+      
+      "Popular 1" = "Popular",
+      "Popular 2" = "Popular",
+      "Vereda El Uvito" = "El Uvito",
+      "Playón De Los Comuneros" = "Playón de Los Comuneros",
+      "Vereda Pedregal" = "Pedregal Alto",
+      "Aguas Frias" = "Aguas Frías",
+      "20 De Julio" = "Veinte de Julio",
+      "Nueva Villa De La Iguaná" = "Nueva Villa de La Iguaná",
+      "Área De Expansión Pajarito" = "Área de Expansión Pajarito",
+      "Vereda La Loma" = "La Loma",
+      "La Loma De Los Bernal" = "La Loma de Los Bernal",
+      "Altos Del Poblado" = "Altos del Poblado",
+      "Picacho" = "El Picacho",
+      "Santa María De Los Ángeles" = "Santa María de Los Ángeles",
+      "El Llano" = "El Llano SE",
+      "Altaviata" = "Altavista",
+      "Corazón De Jesús" = "Corazón de Jesús",
+      "Vereda Yarumalito" = "Yarumalito",
+      "El Vergel" = "Los Cerros El Vergel",
+      "Villa Del Socorro" = "Villa del Socorro"
+      # Aures
+    ))
+```
+
+
+
+
+```{r}
+# Código del barrio
+data <- data %>%
+  mutate(codigo_barrio_nuevo = coalesce(codigo_barrio, NA)) 
+```
+
+```{r}
+aux_cod_na <- nrow(data %>% filter(is.na(codigo_barrio_nuevo)))
+aux_nogeo <- nrow(data %>% filter(is.na(codigo_barrio_nuevo) & is.na(barrio_nuevo) & is.na(codigo_comuna)))
+```
+
+Existen `r aux_cod_na` registros sin código de barrio. Sin embargo, esta información puede completarse utilizando el nombre del barrio. 
+
+*De esta forma, se recuperan `r aux_cod_na - aux_nogeo` registros, y finalmente quedan `r aux_nogeo` registros sin información de barrio.*
+
+
+```{r}
+data %>%filter(is.na(codigo_barrio_nuevo) & !is.na(barrio_nuevo)) %>% select(codigo_barrio_nuevo, barrio_nuevo, nombre_comuna, codigo_comuna)
+```
+
+
+
+
+
+**hacer desde acá**
+
+si la nueva de codigo es NA entonces coja en codigo que le corresponde 
+
+```{r}
+prueba <- data %>%
+  left_join(
+    barrios %>% 
+      filter(identifica != "Inst_18") %>% 
+      select(nombre, identifica, limitecomu),
+    by = c("barrio_nuevo" = "nombre", "geometry", "identifica")) 
+```
+
+
+
+
+
+
+#### comuna
+
+unir para este barrio traiga cual es su comuna a partir de la base auxiliar de barrios
+
+
+```{r}
+data <- data %>%
+  left_join(
+    barrios %>% filter(!(identifica == "Inst_18")) %>% select(nombre, identifica, limitecomu),
+    by = c("barrio_nuevo" = "nombre", "codigo_comuna" = "limitecomu")
+  ) 
+```
+
+
+
+
 #### Variable armas a partir de que\_., cla_gra y ext_que:
 
 No se puede porque no hay registros vacíos en armas que tenga algún
@@ -2789,6 +2904,10 @@ final_data <- data %>%
 
 Al eliminar estas variables, se obtiene una base de datos con
 **`r nrow(final_data)` registros**.
+
+
+
+
 
 ## Registros duplicados
 
