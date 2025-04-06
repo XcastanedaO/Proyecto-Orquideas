@@ -15,6 +15,8 @@ library(tidyr)
 library(stringi)
 library(caret)
 library(factoextra)
+library(NbClust)
+library(explore)
 
 ```
 
@@ -31,11 +33,13 @@ summary(as.factor(medata$def_naturaleza))
 ```
 
 ```{r}
-# fec_def_ |> is.na() |> sum()
+medata <- medata %>% filter(sexo_ == "F") 
 ```
 
+
 ```{r}
-medata <- medata |> select(-c(fec_def_, fec_hos_, sem_ges_, fec_hecho, fec_con_ ))
+# Sólo quedamos con la fecha de notificación y fecha_hecho 
+medata <- medata |> select(-c(fec_def_, fec_hos_, sem_ges_, fec_con_, sexo_, fecha_nto_ ))
 ```
 
 ```{r}
@@ -43,20 +47,58 @@ medata |> is.na() |> colSums() |> data.frame()
 ```
 
 ```{r}
+# Casos después del 2017
 medata <- medata %>%
   mutate(año_hecho = as.numeric(as.character(año_hecho))) %>%  #
   filter(año_hecho >= 2017)  
 ```
 
 ```{r}
-# Registros sin valores faltantes
+df <- medata[!apply(is.na(medata), 1, any), ] ## Eliminar valores faltantes en filas 
+```
 
-df <- medata[, colSums(is.na(medata)) == 0]
+```{r}
+# # Registros sin columnas con valores faltantes
+# 
+# df <- medata[, colSums(is.na(medata)) == 0]
 ```
 
 ```{r}
 ## Datos numéricos
 df[, sapply(df, is.numeric)]
+```
+```{r}
+## Modify binary levels
+cols_to_modify <- sapply(df, function(col) all(col %in% c(1, 0)))
+
+df <- df %>% mutate(across(.cols = names(df)[cols_to_modify],
+                .fns = ~ ifelse(. == 2, 0, .)))
+```
+
+```{r}
+# Se eliminan variables de grupos poblacionales
+gp_ <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+             "gp_gestan", "gp_indigen", "gp_pobicbf", "gp_mad_com",
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio", "gp_otros")
+lapply(df[, c(gp_, "gp_otros")], table, useNA = "ifany")
+```
+
+```{r}
+gp_ <- c("gp_carcela","gp_indigen", "gp_mad_com",
+             "gp_desmovi", "gp_psiquia")
+df <- df %>% select(-all_of(gp_))
+```
+
+```{r}
+sort(summary(as.factor(df$nom_grupo_)))
+```
+```{r}
+sort(summary(as.factor(df$con_fin_)))
+```
+
+```{r}
+# Variables no relevantes 
+df <- df %>% select(-c("nom_grupo_", "con_fin_", "cbmte_"))
 ```
 
 ```{r}
@@ -92,6 +134,10 @@ factor_mappings
 ```
 
 ```{r}
+medata <- df
+```
+
+```{r}
 df <- df %>%
   mutate_if(is.factor, as.numeric)
 ```
@@ -99,6 +145,7 @@ df <- df %>%
 ```{r}
 df
 ```
+
 ### One-Hot-Encoding 
 
 ```{r}
@@ -117,7 +164,7 @@ Se procede a remover la variable grupo edad por su correlación con edad, las de
 
 ```{r}
 ## Removing correlation data 
-df <- df |> select(-grupo_edad)
+df <- df |> select(-c(grupo_edad, fecha_nto_,ini_sin_) )
 ```
 
 ## PCA
@@ -161,12 +208,12 @@ print(paste("Número óptimo de componentes:", num_componentes))
 ## K - MEANS
 
 ```{r}
-library(factoextra)
-
-
+# library(factoextra)
+# 
+# 
 fviz_nbclust(
   df,
-  kmeans, 
+  kmeans,
   k.max = 25,
   method = "wss",
   diss = get_dist(df, method = "spearman")
@@ -174,9 +221,46 @@ fviz_nbclust(
 ```
 
 ```{r}
-df
+df_scaled <- scale(df)
+```
 
-kmeans(df, centers = 10, nstart = 10
-       )
+```{r}
+wss <- sapply(1:20, function(k){kmeans(df_scaled, k, nstart=10)$tot.withinss})
+plot(1:20, wss, type="b", pch=19)
+
+
+set.seed(123)
+km <- kmeans(df_scaled, centers = 2, nstart = 25)
+df$cluster <- as.factor(km$cluster)
+
+```
+
+```{r}
+fviz_cluster(object = km, # kmeans object 
+             data = df_scaled, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
+```
+
+```{r}
+table(df$cluster, df$def_naturaleza)
+```
+```{r}
+table(df$cluster, df$ac_mental)
+```
+```{r}
+df %>% explore()
+```
+
+```{r}
+
+```
+```{r}
+library(doParallel)
+
+detectCores()
 ```
 
