@@ -142,6 +142,16 @@
       ],
       "Hash": "40a55bd0b44719941d103291ac5e9d74"
     },
+    "NbClust": {
+      "Package": "NbClust",
+      "Version": "3.0.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "e56c312f8636aace4c6ed1082df79ab9"
+    },
     "R6": {
       "Package": "R6",
       "Version": "2.5.1",
@@ -447,7 +457,7 @@
     },
     "cluster": {
       "Package": "cluster",
-      "Version": "2.1.6",
+      "Version": "2.1.8.1",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -457,7 +467,7 @@
         "stats",
         "utils"
       ],
-      "Hash": "0aaa05204035dc43ea0004b9c76611dd"
+      "Hash": "e16d49a008e1a22ee863fb9a51de9bde"
     },
     "codetools": {
       "Package": "codetools",

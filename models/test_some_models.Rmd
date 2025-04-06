@@ -17,7 +17,7 @@ library(caret)
 library(factoextra)
 library(NbClust)
 library(explore)
-
+library(cluster)
 ```
 
 ```{r}
@@ -39,7 +39,7 @@ medata <- medata %>% filter(sexo_ == "F")
 
 ```{r}
 # Sólo quedamos con la fecha de notificación y fecha_hecho 
-medata <- medata |> select(-c(fec_def_, fec_hos_, sem_ges_, fec_con_, sexo_, fecha_nto_ ))
+medata <- medata |> select(-c(fec_def_, fec_hos_, sem_ges_, fec_con_, sexo_ ))
 ```
 
 ```{r}
@@ -69,18 +69,20 @@ df[, sapply(df, is.numeric)]
 ```
 ```{r}
 ## Modify binary levels
-cols_to_modify <- sapply(df, function(col) all(col %in% c(1, 0)))
+cols_to_modify <- sapply(df, function(col) all(col %in% c(1, 2)))
+
 
 df <- df %>% mutate(across(.cols = names(df)[cols_to_modify],
-                .fns = ~ ifelse(. == 2, 0, .)))
+.fns = ~ ifelse(. == 2, 0, .)))
 ```
+
 
 ```{r}
 # Se eliminan variables de grupos poblacionales
 gp_ <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicbf", "gp_mad_com",
              "gp_desmovi", "gp_psiquia", "gp_vic_vio", "gp_otros")
-lapply(df[, c(gp_, "gp_otros")], table, useNA = "ifany")
+lapply(df[, gp_], table, useNA = "ifany")
 ```
 
 ```{r}
@@ -93,12 +95,19 @@ df <- df %>% select(-all_of(gp_))
 sort(summary(as.factor(df$nom_grupo_)))
 ```
 ```{r}
-sort(summary(as.factor(df$con_fin_)))
+sort(summary(as.factor(df$npais_resi)))
+```
+```{r}
+sort(summary(as.factor(df$nmun_notif)))
+```
+
+```{r}
+df <- df %>% filter(npais_resi == "Colombia", ndep_resi == "Antioquia", nmun_notif %in% c("Medellín", "Itagüí", "Bello", "Envigado", "Sabaneta","Girardota", "Copacabana"  )) %>% select(-c(npais_resi, ndep_resi))
 ```
 
 ```{r}
 # Variables no relevantes 
-df <- df %>% select(-c("nom_grupo_", "con_fin_", "cbmte_"))
+df <- df %>% select(-c("nom_grupo_", "con_fin_", "cbmte_", "per_etn_", "ndep_notif" ))
 ```
 
 ```{r}
@@ -113,6 +122,8 @@ df[, sapply(df, is.character)]
 # Convertir caracter a factor
 df[] <-lapply(df, function(x) if(is.character(x)) as.factor(x) else x)
 ```
+
+
 
 ```{r}
 df[, sapply(df, is.factor)]
@@ -149,8 +160,8 @@ df
 ### One-Hot-Encoding 
 
 ```{r}
-dummy  <- dummyVars(" ~ .",df[, sapply(df, is.factor)])
-data.frame(predict(dummy, df[, sapply(df, is.factor)])) ## dada la cantidad de niveles de las categorias no es posible usar esta técnica por ahora
+# dummy  <- dummyVars(" ~ .",df[, sapply(df, is.factor)])
+# data.frame(predict(dummy, df[, sapply(df, is.factor)])) ## dada la cantidad de niveles de las categorias no es posible usar esta técnica por ahora
 ```
 
 
@@ -211,28 +222,53 @@ print(paste("Número óptimo de componentes:", num_componentes))
 # library(factoextra)
 # 
 # 
-fviz_nbclust(
-  df,
-  kmeans,
-  k.max = 25,
-  method = "wss",
-  diss = get_dist(df, method = "spearman")
-)
+# fviz_nbclust(
+#   df_scaled,
+#   kmeans,
+#   k.max = 10,
+#   method = "wss"
+#   # diss = get_dist(df, method = "spearman")
+# )
 ```
 
 ```{r}
-df_scaled <- scale(df)
+df_scaled <- scale(df[, 1:42])
 ```
 
 ```{r}
 wss <- sapply(1:20, function(k){kmeans(df_scaled, k, nstart=10)$tot.withinss})
 plot(1:20, wss, type="b", pch=19)
+```
+```{r}
+# library(cluster)
+# compute_silhouette_scores <- function(df, max_k = 10, min_k = 2) {
+#   sapply(min_k:max_k, function(k) {
+#     km <- kmeans(df, centers = k, nstart = 10)
+#     sil <- silhouette(km$cluster, dist(df))
+#     mean(sil[, "sil_width"])  # clearer than ss[, 3]
+#   })
+# }
+# 
+# silhouette_scores <- compute_silhouette_scores(df_scaled, max_k = 5)
+# 
+# # Plot silhouette scores
+# plot(2:10, silhouette_scores, type = "b", pch = 19,
+#      xlab = "Number of clusters (k)", ylab = "Average silhouette width",
+#      main = "Silhouette Method for Optimal k")
+```
+
+```{r}
+# gap_stat <- clusGap(df_scaled, 
+#                     FUN = kmeans, 
+#                     K.max = 5, 
+#                     B = 50,          # Number of bootstraps
+#                     nstart = 10)
+```
 
 
+```{r}
 set.seed(123)
-km <- kmeans(df_scaled, centers = 2, nstart = 25)
-df$cluster <- as.factor(km$cluster)
-
+km <- kmeans(df_scaled, centers = 2, nstart = 50)
 ```
 
 ```{r}
@@ -246,21 +282,153 @@ fviz_cluster(object = km, # kmeans object
 ```
 
 ```{r}
-table(df$cluster, df$def_naturaleza)
-```
-```{r}
-table(df$cluster, df$ac_mental)
-```
-```{r}
-df %>% explore()
+df$cluster_1 <- as.factor(km$cluster)
+# medata$cluster <- as.factor(km$cluster)
 ```
 
 ```{r}
-
+table(df$cluster, df$def_naturaleza) # Los grupos se están separando dado si el tipo de violencia fue sexual o no sexual
 ```
 ```{r}
-library(doParallel)
+table(df$cluster, df$pac_hos_)
+```
 
-detectCores()
+```{r}
+km$centers
+```
+
+
+```{r}
+medata %>% explore()
+```
+
+### Removing def naturaleza 
+```{r}
+df[, 1:42] %>% select(-def_naturaleza)
+```
+
+```{r}
+df_scaled_ <- df[, 1:42] %>% select(-def_naturaleza)
+df_scaled_ <- scale(df_scaled_)
+```
+
+```{r}
+wss <- sapply(1:10, function(k){kmeans(df_scaled_, k, nstart=10)$tot.withinss})
+plot(1:10, wss, type="b", pch=19)
+```
+
+```{r}
+set.seed(123)
+km2 <- kmeans(df_scaled_, centers = 2, nstart = 50)
+
+
+fviz_cluster(object = km2, # kmeans object 
+             data = df_scaled_, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
+```
+
+```{r}
+df$cluster_2 <- as.factor(km$cluster)
+table(df$cluster_2, df$def_naturaleza) 
+```
+```{r}
+table(df$cluster, df$def_naturaleza) 
+```
+
+```{r}
+km2$centers
+```
+
+```{r}
+medata %>% explore()
+```
+
+
+```{r}
+# Se eliminan las variables asociadas tomadas después del hecho
+df[, 1:31]
+df_2 <- df[, 1:31] %>% select(-def_naturaleza)
+df_scaled_2 <- scale(df_2)
+
+wss <- sapply(1:10, function(k){kmeans(df_scaled_2, k, nstart=10)$tot.withinss})
+plot(1:10, wss, type="b", pch=19)
+```
+
+```{r}
+set.seed(123)
+km3 <- kmeans(df_scaled_2, centers = 3, nstart = 50)
+
+
+fviz_cluster(object = km3, # kmeans object 
+             data = df_scaled_2, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
+```
+
+```{r}
+df$cluster_3 <- as.factor(km3$cluster)
+medata$cluster_2 <-  as.factor(km3$cluster)
+```
+
+```{r}
+table(df$cluster, df$ac_mental) 
+```
+```{r}
+medata %>% explore()
+```
+
+## Hierarchical clustering
+```{r}
+# library(cluster)
+# #define linkage methods
+# m <- c( "average", "single", "complete", "ward")
+# names(m) <- c( "average", "single", "complete", "ward")
+# 
+# #function to compute agglomerative coefficient
+# ac <- function(x) {
+#   agnes(df_scaled, method = x)$ac
+# }
+# 
+# #calculate agglomerative coefficient for each clustering linkage method
+# sapply(m, ac)
+
+```
+
+```{r}
+# #perform hierarchical clustering using Ward's minimum variance
+# clust <- agnes(df_scaled, method = "ward")
+# 
+# #produce dendrogram
+# pltree(clust, cex = 0.6, hang = -1, main = "Dendrogram") 
+```
+Dada la primera partición se procede a clusterizar el 2 cluster que engloba todos los tipos de violencia sexual de la base
+
+```{r}
+df_h <-df %>% filter(cluster_1==2) %>% select(1:42) %>% select(-c("sp_its", "prof_hep_b", "prof_otras", "ac_anticon", "ac_ive", "evi_mlegal" )) #variables que dado el filtro solo tienen un nivel (ya que sólo se toman cuando fue un hecho de violencia sexual)
+df_scaled_h <- scale(df_h)
+
+wss <- sapply(1:10, function(k){kmeans(df_scaled_h, k, nstart=10)$tot.withinss})
+plot(1:10, wss, type="b", pch=19)
+```
+
+```{r}
+set.seed(123)
+km_h <- kmeans(df_scaled_h, centers = 4, nstart = 50)
+
+
+fviz_cluster(object = km_h, # kmeans object 
+             data = df_scaled_h, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
 ```
 
