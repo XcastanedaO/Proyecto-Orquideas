@@ -1855,7 +1855,6 @@ arreglada <- arreglada %>%
         ) ~ "Santa Margarita",
       
       #str_detect(lugar_hecho, "^ALFONSO?L? LOPEZ$") ~ "Alfonso López",
-
       str_detect(lugar_hecho,
                  regex("alfon(s[aoz]?|zos?)\\s?lo(p|b)?e[zs]?|alfonsol\\s?lopez|alfonos\\s?lopez|alfonoslopez",
                        ignore_case = TRUE)) ~ "Alfonso López",
@@ -1873,7 +1872,12 @@ arreglada <- arreglada %>%
 # str_detect(lugar_hecho, regex("^alfonso\\s?l[oó]pez$", ignore_case = TRUE)) ~ "Alfonso López",
 
       
-      str_detect(lugar_hecho, "^A?N?DALUCIA$") ~ "Andalucía",
+      #str_detect(lugar_hecho, "^A?N?DALUCIA$") ~ "Andalucía",
+      str_detect(lugar_hecho, regex("anadalucia|andlaucia|andulucia|anda\\s*luc[ai]|andal[uú]cia(?!.*la\\s*franci[ao][s]?)", ignore_case = TRUE)) ~ "Andalucía",
+
+
+
+
       str_detect(lugar_hecho, "^ANTI[O]*QUIA$") ~ NA_character_,
       # str_detect(lugar_hecho, "\\b(CORREGIMIENTO|CORR)\\sALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\sLOS\\sCHIVOS\\b") ~ NA_character_,
       
@@ -1894,9 +1898,10 @@ arreglada <- arreglada %>%
         "ROBLEDO VILLA SOFIA",
         "VILLA SOFIA",
         "ROBLEDO VILLASOFIA",
-        "ROBLEDO  AURES"
+        "ROBLEDO  AURES",
+        "Aures Nro 1" 
       ) ~ "Aures No.1",
-      str_detect(lugar_hecho, "\\bAURES NO\\.?\\s*2\\b") ~ "Aures No.2",
+      str_detect(lugar_hecho, regex("\\bAURES\\s*(NO|NRO)?\\.?\\s*-?2\\b", ignore_case = TRUE)) ~ "Aures No.2",
       
       str_detect(lugar_hecho, "ALAMOS") ~ "Bermejal-Los Álamos",
       lugar_hecho %in% c("AGIAS FRIS", "AGUAS FRIAS", "VEREDA AGUAS FRIAS") ~ "Aguas Frías",
@@ -2081,28 +2086,31 @@ arreglada <- arreglada %>%
       str_detect(lugar_hecho, "^VALLEJUELOS$") ~ "Santa Margarita",
       str_detect(lugar_hecho, "^VEREDA YARUMALITO$") ~ "Yarumalito",
       str_detect(lugar_hecho, "^VIOLETAS$") ~ "Las Violetas",
+       
  
- 
-       str_detect(lugar_hecho, regex("nov", ignore_case = TRUE)) ~ "Trece de Noviembre",
-       str_detect(lugar_hecho, regex("marz", ignore_case = TRUE)) ~ "Ocho de Marzo",
-       str_detect(lugar_hecho, regex("^Acebedo$", ignore_case = TRUE)) ~ "Acevedo",
-       str_detect(lugar_hecho, regex("villa\\s?niza|villaniza", ignore_case = TRUE)) ~ "Villa Niza",
-       str_detect(lugar_hecho, regex("^AGUACATALA$", ignore_case = TRUE)) ~ "La Aguacatala",
-       str_detect(lugar_hecho, regex("^Alcasares$", ignore_case = TRUE)) ~ "Los Alcázares",
-       str_detect(lugar_hecho, regex("aldea.*pablo\\s*(vi|sexto)", ignore_case = TRUE)) ~ "Aldea Pablo VI",
-       str_detect(lugar_hecho, regex("^Alejandria$", ignore_case = TRUE)) ~ "Alejandría",
-       str_detect(lugar_hecho, "(ALEJANDRO ECHAVARRIA|ALEJANDRO ECHAVARRÍA|ALEJANDRO CHAVARRIA)") ~ "Alejandro Echavarría",
-       str_detect(lugar_hecho, regex("^Aliadas$", ignore_case = TRUE)) ~ "Altavista",
-       str_detect(lugar_hecho, regex("^Alhambra$", ignore_case = TRUE)) ~ "San José La Cima No.1",
+      str_detect(lugar_hecho, regex("nov", ignore_case = TRUE)) ~ "Trece de Noviembre",
+      str_detect(lugar_hecho, regex("marz", ignore_case = TRUE)) ~ "Ocho de Marzo",
+      str_detect(lugar_hecho, regex("^acebedo$|^avecedo$|^acevedo$", ignore_case = TRUE)) ~ "Acevedo",
+      str_detect(lugar_hecho, regex("villa\\s?niza|villaniza", ignore_case = TRUE)) ~ "Villa Niza",
+      str_detect(lugar_hecho, regex("^AGUACATALA$", ignore_case = TRUE)) ~ "La Aguacatala",
+      str_detect(lugar_hecho, regex("^Alcasares$", ignore_case = TRUE)) ~ "Los Alcázares",
+      str_detect(lugar_hecho, regex("aldea.*pablo\\s*(vi|sexto)", ignore_case = TRUE)) ~ "Aldea Pablo VI",
+      str_detect(lugar_hecho, regex("^Alejandria$", ignore_case = TRUE)) ~ "Alejandría",
+      str_detect(lugar_hecho, "(ALEJANDRO ECHAVARRIA|ALEJANDRO ECHAVARRÍA|ALEJANDRO CHAVARRIA)") ~ "Alejandro Echavarría",
+      str_detect(lugar_hecho, regex("^Aliadas$", ignore_case = TRUE)) ~ "Altavista",
+      str_detect(lugar_hecho, regex("^Alhambra$", ignore_case = TRUE)) ~ "San José La Cima No.1",
+      str_detect((lugar_hecho), regex("altos\\s+de\\s+la\\s+torre", ignore_case = TRUE)) ~ "Llanaditas", # REVISAR
+      str_detect(lugar_hecho, "^LA TORRE$") ~ "Santo Domingo Savio No.1",
+      str_detect(lugar_hecho, "^VILLATINA LA TORRE$") ~ "Villatina",
+      str_detect(lugar_hecho, regex("^(la\\s+)?america(\\s+niza)?$", ignore_case = TRUE)) ~ "La América",
 
 
+    str_detect(lugar_hecho, regex("andal[uú]cia.*(la\\s*franci[ao][s]?|l\\s*francia)|Andalacia La Francia|Andalucía La Francia", ignore_case = TRUE)) ~ "La Francia",
 
-
-
-
-
-
-
+    lugar_hecho %in% c("ARAN JUEZ", "ARANJUE", "ARANJUERZ", "ARANJUEZ3", "ARANJUUEZ", "ARANJUZ", "ARNJUEZ", "SAN CAYETANO ARNJUEZ") ~ "Aranjuez",
+    str_detect(lugar_hecho, regex("aranjuez berlin|^berlin$", ignore_case = TRUE)) ~ "Berlín",
+    str_detect(lugar_hecho, regex("aranjuez palermo|^palermo$", ignore_case = TRUE)) ~ "Palermo",
+    str_detect(lugar_hecho, regex("aranjuez san isidro|^san isidro$", ignore_case = TRUE)) ~ "San Isidro",
 
 
 
@@ -2110,11 +2118,7 @@ arreglada <- arreglada %>%
 
  
       TRUE ~ str_to_title(tolower(lugar_hecho))
- 
- 
-    )
- 
- 
+     )
   )
 
 arreglada <- arreglada %>%
@@ -2128,6 +2132,7 @@ arreglada <- arreglada %>%
     )
   )
 ```
+
 
 -     Como se vio en secciones anteriores, la mayoría de los casos ocurrieron en Medellín entonces se comienza verificando si los barrios/veredas sí corresponden a Medellín y en caso de qué no, cuando se trata de barrios/veredas de otros municipios:
 
