@@ -1780,7 +1780,22 @@ faltantes, se realizaron algunos ajustes:
 
 
 ```{r}
-regex_na <- "^(9+.*|000000|69999|1E\\+[0-9]+|\\d{1,8}|          (SIN\\s*(INFORMAC(I[ÓO]N|ION|VION|CION|ACCION)?|DATO|DATOS?|DTO|INF|NIFORMACION|INFROMACION|INFORMAICON|INFORMACCION|INFOMACION|NINFORMACION|NIFORMACION|INFR\\s*NO\\s*RECUERDA|REGISTRO|INF))|(NO\\s*(SABE|REFIERE|STOS|RECUERDA|INFORMA|INFROMA|DATOS?|REGISTRA)?)|DESCONOCID(A|O)|DESCNOCIDA|ND|NS|SD|SI|C|N|XXX|X|-|\\[?Otro\\]?|CALLE(\\s+\\d+.*)?|TODOS LOS BARRIOS|MEDELLI.*|KL\\s*6\\s*VIA\\s*AL\\s*MAR|AV\\s*\\d+.*|(CR|CRA|CL|CLL)\\s*\\d+.*|FFD|A|V|N|F|N\\s*A|\\b(SIN|NO|CALLE)?\\s*(DATOS?|INFORM[A-Z]*C?[A-Z]*ION|INF|REGISTRO|INFR|DESCONOCIDA)\\s*\\w*\\b|SI DATO|SAN DATO|INFORM.*|NO INFORMA.*|SIN SINFORMACION.*|SIN NINFORMACION.*|SIN INFOMACION.*|NOINFORMA.*|ESTUDIANTE|DESCONOCE|NINGUNO|SIN DTO|SIN INFR NO RECUERDA|SIN NIFORMACION|SINI NFORMACION|KL 6 ANTIGUA VIA MAR|AEROPAQUE|ALBERGUE CARLOS M HO|AUTOPISTA MEDELLIN-B|AVENIDA 80|AVENIDA ORIENTAL|ESTUIDANTE|NULL|URBANA|URBANO)$"
+regex_na <- paste0(
+  "^(9+.*|000000|69999|1E\\+[0-9]+|^\\d{1,8}$|",
+  "^SIN\\s*(INFORM(A(C(CION)?)?|I[ÓO]N|VION)?|DAT(OS?|OP|OSQ)?|DTO|INF(R)?|N?INFORMACION|INFROMACION|NIFORMACION|INFORMAICON|INFOMACION|INFR\\s*NO\\s*RECUERDA|REGISTRO)|",
+  "^NO\\s*(SABE|REFIERE|DATOS?|REGISTRA|INFORMA?|INFROMA|INFORMACION)?$|^NOINFORMA$|^NO\\s+INFORMA$|^DESCONOCE$|^NINGUNO$|",
+  "^CALLE\\s+\\d+.*|",
+  "(CR|CRA|CL|CLL)\\s*\\d+.*|",
+  "^AVENIDA\\s+(80|ORIENTAL|INDUSTRIALES)$|",
+  "^(URBANA|URBANO|URBAN|URBAQNO)$|",
+  "^ESTU[DI]{1,2}ANTE$|",
+  "^ANTI(OQUAI|OU?Q?UI[AI]|QUIA|QUAI)$|",
+  "^BELEN\\s+(SUCRE|TRINIDAD)$|",
+  "^(CABECERA MUNICIPAL|CABECERA MUNICIPAL MEDELLIN|CABECERA)$|",
+  "^(1?M[EO]D+[EL]{1,3}I+[NLÑA]{1,3}|MEDELLNI|MEDELLN|MEDELLLIN|MEDELLÍN|MEDELLIM|MEDELLI|MEDELELIN|MEDEÑÑIN|MEDEELLIN)$|",
+  "^(FFD|A|V|N|F|ND|NS|SD|SI|C|XXX|X|-|CALLE DESCONOCIDA|CALLE|NO STOS|SAN DATO|SI DATO|SINDATOS|SINI NFORMACION|SIN INF|AUTOPISTA MEDELLIN-B|KL 6 ANTIGUA VIA MAR|KL 6 VIA AL MAR|ASDA|AV 36 A 45 87|AV ORIENTAL|COLOMBIA|CONFECCIONISTA|COOSALUD|AMA DE CASA|EN EL METRO|EN BUS SERVICIO PUBL|ESTACION DE POLICIA|FCO ANTIOQUIA|HOTEL MEDELLIN|ICBF|INDETERMINADO|REGIONAL|REGIONAL- DISCOTK MA|SECTOR CENTRAL|VIVIENDAS DEL SUR|MEDELLIN  ANTIOQUIA|ANTIOQUIA MEDELLIN|BELLO LA ORQU[ÍI]DEA)$|",
+  "DESC(ONOCID[AO]|NOCIDA)|\\[?Otro\\]?|AEROPAQUE|ALBERGUE CARLOS M HO|NULL|TODOS LOS BARRIOS)"
+)
 
 data <- data %>%
   mutate(across(c(bar_ver_, localidad_, cen_pobla_, vereda_), 
@@ -1832,10 +1847,32 @@ data <- data %>% select(-bar_ver_, -localidad_, -cen_pobla_, -vereda_,-ver_cen,-
 -     Se unifica la escritura para evitar repeticiones
 
 ```{r}
-nom <- data %>% count(lugar_hecho,nombre_barrio,nmun_proce,ndep_proce, name = "cantidad")
+# Manejar casos compuestos: dos barrios, barrio - comuna, barrio - departamento
 
-arreglada <- data %>%
+arreglada <- arreglada %>%
   mutate(lugar_hecho = str_trim(lugar_hecho))
+
+arreglada <- arreglada %>%  mutate(lugar_hecho = case_when(
+  # str_detect(lugar_hecho, "^ANDAL[AU]C[IÍ]A\\b.+") ~ str_extract(lugar_hecho, "^ANDAL[OU]C[IÍ]A"),
+  str_detect(lugar_hecho, "^ANTIOQUIA\\s+GIRARDOTA$") ~ "GIRARDOTA",
+  str_detect(lugar_hecho, "^ARANJUEZ\\b.+") ~ str_remove(lugar_hecho, "^ARANJUEZ\\s+"),
+  str_detect(lugar_hecho, "^BARRIO CAYCEDO\\s*-") ~ str_extract(lugar_hecho, "^BARRIO CAYCEDO"),
+  str_detect(lugar_hecho, "^BEL[ÉE]N\\s+|^BELAN\\s+(ALTAVISTA|GRANADA|LA GLORIA|LA MOTA|LAS VIOLETAS|LOMA BERNAL|LAS MARGARITAS|L[AO]S\\s+MERE?CEDES|LS MERCEDES|ROSALES|SAN BERNARDO|SAN BERNANADO|SAN BERNANDO|SAN CARLOS|VIOLETAS|AGUA[\\s]?FR[ÍI]AS?|AGUAS\\s+FR[ÍI]AS?|AGUAFR[ÍI]A|AGUS\\s+FR[ÍI]AS?|VICLETAS)$") ~ str_remove(lugar_hecho,"^BEL[ÉE]N\\s+|^BELAN\\s+"),
+  str_detect(lugar_hecho, "^ALTAVISTA\\b.+") ~ str_extract(lugar_hecho, "^ALTAVISTA"),
+  str_detect(lugar_hecho, "^BELENCITO SN JAVIER$") ~ str_extract(lugar_hecho, "SN JAVIER"),
+ str_detect(lugar_hecho, "^B\\s+(MANRIQUE|CENTRO|CRISTOBAL|RINCON|TRINIDAD)$") ~ str_remove(lugar_hecho, "^B\\s+"),
+ str_detect(lugar_hecho, "^B[AOY][Y]?AC[AC]?S?\\s+LAS BRISAS$")& str_sub(codigo_barrio,3,4) == "02" ~ str_extract(lugar_hecho, "LAS BRISAS$"),
+str_detect(lugar_hecho, "^B[AOY][Y]?AC[AC]?S?\\s+LAS BRISAS$") & str_sub(codigo_barrio,3,4) == "05" ~ str_remove(lugar_hecho, "\\s+LAS BRISAS$"),
+str_detect(lugar_hecho, "^B[AOY][Y]?AC[AC]?S?\\s+LAS BRISAS$") & !str_sub(codigo_barrio,3,4) %in% c("02","05") ~ str_extract(lugar_hecho, "LAS BRISAS$"),
+
+  TRUE ~ lugar_hecho
+))
+```
+
+
+```{r}
+nom <- arreglada %>% count(lugar_hecho,nombre_barrio,nmun_proce,ndep_proce, name = "cantidad")
+sum(is.na(arreglada$lugar_hecho))
 
 arreglada <- arreglada %>%
   mutate(
@@ -1852,41 +1889,20 @@ arreglada <- arreglada %>%
           "ROBLEDO LAS FLORES",
           "LAS FLOREZ",
           "LAS FLORES"
-        ) ~ "Santa Margarita",
-      
-      #str_detect(lugar_hecho, "^ALFONSO?L? LOPEZ$") ~ "Alfonso López",
+        ) ~ "Santa Margarita", 
+            str_detect(lugar_hecho, "(ALPUJARRA|PLAZA MAYOR)") ~ "La Alpujarra",
       str_detect(lugar_hecho,
                  regex("alfon(s[aoz]?|zos?)\\s?lo(p|b)?e[zs]?|alfonsol\\s?lopez|alfonos\\s?lopez|alfonoslopez",
                        ignore_case = TRUE)) ~ "Alfonso López",
-
-
-
-
-
-#       str_detect(lugar_hecho, regex("alfonos\\s?lopez", ignore_case = TRUE)) |
-# str_detect(lugar_hecho, regex("alfonoslopez", ignore_case = TRUE)) |
-# str_detect(lugar_hecho, regex("alfonsa\\s?lopez", ignore_case = TRUE)) |
-# str_detect(lugar_hecho, regex("alfonso\\s?loez", ignore_case = TRUE)) |
-# str_detect(lugar_hecho, regex("alfonzo\\s?lopez", ignore_case = TRUE)) |
-# str_detect(lugar_hecho, regex("Alfonsol Lopez", ignore_case = TRUE)) |
-# str_detect(lugar_hecho, regex("^alfonso\\s?l[oó]pez$", ignore_case = TRUE)) ~ "Alfonso López",
-
-      
-      #str_detect(lugar_hecho, "^A?N?DALUCIA$") ~ "Andalucía",
       str_detect(lugar_hecho, regex("anadalucia|andlaucia|andulucia|anda\\s*luc[ai]|andal[uú]cia(?!.*la\\s*franci[ao][s]?)", ignore_case = TRUE)) ~ "Andalucía",
-
-
-
-
-      str_detect(lugar_hecho, "^ANTI[O]*QUIA$") ~ NA_character_,
-      # str_detect(lugar_hecho, "\\b(CORREGIMIENTO|CORR)\\sALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\sLOS\\sCHIVOS\\b") ~ NA_character_,
-      
-
-      
+          str_detect(lugar_hecho, regex("andal[uú]cia.*(la\\s*franci[ao][s]?|l\\s*francia)|Andalacia La Francia|Andalucía La Francia", ignore_case = TRUE)) ~ "La Francia",
+     str_detect(lugar_hecho, "^ANTI[O]*QUIA$") ~ NA_character_,
       lugar_hecho %in% c("ALTAVISTA", "ALTAVIASTA", "ALTA VISTA", "ALTAVIATA") ~ "Altavista",
-      str_detect(lugar_hecho,"\\b(BEL[ÉE]N|BELAN)\\s+ALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\s+(BEL[ÉE]N|BELAN)\\b") ~ "Altavista",
       lugar_hecho == "ALTAVISTA CENTRAL" ~ "Altavista Sector Central",
-      lugar_hecho %in% c("ARAJUEZ", "ARAMJUEZ") ~ "Aranjuez",
+      lugar_hecho %in% c("ARAJUEZ", "ARAMJUEZ","ARAN JUEZ", "ARANJUE", "ARANJUERZ", "ARANJUEZ3", "ARANJUUEZ", "ARANJUZ", "ARNJUEZ", "SAN CAYETANO ARNJUEZ") ~ "Aranjuez",
+    str_detect(lugar_hecho, regex("aranjuez berlin|^berlin$", ignore_case = TRUE)) ~ "Berlín",
+    str_detect(lugar_hecho, regex("aranjuez palermo|^palermo$", ignore_case = TRUE)) ~ "Palermo",
+    str_detect(lugar_hecho, regex("aranjuez san isidro|^san isidro$", ignore_case = TRUE)) ~ "San Isidro",
       str_detect(lugar_hecho, "ASOMADERA") ~ "Asomadera No.1",
       lugar_hecho %in% c(
         "AURES",
@@ -1902,16 +1918,31 @@ arreglada <- arreglada %>%
         "Aures Nro 1" 
       ) ~ "Aures No.1",
       str_detect(lugar_hecho, regex("\\bAURES\\s*(NO|NRO)?\\.?\\s*-?2\\b", ignore_case = TRUE)) ~ "Aures No.2",
-      
-      str_detect(lugar_hecho, "ALAMOS") ~ "Bermejal-Los Álamos",
+            str_detect(lugar_hecho, "ALAMOS") ~ "Bermejal-Los Álamos",
       lugar_hecho %in% c("AGIAS FRIS", "AGUAS FRIAS", "VEREDA AGUAS FRIAS") ~ "Aguas Frías",
-      str_detect(lugar_hecho, "\\bBEL[ÉE]N? AGUAS? FR[ÍI]AS?\\b") ~ "Aguas Frías",
-      str_detect(lugar_hecho, "\\b(BEL[ÉE]N\\sRINC[ÓO]N|BEL[ÉE]N\\sRINCO|EL\\sRINC[ÓO]N|B\\sRINC[ÓO]N|RINC[ÓO]N)\\b") ~ "El Rincón",
+     
       str_detect(lugar_hecho, "\\bB[UEO]{2,5}N[IOS]*\\sAIRES\\b") ~ "Buenos Aires",
       str_detect(lugar_hecho, "\\bBARRIO\\sANTI[OQ]UIA\\b") ~ "Barrio Antioquia",
       lugar_hecho %in% c("BELLA VISTA") ~ "Bellavista",
-      str_detect(lugar_hecho, "(BELEB|ZAFRA)") ~ "Belén",
-      lugar_hecho == "BOLIVAR" ~ "Simón Bolívar",
+      str_detect(lugar_hecho, "\\b(BEL[ÉE]N\\s(RINC[ÓO]N|RINCO|RICO|RONCON)|BELEN\\sBELEN\\sRINCON)\\b") ~ "Área de Expansión Belén Rincón",
+      str_detect(lugar_hecho, "\\b(EL\\sRINC[ÓO]N|B\\sRINC[ÓO]N|RINC[ÓO]N|BELEN LA CAPILLA|BELEN RINCON LA CAPI)\\b") ~ "El Rincón",
+      str_detect(lugar_hecho, "^(BELEN\\s+(PARQUE|ALAMEDA|PORVEN[IO]R|VICUÑA)|BELEB)$") ~ "Belén",
+      str_detect(lugar_hecho, "^BELEN\\s+(LA NUVIA|LA NUBIA|ALIADA|SAN CARLOS)$") ~ "La Gloria",
+      str_detect(lugar_hecho, "^BELEN\\s+RODEO(\\sALTO)?$") ~ "El Rodeo",
+      str_detect(lugar_hecho, "^(BELEN\\s+(BUENA\\s?VIST[AA]?|LOS ALPINOS|ZAFRA|SAFRA)|LOS ALPINOS|ZAFRA)$") ~ "Altavista",
+      str_detect(lugar_hecho, "^BEL[ÉE]N\\s+MALIB[ÚU]$") ~ "Rosales",  
+      lugar_hecho == "BELEN SAN FERNANDO" ~ "San Bernardo",
+      lugar_hecho == "BELENCITO BETONIO" ~ "Betania",
+      str_detect(lugar_hecho,"^BEL[AE]?[LNRSB]*[CS]ITO\\s*CORAZ[ÓO]N?$|^BEL[AE]?[LNRSB]*CITO\\s*\\}?$") ~ "Belencito",
+lugar_hecho == "BELLO ORIENTE MEDELLIN" ~ "Manrique",  
+lugar_hecho == "BELLO SANTA ANA" ~ "Santa Ana",
+      lugar_hecho %in% c("BELLO LA GABRIELA") ~ "La Gabriela",
+      lugar_hecho %in% c("BELLO MANCHESTER") ~ "Mánchester",
+lugar_hecho %in% c("BELLO NIQUIA") ~ "Niquía",
+str_detect(lugar_hecho, "^(BELLO)?PACHEL{1,2}I{0,2}Y?$") ~ "Pachelly",
+lugar_hecho == "BOSTON SUCRE" ~ "Boston",
+lugar_hecho == "BOLIVAR" ~ "Simón Bolívar",
+lugar_hecho == "BOSTONLA LADERA" ~ "La Ladera",
       lugar_hecho %in% c("BARRIO DE JESUS", "BARRIOS DE JESUS", "DE JESUS", "BARRIO TRISTE") ~ "Barrios de Jesús",
       lugar_hecho %in% c("B CRISTOBAL", "BARRIO CRISTOBAL") ~ "Barrio Cristóbal",
       str_detect(lugar_hecho, "BARRIO ESTADIO") ~ "Estadio",
@@ -1929,52 +1960,24 @@ arreglada <- arreglada %>%
       lugar_hecho %in% c("B CENTRO","CENTRO DIA","CENTRI","CENTRO","CENTRO OPERA","CENTRO MEDELLIN","CENTRO ORIENTAL","CENTRO-HOTEL GOLDEN","HOSTAL DEL CENTRO","CENTRO BARBACOAS","LA PLAYA CENTRO","CENTRO DE LA CIUDAD","CENTRO DE LA CIUDAD","CENTRO DIA","CENTRO DE MEDELLIN","CENTRO MEDELLI","CENTROON") ~ "La Candelaria", 
       lugar_hecho == "CENTRO POBLADO" ~ NA_character_,
       lugar_hecho %in% c("PRADO  CENTRO","BARRIO PRADO","PRADITO","PRADO BELLO","PRDAO","PRODO","PRADO LA CANDELARIA","PRADO CENTROL","PRADO - LA CANDELARIA","PRADO-CENTRO","PRADO CENTRO","PADO CENTRO","PADRO CENTRO","PRADRO CENTRO") ~ "Prado",
+
       str_detect(lugar_hecho, "\\bCENTRO ADMINISTRATIV(O|OI|)\\b") ~  "Centro Administrativo",
       str_detect(lugar_hecho, "\\bCALA[SNZ]{2,}Z?\\b") ~ "Calasanz",
       str_detect(lugar_hecho, "\\b(CALASA[NZ]A?\\sPARTE\\sALTA|ALTOS\\sDE\\sCALAZANS)\\b") ~ "Calasanz Parte Alta",
       str_detect(lugar_hecho, "\\bCAMPO\\sVALD[ÉE]S\\sNO[\\.]?\\s?1\\b") ~ "Campo Valdés No.1",
     str_detect(lugar_hecho, "\\bCAMPO\\sVALD[ÉE]S\\sNO[\\.]?\\s?2\\b") ~ "Campo Valdés No.2",
-
     str_sub(codigo_barrio,1,2) == "04" & str_detect(lugar_hecho, "\\b(VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES)\\b") ~ "Campo Valdés No.1",
     str_sub(codigo_barrio,1,2) == "03" & str_detect(lugar_hecho, "\\b(VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES)\\b") ~ "Campo Valdés No.2",
     !(str_sub(codigo_barrio,1,2) %in% c("03","04")) & str_detect(lugar_hecho,"\\b(VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES)\\b") ~ NA_character_,
 
-      lugar_hecho %in% c(
-        "DOCE OCTUBRE",
-        "DPCE DE OCTUBRE",
-        "DOCE DE OCTUBRE COMUNA 6",
-        "DOCE DE OCTUBRE",
-        "DOCE DE COTUBRE",
-        "12 OCTUBRE",
-        "12 DE OCTUBRE",
-        "12  DE OCTUBRE",
-        "12 DE OCTUBTRE",
-        "DOCE DE OCTUNRE",
-        "12 DE COTUBRE",
-        "12 De CTUBRE",
-        "12 De OCYUBRE",
-        "12-OCT",
-        "12 DE OCYUBRE",
-        "12 DE OCTUBTRE",
-        "12 DE CTUBRE",
-        "12-oct"
-        
-      ) ~ NA_character_,
       str_detect(lugar_hecho, "^DOCE DE OCTUBRE (N|NO\\.?|No\\.?) ?1$") ~ "Doce de Octubre No.1",
       str_detect(lugar_hecho, "^DOCE DE OCTUBRE (N|NO\\.?|No\\.?) ?2$") ~ "Doce de Octubre No.2",
       
-      str_detect(
-        lugar_hecho,"\\b(CORR\\sSANTA\\sEL[ÉE]NA\\sEL\\sLLANO|EL\\sLLANO(\\s|\\s*\\(?)SANTA\\sEL[ÉE]NA\\)?)\\b") ~ "El Llano SE",
+      str_detect(lugar_hecho,"\\b(CORR\\sSANTA\\sEL[ÉE]NA\\sEL\\sLLANO|EL\\sLLANO(\\s|\\s*\\(?)SANTA\\sEL[ÉE]NA\\)?)\\b") ~ "El Llano SE",
           str_sub(codigo_barrio,1,2) == "60" & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano",
     str_sub(codigo_barrio,1,2) == "90" & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano SE",
     !is.na(codigo_barrio) & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano",
-    
-    
-      str_detect(
-        lugar_hecho,
-        "\\b(EL\\s)?PLAYON(\\sDE\\sLOS\\sCOMUNEROS|\\sDE\\sLOS\\sCOM)?\\b") ~ "Playón de Los Comuneros",
       str_detect(lugar_hecho, "\\bENCIS[OZQ](\\s(EL\\s)?PINAL)?\\b") ~ "Enciso",
-      # str_detect(lugar_hecho, "\\bENVIGAD(O)?\\b") ~ NA_character_,
       str_detect(lugar_hecho, "(RODEO|ROEO)") ~ "El Rodeo",
       str_detect(lugar_hecho, "^SALADO$") ~ "El Salado",
       str_detect(lugar_hecho, "^RAIZAL$") ~ "El Raizal",
@@ -1985,19 +1988,14 @@ arreglada <- arreglada %>%
       
       lugar_hecho %in% c("GIAUAYABAL", "GUAYABA", "GUAYABAL1", "GUYABAL") ~ "Guayabal",
       
-      str_detect(
-        lugar_hecho,
-        "\\bJUAN\\s(23|XIII|X{2,3}I{0,3}|XVII|XXI{1,2}I{0,2}|XX111)(\\s*-?\\s*LA\\sQUIEBRA|\\s*-?\\s*LA\\sDIVISA)?\\b") ~ "Juan XXIII La Quiebra",
+      str_detect(lugar_hecho, "\\bJUAN\\s(23|XIII|X{2,3}I{0,3}|XVII|XXI{1,2}I{0,2}|XX111)(\\s*-?\\s*LA\\sQUIEBRA|\\s*-?\\s*LA\\sDIVISA)?\\b") ~ "Juan XXIII La Quiebra",
       
       lugar_hecho == "LOS BALSOS" ~ "Los Balsos No.1",
       str_detect(lugar_hecho, "LAS LOMAS") ~ "Las Lomas No.1",
       str_detect(lugar_hecho, "(PALMAS|PALAMAS|PLMAS)") ~ "Las Palmas",
       str_detect(lugar_hecho, "LA LOMA") ~ "La Loma",
       str_detect(lugar_hecho, "VERGEL") ~ "Los Cerros El Vergel",
-      lugar_hecho %in% c("BELLO LA GABRIELA") ~ "La Gabriela",
-      lugar_hecho %in% c("BELLO LA ORQUÍDEA") ~ "La Orquídea",
-      str_detect(lugar_hecho, "(ALPUJARRA|PLAZA MAYOR)") ~ "La Alpujarra",
-      str_detect(lugar_hecho, "(PARQUE BOLIVAR|PARQUE BERRIO)") ~ "La Candelaria",
+
       str_detect(lugar_hecho, "LIBERTAD") ~ "La Libertad",
       str_detect(lugar_hecho, "LOPEZ DE MESA") ~ "López de Mesa",
       str_detect(lugar_hecho, "^LOS MESAS$") ~ "San Antonio de Prado",
@@ -2006,13 +2004,10 @@ arreglada <- arreglada %>%
       
       str_detect(lugar_hecho, "(?i)MORAVI?[A]") ~ "Moravia",
       str_detect(lugar_hecho, "\\b(MARIA\\sCANO\\s-\\s)?CARAMBO(LAS)?\\b") ~ "María Cano-Carambolas",
-      # str_detect(lugar_hecho,"\\b(MANRIQUE|MANRIUE|MANRI|MANRIOQUE|MNRIQUE)\\b") ~ NA_character_,
       str_detect(lugar_hecho, "(MILAGROSA|MILOGROSA|MILAROSA|ILAGROSA)") ~ "La Milagrosa",
       
-      str_detect(
-        lugar_hecho,
-        "\\b(NUEVA\\sVILLA\\sDE\\sLA?\\sH?IGUAN[ÁAÃ]?|LA\\sH?IGUAN[ÁAÃ]?|IGUANA)\\b") ~ "Nueva Villa de La Iguaná",
-      
+      str_detect(lugar_hecho,"\\b(NUEVA\\sVILLA\\sDE\\sLA?\\sH?IGUAN[ÁAÃ]?|LA\\sH?IGUAN[ÁAÃ]?|IGUANA)\\b") ~ "Nueva Villa de La Iguaná",
+
       lugar_hecho %in% c(
         "EL PEDREGAL",
         "PEDREGA",
@@ -2021,7 +2016,8 @@ arreglada <- arreglada %>%
         "ROBLEDO PEDREGAL",
         "DREGAL"
       ) ~ "Pedregal",
-      
+      str_detect(lugar_hecho, "(PARQUE BOLIVAR|PARQUE BERRIO)") ~ "La Candelaria",
+      str_detect(lugar_hecho,"\\b(EL\\s)?PLAYON(\\sDE\\sLOS\\sCOMUNEROS|\\sDE\\sLOS\\sCOM)?\\b") ~ "Playón de Los Comuneros",
       str_detect(
         lugar_hecho,
         "(POPULAR|PIOPULAR|POLPULAR|POLULAR|POPILAR|POPULRA|PUPULAR|PÓPULAR)") ~ "Popular",
@@ -2037,23 +2033,18 @@ arreglada <- arreglada %>%
       lugar_hecho %in% c("ROBEDO", "ROBELDO", "ROBLED", "ROBLEOD", "ROBLESO", "ROBLRDO") ~ "Robledo",
       lugar_hecho == "ROBLEDO PAJARITO" ~ "Pajarito",
       
- # str_detect(lugar_hecho,"\\b(SAN\\s?CRIST[ÓO]B[A-Z]*|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL)\\b") ~ NA_character_,
   str_detect(
     lugar_hecho,
     "\\b(ÁREA\\sURBANA\\sCGTO\\.\\sSAN\\sCRIST[ÓO]BAL)\\b") ~ "Cabecera Urbana Corregimiento San Cristóbal",
-      # str_detect(lugar_hecho,"\\b(SS?ANTA\\s(EL[ÉE]NA|HELENA|ELENEA)(?!\\sEL\\sLLANO)|CORREGIMIEN(TO)?\\sSANTA(\\s(EL[ÉE]NA|HELENA|EL))?)\\b") ~ NA_character_,
       lugar_hecho == "SANTA ELENEA SECTOR CENTRAL" ~ "Santa Elena Sector Central",
  str_detect(
     lugar_hecho,
     "\\bSAN\\sJAVIER(\\sNO\\.?\\s?1|\\sN?1|\\s#1)\\b"
   ) ~ "San Javier No.1",
-
   str_detect(
     lugar_hecho,
     "\\bSAN\\sJAVIER(\\sNO\\.?\\s?2|\\sN?2)\\b"
   ) ~ "San Javier No.2",
-
-  # str_detect(lugar_hecho,"\\bS{0,2}N?\\s?JA(V[IE]{1,3}R?|VIAER|VIER|JAIER)Q?\\b(?!\\s*(NO|#)?\\s?\\d)") ~ NA_character_,
       str_detect(
         lugar_hecho,
         "\\b(SAN\\sJOS[ÉE]?\\s(DE|DEL)\\sMANZANILLO|VEREDA\\sMANZANILLO|MANZANILLO)\\b"
@@ -2062,7 +2053,6 @@ arreglada <- arreglada %>%
         lugar_hecho,
         "\\b(SANTA|STA)\\sMARIA\\sDE\\sLOS\\s(ANGELES|A)\\b") ~ "Santa María de Los Ángeles",
       str_detect(lugar_hecho,"\\b(SANANTONIO\\sDE\\sPRADO\\s)?(PORTON\\sDEL\\s)?LIMONAR(\\s?(1|2|4|II))?\\b") ~ "San Antonio de Prado",
-      # str_detect(lugar_hecho,"\\bCORREGIMIENTO\\sSAN\\sANTONIO\\b(?!\\sDE\\sPRADO)|\\bCORREGIMIENTO\\sSAN\\sAN\\b(?!\\sDE\\sPRADO)") ~ NA_character_,
       str_detect(
         lugar_hecho,
         "\\b(ÁREA\\sURBANA\\sCGTO\\.\\sSAN\\sANTONIO\\sDE\\sPRADO|SN\\sANTONIO\\sDE\\sPRADO|SAN\\sA[QK]?NTONIOO?\\sDE\\sPRAD[O]?)\\b") ~ "San Antonio de Prado",
@@ -2097,26 +2087,13 @@ arreglada <- arreglada %>%
       str_detect(lugar_hecho, regex("aldea.*pablo\\s*(vi|sexto)", ignore_case = TRUE)) ~ "Aldea Pablo VI",
       str_detect(lugar_hecho, regex("^Alejandria$", ignore_case = TRUE)) ~ "Alejandría",
       str_detect(lugar_hecho, "(ALEJANDRO ECHAVARRIA|ALEJANDRO ECHAVARRÍA|ALEJANDRO CHAVARRIA)") ~ "Alejandro Echavarría",
-      str_detect(lugar_hecho, regex("^Aliadas$", ignore_case = TRUE)) ~ "Altavista",
+      str_detect(lugar_hecho, regex("^Aliadas$", ignore_case = TRUE)) ~ "La Gloria",
       str_detect(lugar_hecho, regex("^Alhambra$", ignore_case = TRUE)) ~ "San José La Cima No.1",
       str_detect((lugar_hecho), regex("altos\\s+de\\s+la\\s+torre", ignore_case = TRUE)) ~ "Llanaditas", # REVISAR
       str_detect(lugar_hecho, "^LA TORRE$") ~ "Santo Domingo Savio No.1",
       str_detect(lugar_hecho, "^VILLATINA LA TORRE$") ~ "Villatina",
       str_detect(lugar_hecho, regex("^(la\\s+)?america(\\s+niza)?$", ignore_case = TRUE)) ~ "La América",
 
-
-    str_detect(lugar_hecho, regex("andal[uú]cia.*(la\\s*franci[ao][s]?|l\\s*francia)|Andalacia La Francia|Andalucía La Francia", ignore_case = TRUE)) ~ "La Francia",
-
-    lugar_hecho %in% c("ARAN JUEZ", "ARANJUE", "ARANJUERZ", "ARANJUEZ3", "ARANJUUEZ", "ARANJUZ", "ARNJUEZ", "SAN CAYETANO ARNJUEZ") ~ "Aranjuez",
-    str_detect(lugar_hecho, regex("aranjuez berlin|^berlin$", ignore_case = TRUE)) ~ "Berlín",
-    str_detect(lugar_hecho, regex("aranjuez palermo|^palermo$", ignore_case = TRUE)) ~ "Palermo",
-    str_detect(lugar_hecho, regex("aranjuez san isidro|^san isidro$", ignore_case = TRUE)) ~ "San Isidro",
-
-
-
-
-
- 
       TRUE ~ str_to_title(tolower(lugar_hecho))
      )
   )
@@ -2124,8 +2101,6 @@ arreglada <- arreglada %>%
 arreglada <- arreglada %>%
   mutate(
     lugar_hecho = case_when(
-      lugar_hecho == "1medellin	" ~ NA_character_, 
-      lugar_hecho == "1medellin" ~ NA_character_, 
       lugar_hecho == "Pablo Vi" ~ "Pablo VI",
       lugar_hecho == "Aldea Pablo Vi" ~ "Aldea Pablo VI",
       TRUE ~ lugar_hecho  # Mantiene los valores originales si no hay coincidencia
@@ -2133,6 +2108,37 @@ arreglada <- arreglada %>%
   )
 ```
 
+```{r}
+# CÓDIGOS DE APOYO PARA LUEGO DE CREAR NUEVAS VARIABLES
+
+# str_detect(lugar_hecho,"\\bCORREGIMIENTO\\sSAN\\sANTONIO\\b(?!\\sDE\\sPRADO)|\\bCORREGIMIENTO\\sSAN\\sAN\\b(?!\\sDE\\sPRADO)") ~ NA_character_,
+# str_detect(lugar_hecho,"\\bS{0,2}N?\\s?JA(V[IE]{1,3}R?|VIAER|VIER|JAIER)Q?\\b(?!\\s*(NO|#)?\\s?\\d)") ~ NA_character_,
+# str_detect(lugar_hecho,"\\b(SS?ANTA\\s(EL[ÉE]NA|HELENA|ELENEA)(?!\\sEL\\sLLANO)|CORREGIMIEN(TO)?\\sSANTA(\\s(EL[ÉE]NA|HELENA|EL))?)\\b") ~ NA_character_,
+# str_detect(lugar_hecho,"\\b(SAN\\s?CRIST[ÓO]B[A-Z]*|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL)\\b") ~ NA_character_,
+# str_detect(lugar_hecho,"\\b(MANRIQUE|MANRIUE|MANRI|MANRIOQUE|MNRIQUE)\\b") ~ NA_character_,
+# str_detect(lugar_hecho, "\\b(CORREGIMIENTO|CORR)\\sALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\sLOS\\sCHIVOS\\b") ~ NA_character_,
+# lugar_hecho %in% c(
+      #   "DOCE OCTUBRE",
+      #   "DPCE DE OCTUBRE",
+      #   "DOCE DE OCTUBRE COMUNA 6",
+      #   "DOCE DE OCTUBRE",
+      #   "DOCE DE COTUBRE",
+      #   "12 OCTUBRE",
+      #   "12 DE OCTUBRE",
+      #   "12  DE OCTUBRE",
+      #   "12 DE OCTUBTRE",
+      #   "DOCE DE OCTUNRE",
+      #   "12 DE COTUBRE",
+      #   "12 De CTUBRE",
+      #   "12 De OCYUBRE",
+      #   "12-OCT",
+      #   "12 DE OCYUBRE",
+      #   "12 DE OCTUBTRE",
+      #   "12 DE CTUBRE",
+      #   "12-oct"
+      #   
+      # ) ~ NA_character_,
+```
 
 -     Como se vio en secciones anteriores, la mayoría de los casos ocurrieron en Medellín entonces se comienza verificando si los barrios/veredas sí corresponden a Medellín y en caso de qué no, cuando se trata de barrios/veredas de otros municipios:
 
