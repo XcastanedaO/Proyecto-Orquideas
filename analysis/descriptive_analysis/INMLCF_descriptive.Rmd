@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(dplyr)
 library(ggplot2)
-# source("../../utils/load_data.R")
+source("../../utils/load_data.R")
 library(here)
 library(hms)
 library(forcats)
@@ -51,11 +51,75 @@ data |> is.na() |> sum()
 ```{r}
 data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame()
 ```
+### Dendograma
+
+```{r}
+library(ggraph)
+library(igraph)
+library(tidyverse)
+library(RColorBrewer) 
+```
+```{r}
+temp <-data %>%
+  distinct(def_naturaleza, circunstancia_del_hecho, razon_del_suicidio)
+save_data(temp, "temp", type = "interim",format = "xlsx" )
+```
+```{r}
+table <- 
+  data %>%
+  mutate(pathString = paste("Root", def_naturaleza, circunstancia_del_hecho, sep = "/"))
+```
+
+```{r}
+tree <- as.Node(table)
+
+# Print the tree
+print(tree, "name")
+
+```
+
+```{r}
+edges1 <- data %>%
+  distinct(def_naturaleza) %>%
+  mutate(from = "root", to = def_naturaleza) %>%
+  select(from, to)
+
+edges2 <- data %>%
+  distinct(def_naturaleza, circunstancia_del_hecho) %>%
+  rename(from = def_naturaleza, to = circunstancia_del_hecho)
+
+edges_all <- bind_rows(edges1, edges2)
+
+# Create graph
+graph <- graph_from_data_frame(edges_all)
+
+# Plot circular dendrogram
+ggraph(graph, layout = 'dendrogram', circular = TRUE) +
+  geom_edge_diagonal() +
+  geom_node_point(color = "tomato", size = 3) +
+  geom_node_text(aes(label = name), repel = TRUE, size = 3, angle = 90, hjust = 1) +
+  theme_void()
+```
+
+```{r}
+mygraph <- graph_from_data_frame( edges )
+ 
+# Basic tree
+ggraph(mygraph, layout = 'dendrogram', circular = FALSE) + 
+  geom_edge_diagonal() +
+  geom_node_point() +
+  theme_void()
+```
+```{r}
+
+```
+
+
 
 ```{r}
 data %>% explore()
 ```
-
+###
 ```{r}
 data <- data %>% select(-c(tipo_de_discapacidad, sexo_del_presunto_agresor)) # Variables no presentes en casos Fatales
 ```
