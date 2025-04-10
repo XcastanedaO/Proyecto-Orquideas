@@ -1,0 +1,325 @@
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+```{r, include=FALSE}
+library(dplyr)
+library(ggplot2)
+source("../utils/load_data.R")
+library(here)
+library(hms)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(stringi)
+library(caret)
+library(factoextra)
+library(NbClust)
+library(explore)
+library(cluster)
+library(dbscan)  
+```
+
+```{r}
+data <- load_data("INMLCF_2015_2024.csv", type = "processed")
+```
+
+
+
+```{r}
+summary(as.factor(data$def_naturaleza))
+```
+
+```{r}
+# Sólo quedamos con la fecha de notificación y fecha_hecho 
+data <- data |> select(-c(municipio_del_hecho_dane,departamento_del_hecho_dane, presunto_agresor ))
+```
+
+```{r}
+data |> is.na() |> colSums() |> data.frame()
+```
+
+```{r}
+data <- data[!apply(is.na(data), 1, any), ] 
+```
+
+
+```{r}
+df <- data
+```
+
+```{r}
+## Datos numéricos
+df[, sapply(df, is.numeric)]
+```
+
+
+
+```{r}
+# Convertir caracter a factor
+df[] <-lapply(df, function(x) if(is.character(x)) as.factor(x) else x)
+```
+
+
+
+```{r}
+df[, sapply(df, is.factor)]
+```
+### Asignando niveles a las variables categoricas
+```{r}
+# Niveles de las variables categóricas
+factor_mappings <- lapply(df, function(x) {
+  if (is.factor(x)) {
+    data.frame(Level = levels(x), Code = seq_along(levels(x)))
+  } else {
+    NULL
+  }
+})
+```
+
+```{r}
+factor_mappings
+```
+
+```{r}
+data_final <- df
+data_final$ano_del_hecho <- as.factor(data_final$ano_del_hecho )
+```
+
+```{r}
+df <- df %>%
+  mutate_if(is.factor, as.numeric)
+```
+
+```{r}
+df
+```
+
+### One-Hot-Encoding 
+
+```{r}
+# dummy  <- dummyVars(" ~ .",data_final[, sapply(data_final, is.factor)])
+# data.frame(predict(dummy, data_final[, sapply(data_final, is.factor)])) ## dada la cantidad de niveles de las categorias no es posible usar esta técnica por ahora
+```
+
+
+```{r}
+df %>% colnames()
+```
+
+
+## Cor
+
+```{r}
+as.data.frame(as.table(cor(df))) |> subset( abs(Freq) > 0.7 & abs(Freq) < 1 )
+```
+
+Se procede a remover la variable grupo edad por su correlación con edad, las demás variables se dejan dado que tiene sentido medir correlación entre fechas
+
+```{r}
+## Removing correlation data 
+# df <- df |> select(-c(grupo_de_edad_de_la_victima) )
+```
+
+## PCA
+
+```{r}
+pca_resultado <- prcomp(df, 
+                        center = TRUE,  # Por defecto TRUE
+                        scale. = TRUE) 
+```
+
+```{r}
+summary(pca_resultado)
+```
+
+```{r}
+plot(pca_resultado$sdev^2, 
+     type = "b", 
+     main = "Varianza explicada por componente",
+     xlab = "Componentes", 
+     ylab = "Varianza")
+```
+
+```{r}
+var_acumulada <- cumsum(pca_resultado$sdev^2 / sum(pca_resultado$sdev^2))
+num_componentes <- which(var_acumulada >= 0.90)[1]
+print(paste("Número óptimo de componentes:", num_componentes))
+```
+
+
+## K - MEANS
+
+```{r}
+# library(factoextra)
+# 
+# 
+# fviz_nbclust(
+#   df_scaled,
+#   kmeans,
+#   k.max = 10,
+#   method = "wss"
+#   # diss = get_dist(df, method = "spearman")
+# )
+```
+
+```{r}
+df_scaled_i <- scale(df)
+```
+
+```{r}
+wss <- sapply(1:10, function(k){kmeans(df_scaled_i, k, nstart=10)$tot.withinss})
+plot(1:10, wss, type="b", pch=19)
+```
+
+```{r}
+# library(cluster)
+# compute_silhouette_scores <- function(df, max_k = 10, min_k = 2) {
+#   sapply(min_k:max_k, function(k) {
+#     km <- kmeans(df, centers = k, nstart = 10)
+#     sil <- silhouette(km$cluster, dist(df))
+#     mean(sil[, "sil_width"])  # clearer than ss[, 3]
+#   })
+# }
+# 
+# silhouette_scores <- compute_silhouette_scores(df_scaled, max_k = 5)
+# 
+# # Plot silhouette scores
+# plot(2:10, silhouette_scores, type = "b", pch = 19,
+#      xlab = "Number of clusters (k)", ylab = "Average silhouette width",
+#      main = "Silhouette Method for Optimal k")
+```
+
+```{r}
+# gap_stat <- clusGap(df_scaled, 
+#                     FUN = kmeans, 
+#                     K.max = 5, 
+#                     B = 50,          # Number of bootstraps
+#                     nstart = 10)
+```
+
+
+```{r}
+set.seed(123)
+km_i <- kmeans(df_scaled_i, centers = 3, nstart = 10)
+```
+
+```{r}
+fviz_cluster(object = km_i, # kmeans object 
+             data = df_scaled_i, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
+```
+
+```{r}
+df$cluster_i <- as.factor(km_i$cluster)
+data_final$cluster_i <- as.factor(km_i$cluster)
+```
+
+```{r}
+table(data_final$cluster, data_final$def_naturaleza) # Los grupos se están separando dado si el tipo de violencia fue sexual o no sexual
+```
+```{r}
+data_final %>% explore()
+```
+
+## Gaussian mixture model clustering
+```{r}
+library(mclust)
+
+gmm_model <- Mclust(df_scaled)
+```
+```{r}
+summary(gmm_model)
+
+```
+
+```{r}
+# plot(gmm_model, what = "classification")
+clusters <- gmm_model$classification
+print(clusters)
+
+```
+```{r}
+cluster_assignments <- predict(gmm_model)$classification
+
+# Visualize the results
+plot(df_scaled, col = cluster_assignments, main = "GMM Clustering Results")
+points(gmm_model$parameters$mean, col = 1:3, pch = 8, cex = 2)
+```
+```{r}
+fviz_cluster(object = gmm_model, #
+             data = df_scaled, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
+```
+## Eliminando variables correlacionadas
+
+```{r}
+df <- df |> select(-c(grupo_mayor_menor_de_edad, circunstancia_del_hecho, intrafamiliar_sub) )
+```
+
+```{r}
+as.data.frame(as.table(cor(df))) |> subset( abs(Freq) > 0.7 & abs(Freq) < 1 )
+```
+
+```{r}
+df_scaled <- scale(df)
+wss <- sapply(1:10, function(k){kmeans(df_scaled, k, nstart=10)$tot.withinss})
+plot(1:10, wss, type="b", pch=19)
+```
+## DBSCAN
+```{r}
+# Load required libraries
+library(dbscan)    # For DBSCAN
+library(cluster)   # For silhouette score
+library(ggplot2)   # For visualization
+
+
+
+# --- Step 1: Run DBSCAN ---
+# Parameters:
+# - eps: Neighborhood radius (adjust based on your data scale)
+# - minPts: Minimum points to form a cluster (start with 5)
+dbscan_result <- dbscan::dbscan(df_scaled, eps = 0.5, minPts = 5)
+dbscan_result
+
+# Extract cluster labels (Note: -1 = noise/outliers)
+clusters <- dbscan_result$cluster
+table(clusters)  # Check cluster distribution
+
+
+# --- Step 3: Visualize Clusters ---
+data$cluster <- as.factor(clusters)
+
+ggplot(data, aes(x = Dim1, y = Dim2, color = cluster)) +
+  geom_point() +
+  labs(title = "DBSCAN Clustering",
+       subtitle = paste("eps = 0.5, minPts = 5 | Noise points (cluster -1) in black")) +
+  theme_minimal()
+```
+
+```{r}
+fviz_cluster(object = dbscan_result, # kmeans object 
+             data = df_scaled, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
+```
+
+
+```{r}
+# library(fpc)
+# dbscan_result <- fpc::dbscan(df_scaled, eps = 0.5, MinPts = 5)
+
+```
+

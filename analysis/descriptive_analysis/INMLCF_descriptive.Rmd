@@ -9,22 +9,24 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-source("../../utils/load_data.R")
+
+library(dplyr)
+library(ggplot2)
+# source("../../utils/load_data.R")
 library(here)
 library(hms)
-library(dplyr)
 library(forcats)
 library(lubridate)
 library(stringr)
+library(tidyr)
 library(stringi)
-library(janitor)
-library(explore)
 ```
 
 
 ```{r}
-data <- load_data("INMLCF_debugged_2015_2024.csv", type = "interim")
+data <- load_data("INMLCF_debugged_2015_2024_.csv", type = "interim")
 ```
+
 
 ```{r}
 replace_info <- function(df) {
@@ -42,13 +44,321 @@ replace_info <- function(df) {
 data <- replace_info(data)
 ```
 
+## Valores faltantes 
 ```{r}
-data |> explore()
+data |> is.na() |> sum()
 ```
 ```{r}
-data %>% report(output_dir = tempdir())
+data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame()
+```
+
+```{r}
+data %>% explore()
+```
+
+```{r}
+data <- data %>% select(-c(tipo_de_discapacidad, sexo_del_presunto_agresor)) # Variables no presentes en casos Fatales
+```
+
+```{r}
+data %>% filter(is.na(codigo_dane_municipio)) %>% group_by(tipo_lesion) %>% summarise(n=n())
+```
+
+```{r}
+# data %>% filter(is.na(codigo_dane_municipio))
+```
+
+```{r}
+data <- data[!apply(is.na(data), 1, any), ]
+# save_data(data, "INMLCF_2015_2024",type = "processed", format = "csv")
+
+
+```
+
+
+```{r}
+# data %>% report(output_file = "my_report.Rmd", output_dir = "descriptive_analysis")
+# 
+# create_notebook_explore(
+#   output_dir = "descriptive_analysis",
+#   output_file = "notebook-explore.Rmd")
+```
+# Explore variables
+
+## Temporales
+
+```{r}
+data$ano_del_hecho <- data$ano_del_hecho %>% as.factor()
+```
+
+```{r}
+data %>%
+  count(ano_del_hecho) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = ano_del_hecho, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por año", x = "Año", y = "Frecuencia") +
+  theme_minimal()
+```
+
+```{r}
+meses_orden <- c("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
+
+data %>%
+  count(mes_del_hecho) %>%
+  mutate(
+    mes_del_hecho = factor(mes_del_hecho, levels = meses_orden),
+    proporcion = n / sum(n) * 100
+  ) %>%
+  ggplot(aes(x = mes_del_hecho, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",
+            fontface = "bold",
+            size = 3.4) +
+  labs(title = "Casos de violencia por mes", x = "Mes", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 ```{r}
-data %>% report(target = tipo_lesion, output_dir = "data")
+
+data %>%
+  count(dia_del_hecho) %>%
+  mutate(dia_del_hecho = factor(dia_del_hecho, levels = c("Lunes", "Martes", "Miércoles", "Jueves", 
+                "Viernes", "Sábado", "Domingo")),
+    proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = dia_del_hecho, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por día", x = "Día", y = "Frecuencia") +
+  theme_minimal()
 ```
+
+```{r}
+data %>%
+  count(rango_de_hora_del_hecho_x_3_horas) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = rango_de_hora_del_hecho_x_3_horas, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por hora", x = "Hora", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+## Caracterización 
+
+```{r}
+data %>%
+  count(grupo_de_edad_de_la_victima) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = grupo_de_edad_de_la_victima, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por grupo de edad", x = "Edad", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+```{r}
+data %>%
+  count(grupo_mayor_menor_de_edad) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = grupo_mayor_menor_de_edad, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por grupo de edad", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+```{r}
+data %>%
+  count(ciclo_vital) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = ciclo_vital, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por ciclo_vital", x = "ciclo_vital", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+```{r}
+data %>%
+  count(escolaridad) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = escolaridad, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por escolaridad", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+```{r}
+data %>%
+  count(estado_civil) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = estado_civil, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por estado_civil", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+```{r}
+data %>% filter(estado_civil == "No aplica") %>% group_by(grupo_mayor_menor_de_edad) %>%  summarise(n=n())
+```
+
+```{r}
+data %>%
+  count(municipio_del_hecho_dane) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  filter(proporcion >= 2) %>%
+  ggplot(aes(x = municipio_del_hecho_dane, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por munipio del hecho", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() 
+```
+```{r}
+# length(unique(data$municipio_del_hecho_dane))
+# length(unique(data$departamento_del_hecho_dane))
+# table(as.factor(data$municipio_del_hecho_dane)) %>% sort()
+# data %>% filter(municipio_del_hecho_dane == "Sin información")
+```
+
+Sólo se muestran los municipios cuya proporción es mayor del 2\%
+
+```{r}
+data %>%
+  count(departamento_del_hecho_dane) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  filter(proporcion >= 2) %>%
+  ggplot(aes(x = departamento_del_hecho_dane, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por departamento del hecho", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() 
+```
+
+```{r}
+data %>%
+  count(zona_del_hecho) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  # filter(proporcion >= 2) %>%
+  ggplot(aes(x = zona_del_hecho, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por zona del hecho", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 0.9))
+# +coord_flip() 
+```
+```{r}
+data %>%
+  count(presunto_agresor) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  filter(proporcion >= 2) %>%
+  ggplot(aes(x = presunto_agresor, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por presunto agresor", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() 
+```
+```{r}
+data %>%
+  count(def_naturaleza) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = def_naturaleza, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por contexto del hecho", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+data %>%
+  count(tipo_lesion) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = tipo_lesion, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por tipo lesión", x = "", y = "Frecuencia") +
+  theme_minimal()
+```
+## Discriminando por tipo de lesión
+
+```{r}
+data %>%
+  group_by(def_naturaleza, tipo_lesion) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(def_naturaleza) %>%  # Agrupar nuevamente por tipo de violencia
+  mutate(proporcion = round(n / sum(n) * 100))
+```
+```{r}
+data %>% explore()
+```
+
+
 

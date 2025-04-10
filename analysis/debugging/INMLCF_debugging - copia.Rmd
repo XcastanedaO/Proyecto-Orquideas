@@ -279,9 +279,13 @@ Por ende, se selecciona solo los casos en los que el suicidio fue por
 *Ciberacoso*, *Bullying* y *No aplica*
 
 ```{r}
+sort(summary(as.factor(f_data$razon_del_suicidio)))
+```
+
+```{r}
 f_nrow <- nrow(f_data)
 
-f_data <- f_data %>% filter(is.na(razon_del_suicidio) | razon_del_suicidio %in% c("Maltrato físico - sexual - psicológico", "No aplica","Víctima de hostigamiento","Ciberacoso","Bullying"))
+f_data <- f_data %>% filter(!is.na(razon_del_suicidio))
 ```
 
 Se obtiene una base de `r nrow(f_data)` filas. Se descartaron
@@ -389,7 +393,8 @@ f_data <- f_data %>% mutate(
       "Sicariato",
       "Tortura",
       "Acto terrorista",
-      "Violencia sociopolítica"
+      "Violencia sociopolítica",
+      "Machismo"
     ) ~ "Violencia sociopolítica",
     circunstancia_del_hecho %in% c(
       "Acceso carnal violento","Presunta explotación sexual","Agresión o ataque sexual","Violencia sexual") ~ "Violencia sexual",
@@ -432,21 +437,21 @@ valores de categorías que ya están en **def_naturaleza** y
 **circunstancia_del_hecho** para evitar redundancias
 
 ```{r}
-f_data <- f_data %>% mutate(
-  circunstancia_del_hecho = ifelse(
-    circunstancia_del_hecho %in% c(
-      "Feminicidio",
-      "Violencia al adulto mayor",
-      "Violencia a niños, niñas y adolescentes",
-      "Violencia de pareja",
-      "Violencia entre otros familiares",
-      "Violencia sociopolítica",
-      "Violencia sexual"
-    ),
-    NA,
-    circunstancia_del_hecho
-  )
-)
+# f_data <- f_data %>% mutate(
+#   circunstancia_del_hecho = ifelse(
+#     circunstancia_del_hecho %in% c(
+#       "Feminicidio",
+#       "Violencia al adulto mayor",
+#       "Violencia a niños, niñas y adolescentes",
+#       "Violencia de pareja",
+#       "Violencia entre otros familiares",
+#       "Violencia sociopolítica",
+#       "Violencia sexual"
+#     ),
+#     NA,
+#     circunstancia_del_hecho
+#   )
+# )
 ```
 
 
@@ -765,12 +770,12 @@ estaba realizando la persona, se decide cambiar los casos "No aplica" a
 NA
 
 ```{r}
-f_data <- f_data %>% mutate(
-  actividad_durante_el_hecho = case_when(
-    manera_de_muerte == "Suicidio" & actividad_durante_el_hecho == "No aplica" ~ NA_character_,
-    TRUE ~ actividad_durante_el_hecho
-  )
-)
+# f_data %>% mutate(
+#   actividad_durante_el_hecho = case_when(
+#     manera_de_muerte == "Suicidio" & actividad_durante_el_hecho == "No aplica" ~ NA_character_,
+#     TRUE ~ actividad_durante_el_hecho
+#   )
+# )
 ```
 
 ```{r}
@@ -1049,7 +1054,7 @@ f_data %>%
   filter(def_naturaleza=="Autolesión voluntaria") %>% group_by(razon_del_suicidio) %>% summarise(n = n())
 ```
 ```{r}
-f_data <- f_data %>%
+ f_data %>%
   filter(!(def_naturaleza == "Autolesión voluntaria" & is.na(razon_del_suicidio)))
 ```
 
@@ -1061,7 +1066,12 @@ También, se procede a eliminar el nivel "Violencia Interpersonal" de la variabl
 
 ```{r}
 f_data %>% filter(def_naturaleza=="Violencia interpersonal") %>% group_by(circunstancia_del_hecho) %>% summarise(n = n())
+
 ```
+```{r}
+f_data %>% filter(def_naturaleza=="Violencia intrafamiliar") %>% group_by(circunstancia_del_hecho) %>% summarise(n = n())
+```
+
 ```{r}
 f_data <- f_data %>% filter(def_naturaleza!="Violencia interpersonal")
 ```
@@ -1186,6 +1196,7 @@ f_final_data <- f_final_data %>%
     codigo_dane_municipio,
     municipio_del_hecho_dane,
     zona_del_hecho,
+    circunstancia_del_hecho,
     def_naturaleza,
     intrafamiliar_sub,
     mecanismo_causal,
@@ -1208,7 +1219,7 @@ f_final_data <- f_final_data %>%
 
 ```{r}
 # Guardar base de datos
-# save_data(f_final_data, "INMLCF_fatales_debugged_2015_2024", type = "interim", format = "csv")
+save_data(f_final_data, "INMLCF_fatales_debugged_2015_2024_", type = "interim", format = "csv")
 ```
 
 ## Resumen
@@ -1573,7 +1584,23 @@ niveles relacionados a este tipo de violencia. Exactamente, el
 violencia intrafamiliar toman un valor en esta variable
 
 ```{r}
-aux_data %>% group_by(circunstancia_del_hecho) %>% summarise(cantidad = n())
+n_f_data %>% filter(contexto_de_violencia == "Violencia intrafamiliar")  %>% group_by(circunstancia_del_hecho) %>% summarise(cantidad = n())
+```
+```{r}
+n_f_data %>% filter(contexto_de_violencia == "Violencia intrafamiliar", !circunstancia_del_hecho %in% c("Violencia a niños, niñas y adolescentes","Violencia al adulto mayor","Violencia de pareja","Violencia entre otros familiares" ))  %>% group_by(circunstancia_del_hecho) %>% summarise(cantidad = n())
+```
+```{r}
+n_f_data %>% filter(contexto_de_violencia == "Violencia interpersonal")  %>% group_by(circunstancia_del_hecho) %>% summarise(cantidad = n())
+```
+
+```{r}
+n_f_data %>% filter(circunstancia_del_hecho == "Violencia sociopolítica")  %>% group_by(contexto_de_violencia) %>% summarise(cantidad = n())
+```
+
+
+
+```{r}
+# f_final_data %>% filter(def_naturaleza == "Violencia intrafamiliar") %>% group_by(circuns) %>% summarise(cantidad = n())
 ```
 
 Teniendo en cuenta esto y que la variable **circunstancia del hecho**
@@ -1591,14 +1618,14 @@ siguientes cambios en **circunstancia del hecho**:
 
 
 ```{r}
-n_f_data <- n_f_data %>% mutate(
-  circunstancia_del_hecho = case_when(
-    circunstancia_del_hecho %in% c("Violencia intrafamiliar","Violencia a niños, niñas y adolescentes","Violencia entre otros familiares","Violencia de pareja","Violencia al adulto mayor") ~  NA_character_,
-    circunstancia_del_hecho %in% c("Violencia económica","Económicas") ~ "Económica",
-    circunstancia_del_hecho == "Violencia sociopolítica" ~ "Sociopolítica",
-    TRUE ~ circunstancia_del_hecho
-  )
-)
+# n_f_data <- n_f_data %>% mutate(
+#   circunstancia_del_hecho = case_when(
+#     circunstancia_del_hecho %in% c("Violencia intrafamiliar","Violencia a niños, niñas y adolescentes","Violencia entre otros familiares","Violencia de pareja","Violencia al adulto mayor") ~  NA_character_,
+#     circunstancia_del_hecho %in% c("Violencia económica","Económicas") ~ "Económica",
+#     circunstancia_del_hecho == "Violencia sociopolítica" ~ "Sociopolítica",
+#     TRUE ~ circunstancia_del_hecho
+#   )
+# )
 ```
 
 ### Año del hecho
@@ -2299,23 +2326,55 @@ De este modo, se desagregan los registros de Violencia Interpersonal, y la varia
 ```{r}
 sort(summary(as.factor(n_f_data$contexto_de_violencia)))
 ```
+```{r}
+sort(summary(as.factor(n_f_data$circunstancia_del_hecho)))
+```
 
 
 ```{r}
-# n_f_data <- n_f_data %>%
-#   mutate(contexto_de_violencia = case_when(
-#     circunstancia_del_hecho == "Económica" ~ "Violencia económica",
-#     circunstancia_del_hecho == "Sociopolítica" ~ "Violencia sociopolítica",
-#     TRUE ~ contexto_de_violencia  # Mantiene los valores originales para los demás casos
-#   ))
+n_f_data <- n_f_data %>%
+  mutate(contexto_de_violencia = case_when(
+    circunstancia_del_hecho %in% c("Económicas", 
+                                   "Violencia económica",
+                                   "Atraco callejero o intento de") ~ "Violencia económica",
+    circunstancia_del_hecho %in% c(
+      "Sociopolítica",
+      "Mina Antipersona - Munición sin Explotar",
+      "Tráfico o trata de personas",
+      "Atentado terrorista",
+      "Desaparición forzada",
+      "Despojo forzado de tierra",
+      "Reclutamiento de niños, niñas y adolescentes",
+      "Abandono o despojo forzado de tierra",
+      "Sicariato",
+      "Enfrentamiento armado",
+      "Ejercicio de actividades ilícitas",
+      "Acción grupos alzados al margen de la ley",
+      "Acción militar",
+      "Machismo",
+      "Retención ilegal - secuestro",
+      "Acción bandas criminales",
+      "Violencia sociopolítica",
+      "Abuso de autoridad",
+      "Agresión contra grupos marginales o descalificados",
+      "Tortura"
+      ) ~ "Violencia sociopolítica",
+    TRUE ~ contexto_de_violencia  # Mantiene los valores originales para los demás casos
+  ))
+```
+
+```{r}
+n_f_data %>% group_by(contexto_de_violencia) %>% summarise(n=n())
+```
+
+```{r}
+n_f_data %>% filter(contexto_de_violencia %in% c("Violencia interpersonal" )) %>% group_by(circunstancia_del_hecho) %>% summarise(n=n())
 ```
 
 ```{r}
 # sort(summary(as.factor(n_f_data$contexto_de_violencia)))
 ```
-```{r}
-n_f_data %>% filter(circunstancia_del_hecho %in% c("Económica","Sociopolítica", "Machismo")) %>% group_by(contexto_de_violencia) %>% summarise(n=n())
-```
+
 
 ```{r}
 n_f_data <- n_f_data %>%
@@ -2442,7 +2501,7 @@ n_f_final_data %>%
 
 ```{r}
 n_f_final_data %>%
-  filter(duplicated(.)) %>% nrow()
+  filter(duplicated(.))
 ```
 
 ```{r}
@@ -2501,6 +2560,8 @@ Se establece un nuevo orden en la base de datos para mayor facilidad en
 el proceso de análisis.
 
 
+```{r}
+```
 
 ```{r}
 n_f_final_data <- n_f_final_data %>%
@@ -2523,6 +2584,7 @@ n_f_final_data <- n_f_final_data %>%
     codigo_dane_municipio,
     municipio_del_hecho_dane,
     zona_del_hecho,
+    circunstancia_del_hecho,
     contexto_de_violencia,
     intrafamiliar_sub,
     mecanismo_causal,
@@ -2540,7 +2602,7 @@ n_f_final_data <- n_f_final_data %>%
 
 ```{r}
 # Guardar base de datos 
-# save_data(n_f_final_data, "INMLCF_nfatales_debugged_2015_2024", type = "interim", format = "csv")
+# save_data(n_f_final_data, "INMLCF_nfatales_debugged_2015_2024_", type = "interim", format = "csv")
 ```
 ```{r}
 # Base de datos para unificar
@@ -2837,7 +2899,7 @@ INMLCF_data <- INMLCF_data %>%
 
 ```{r}
 # Guardar base de datos 
-save_data(INMLCF_data, "INMLCF_debugged_2015_2024", type = "interim", format = "csv")
+save_data(INMLCF_data, "INMLCF_debugged_2015_2024_", type = "interim", format = "csv")
 ```
 
 

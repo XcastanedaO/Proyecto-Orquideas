@@ -53,6 +53,7 @@ medata <- medata %>%
   filter(año_hecho >= 2017)  
 ```
 
+# Eliminando valores faltantes en filas
 ```{r}
 df <- medata[!apply(is.na(medata), 1, any), ] ## Eliminar valores faltantes en filas 
 ```
@@ -123,6 +124,10 @@ df[, sapply(df, is.character)]
 df[] <-lapply(df, function(x) if(is.character(x)) as.factor(x) else x)
 ```
 
+```{r}
+
+# save_data(df, "medata_python", type = "interim")
+```
 
 
 ```{r}
@@ -236,8 +241,8 @@ df_scaled <- scale(df[, 1:42])
 ```
 
 ```{r}
-wss <- sapply(1:20, function(k){kmeans(df_scaled, k, nstart=10)$tot.withinss})
-plot(1:20, wss, type="b", pch=19)
+wss <- sapply(1:30, function(k){kmeans(df_scaled, k, nstart=10)$tot.withinss})
+plot(1:30, wss, type="b", pch=19)
 ```
 ```{r}
 # library(cluster)
@@ -283,7 +288,7 @@ fviz_cluster(object = km, # kmeans object
 
 ```{r}
 df$cluster_1 <- as.factor(km$cluster)
-# medata$cluster <- as.factor(km$cluster)
+medata$cluster_1 <- as.factor(km$cluster)
 ```
 
 ```{r}
@@ -292,15 +297,147 @@ table(df$cluster, df$def_naturaleza) # Los grupos se están separando dado si el
 ```{r}
 table(df$cluster, df$pac_hos_)
 ```
-
 ```{r}
-km$centers
+table(df$cluster, df$ac_mental)
 ```
-
-
+ 
 ```{r}
 medata %>% explore()
 ```
+
+# Eliminando valores faltantes en columnas
+
+```{r}
+# # Registros sin columnas con valores faltantes
+# 
+df_2 <- medata[, colSums(is.na(medata)) == 0]
+
+```
+
+```{r}
+df_2[, sapply(df_2, is.numeric)]
+```
+
+```{r}
+## Modify binary levels
+cols_to_modify <- sapply(df_2, function(col) all(col %in% c(1, 2)))
+
+
+df_2 <- df_2 %>% mutate(across(.cols = names(df_2)[cols_to_modify],
+.fns = ~ ifelse(. == 2, 0, .)))
+```
+
+```{r}
+df_2$año_hecho <- as.factor(df_2$año_hecho)
+```
+
+```{r}
+df_2[, sapply(df_2, is.factor)]
+```
+
+```{r}
+medata_2 <- df_2
+# Convertir caracter a factor
+df_2[] <-lapply(df_2, function(x) if(is.character(x)) as.factor(x) else x)
+```
+
+### Asignando niveles a las variables categoricas
+
+
+
+```{r}
+df_2 <- df_2 %>%
+  mutate_if(is.factor, as.numeric)
+```
+
+## Cor
+
+```{r}
+as.data.frame(as.table(cor(df_2))) |> subset( abs(Freq) > 0.7 & abs(Freq) < 1 )
+```
+```{r}
+## Removing correlation data 
+df_2 <- df_2 |> select(-c(grupo_edad) )
+```
+
+## PCA
+```{r}
+# df <- df |>  mutate(across(ac_mental, ~ ifelse(. == 2, 0, .)))
+```
+
+```{r}
+pca_resultado_2 <- prcomp(df_2, 
+                        center = TRUE,  # Por defecto TRUE
+                        scale. = TRUE) 
+```
+
+```{r}
+summary(pca_resultado_2)
+```
+
+```{r}
+plot(pca_resultado_2$sdev^2, 
+     type = "b", 
+     main = "Varianza explicada por componente",
+     xlab = "Componentes", 
+     ylab = "Varianza")
+```
+
+```{r}
+# Biplot (variables y observaciones)
+ggplot(data.frame(pca_resultado$x[, 3:5]), aes(PC3, PC4, PC5)) +
+  geom_point() +
+  geom_text(aes(label = rownames(df)), check_overlap = TRUE) +
+  theme_minimal()
+
+```
+```{r}
+var_acumulada <- cumsum(pca_resultado_2$sdev^2 / sum(pca_resultado_2$sdev^2))
+num_componentes <- which(var_acumulada >= 0.90)[1]
+print(paste("Número óptimo de componentes:", num_componentes))
+```
+## Kmeans
+
+```{r}
+df_scaled_2 <- scale(df_2)
+```
+
+```{r}
+wss <- sapply(1:10, function(k){kmeans(df_scaled_2, k, nstart=10)$tot.withinss})
+plot(1:10, wss, type="b", pch=19)
+```
+
+```{r}
+set.seed(123)
+km_2 <- kmeans(df_scaled_2, centers = 2, nstart = 50)
+```
+
+```{r}
+fviz_cluster(object = km_2, # kmeans object 
+             data = df_scaled_2, # data used for clustering
+             ellipse.type = "norm",
+             geom = "point",
+             palette = "jco",
+             main = "",
+             ggtheme = theme_minimal())
+```
+```{r}
+df_2$cluster_1 <- as.factor(km_2$cluster)
+medata_2$cluster_1 <- as.factor(km_2$cluster)
+```
+
+```{r}
+table(df_2$cluster_1, df_2$def_naturaleza)
+```
+
+```{r}
+medata_2$def_naturaleza <- as.factor(medata_2$def_naturaleza)
+```
+
+```{r}
+medata_2 %>% explore()
+```
+
 
 ### Removing def naturaleza 
 ```{r}
