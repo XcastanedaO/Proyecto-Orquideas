@@ -96,18 +96,17 @@ análisis:
 
 ```{r, include=FALSE}
 data <- data %>%
-  select(-nom_upgd,-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado, -fuente)
+  select(-nom_upgd,-cod_eve,-cod_pre,-cod_sub,-cod_ase_,-cer_def_,-fec_aju_,-nom_eve,-nreg,-estadotran,- fm_fuerza,-fm_unidad, -fm_grado, -fuente, -mes_caso,-semana)
 ```
 
 ## Filtros
 
-Dado que el interés son los casos de violencia en mujeres
-que ocurren en Colombia se filtra la base para analizar solo estos
-casos. Según el formato de notificación 2024 cuando la variable
-**identidad de género (ident_gene)** es igual a 2 corresponde a mujer y
-cuando es igual a 4 corresponde a mujer trans. Mientras que la variable
-**país de ocurrencia del caso (cod_pais_o)** igual a 170 representa a
-Colombia.
+Dado que el interés son los casos de violencia en mujeres que ocurren en
+Colombia se filtra la base para analizar solo estos casos. Según el
+formato de notificación 2024 cuando la variable **identidad de género
+(ident_gene)** es igual a 2 corresponde a mujer y cuando es igual a 4
+corresponde a mujer trans. Mientras que la variable **país de ocurrencia
+del caso (cod_pais_o)** igual a 170 representa a Colombia.
 
 ```{r, include = FALSE}
 aux_nrow <- nrow(data)
@@ -120,14 +119,17 @@ data <- data %>% filter((ident_gene == 2 | ident_gene == 4) & cod_pais_o == 170)
 Se obtiene un total de `r nrow(data)` registros, descartando
 `r aux_nrow - nrow(data)`.
 
-Luego, se encuentran casos que no fueron notificados en Medellín, como era de esperarse dado lo indicado en el diccionario de la base y que la fuente corresponde al portal de datos de Medellín
+Luego, se encuentran casos que no fueron notificados en Medellín, como
+era de esperarse dado lo indicado en el diccionario de la base y que la
+fuente corresponde al portal de datos de Medellín
 
 ```{r, include=FALSE}
 aux_nrow <- nrow(data)
 summary(as.factor(data$nmun_notif))
 ```
 
-Se decide entonces filtrar los casos donde la notificación se hizo en Medellín
+Se decide entonces filtrar los casos donde la notificación se hizo en
+Medellín
 
 ```{r, echo=TRUE}
 data <- data %>% filter(nmun_notif == "MEDELLIN")
@@ -136,12 +138,12 @@ data <- data %>% filter(nmun_notif == "MEDELLIN")
 Se obtiene un total de `r nrow(data)` registros, descartando
 `r aux_nrow - nrow(data)`.
 
-**Nota 1:** Una vez filtrados los casos que se notificaron en Medellín, se elimina las variables **nmun_notif y ndep_notif**
+**Nota 1:** Una vez filtrados los casos que se notificaron en Medellín,
+se elimina las variables **nmun_notif y ndep_notif**
 
 ```{r}
 data <- data %>% select(-c(nmun_notif,ndep_notif))
 ```
-
 
 ## Clasificación del caso
 
@@ -268,16 +270,27 @@ data <- data %>%
 
 Se cuenta con las siguientes fechas:
 
--     **Fecha de notificiación (fec_not)**: fecha en la que se está informando el evento al siguiente nivel por cualquier mecanismo, en especial para los eventos de notificación inmediata.
--     **Consulta (fec_con_)**: fecha en la que consultó el paciente.
--     **Inicio de síntomas (ini_sin_)**: fecha del primer día en que el paciente inició síntomas.
--     **Hospitalización (fec_hos_)**: fecha en la que el paciente fue hospitalizado como consecuencia del evento.
--     **Defunción (fec_def_)**: fecha en la que el paciente fallece como consecuencia del evento.
--     **Nacimiento (fecha_nto_)**
--     **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento.
+-   **Fecha de notificiación (fec_not)**: fecha en la que se está
+    informando el evento al siguiente nivel por cualquier mecanismo, en
+    especial para los eventos de notificación inmediata.
 
+-   **Consulta (fec_con\_)**: fecha en la que consultó el paciente.
 
-El formato inicial es dd/mm/yyyy pero al convertir a objeto Date se cambia al formato por defecto: yyyy-mm-dd.
+-   **Inicio de síntomas (ini_sin\_)**: fecha del primer día en que el
+    paciente inició síntomas.
+
+-   **Hospitalización (fec_hos\_)**: fecha en la que el paciente fue
+    hospitalizado como consecuencia del evento.
+
+-   **Defunción (fec_def\_)**: fecha en la que el paciente fallece como
+    consecuencia del evento.
+
+-   **Nacimiento (fecha_nto\_)**
+
+-   **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento
+
+El formato inicial es dd/mm/yyyy pero al convertir a objeto Date se
+cambia al formato por defecto: yyyy-mm-dd.
 
 ```{r}
 date <- c("fec_con_","ini_sin_","fec_hos_","fec_def_","fecha_nto_","fec_hecho","fec_not")
@@ -285,7 +298,6 @@ date <- c("fec_con_","ini_sin_","fec_hos_","fec_def_","fecha_nto_","fec_hecho","
 data <- data %>%
   mutate(across(all_of(date), ~ as.Date(., format = "%d/%m/%Y")))
 ```
-
 
 ### Inconsistencias
 
@@ -295,7 +307,11 @@ data  %>% filter(
 ) %>% select(fecha_nto_,fec_hecho,fec_not) %>% head(5)
 ```
 
-Se encontró que algunos registros parecen tomar fechas genéricas en la fecha de nacimiento **(fecha_nto\_)** y en la fecha del hecho **(fec_hecho)**. Teniendo en cuenta lo anterior y que las demás fechas también presentan inconsistencias, se decide quedarse solo con la **fecha de notificación**
+Se encontró que algunos registros parecen tomar fechas genéricas en la
+fecha de nacimiento **(fecha_nto\_)** y en la fecha del hecho
+**(fec_hecho)**. Teniendo en cuenta lo anterior y que las demás fechas
+también presentan inconsistencias, se decide quedarse solo con la
+**fecha de notificación**
 
 **Nota: no se eliminan aún para hacer el análisis de la edad**
 
@@ -407,6 +423,7 @@ data %>% filter(
                                            fec_hecho,
                                            fec_not)
 ```
+
 Dado que son pocos registros se decide eliminarlos.
 
 ```{r, include = FALSE}
@@ -422,7 +439,8 @@ data <- data %>% filter(!(
 ))
 ```
 
-Se eliminan `r aux_nrow - nrow(data)` registros, quedando una base de datos de `r nrow(data)`, se eliminan las columnas de fechas a excepción de fecha de notificación y para un mejor manejo se pasa la edad a años.
+Se eliminan `r aux_nrow - nrow(data)` registros, quedando una base de
+datos de `r nrow(data)`. Para un mejor manejo se pasa la edad a años.
 
 ```{r}
 data <- data %>%
@@ -435,12 +453,9 @@ data <- data %>%
   ) %>% floor())
 ```
 
-
 ```{r}
-data <- data %>% select(-c(edad_hecho,edad_notif,fecha_nto_,fec_def_,fec_hos_,fec_con_,ini_sin_,uni_med_,edad_ ))
+data <- data %>% select(-c(edad_hecho,edad_notif,uni_med_,edad_ ))
 ```
-
-
 
 ### Edad agrupada (grupo_edad_quinque - grupo_edad_cliclo)
 
@@ -448,9 +463,10 @@ Se comprobó que estas variables tienen los cálculos erróneos para
 algunas filas, pues, al realizar el cálculo de forma manual de la edad
 desde la fecha de nacimiento hasta la fecha del hecho (o notificación),
 en ninguno de los dos casos, corresponde al grupo que se le asigna en
-cada una de estas variables. 
+cada una de estas variables.
 
-Los niveles de estas variables (grupo_edad_quinque y grupo_edad_cliclo) son:
+Los niveles de estas variables (grupo_edad_quinque y grupo_edad_ciclo)
+son:
 
 ```{r}
 summary(as.factor(data$grupo_edad_quinque))
@@ -460,14 +476,15 @@ summary(as.factor(data$grupo_edad_quinque))
 summary(as.factor(data$grupo_edad_ciclo))
 ```
 
-En la primera agrupación los rangos son de 4 edades mientras que en el último no son de igual longitud.
+En la primera agrupación los rangos son de 4 edades mientras que en el
+último no son de igual longitud.
 
 En los boletines del INMLCF se presentan los análisis con la edad
 agrupada también en rango de 4 edades a excepción de la edad 15-19 que
 se divide en dos rangos.
 [*(Ejemplo)*](https://www.medicinalegal.gov.co/documents/20143/696494/8+Suicidio+Masatugo+sep+7-21.pdf).
-Teniendo en cuenta esto, y que se pasaron las edades a años, se decide agrupar la edad de igual manera que
-lo hace el INMLCF.
+Teniendo en cuenta esto, y que se pasaron las edades a años, se decide
+agrupar la edad de igual manera que lo hace el INMLCF.
 
 ```{r, echo=TRUE}
 data <- data %>% mutate(
@@ -497,17 +514,37 @@ data <- data %>% mutate(
 
 ```{r, include=FALSE}
 summary(as.factor(data$grupo_edad))
+
+data <- data %>% select(-c(grupo_edad_quinque,grupo_edad_ciclo))
 ```
 
-### País de residencia 
+### Fecha de notificación
 
-Se cuenta con el código y el nombre del país donde reside la víctima. El código corresponde a la norma ISO 3166-1 numérico (*Ver*)[https://www.datosmundial.com/codigos-de-pais.php]
+Se eliminan las columnas de fechas a excepción de fecha de notificación
+y se crea una nueva variable solo con el año de notificación llamada **año_not**
+
+```{r}
+data <- data %>% select(-c(fecha_nto_,fec_def_,fec_hos_,fec_con_,ini_sin_,fec_hecho))
+```
+
+```{r}
+data <- data %>% mutate(
+  año_not = year(fec_not)
+)
+```
+
+### País de residencia
+
+Se cuenta con el código y el nombre del país donde reside la víctima. El
+código corresponde a la norma ISO 3166-1 numérico
+(*Ver*)[<https://www.datosmundial.com/codigos-de-pais.php>]
 
 ```{r}
 table(as.factor(data$cod_pais_r),as.factor(data$npais_resi))
 ```
 
-Se verificó que los códigos son correctos y están bien relacionados con su respectivo nombre. Solo se cambia la escritura de algunos nombres
+Se verificó que los códigos son correctos y están bien relacionados con
+su respectivo nombre. Solo se cambia la escritura de algunos nombres
 
 ```{r, include=FALSE}
 data <- data %>%
@@ -523,15 +560,22 @@ data <- data %>%
   )
 ```
 
-### Departamento de residencia 
+### Departamento de residencia
 
-**ndep_resi** representa el nombre del departamento. Esta variable presentaba los siguientes problemas:
+**ndep_resi** representa el nombre del departamento. Esta variable
+presentaba los siguientes problemas:
 
--     Niveles como "" o DEPTO DESCONOCIDO". Fueron cambiados a NA.
--     Algunos niveles que representaban entidades por fuera de Colombia, como "COJEDES" (Venezuela) y "PANAMÁ" (Panamá). Fueron cambiados a "Depto[País]".
--     En algunos nombres ausencia de tildes y nombres incompletos
--     Niveles que correspondían a ciudades específicas, como "CARTAGENA" y "BARRANQUILLA". Fueron
-reemplazados por el nombre del departamento al que pertenecen.
+-   Niveles como "" o DEPTO DESCONOCIDO". Fueron cambiados a NA
+
+-   Algunos niveles que representaban entidades por fuera de Colombia,
+    como "COJEDES" (Venezuela) y "PANAMÁ" (Panamá). Fueron cambiados a
+    "Depto[País]"
+
+-   En algunos nombres ausencia de tildes y nombres incompletos
+
+-   Niveles que correspondían a ciudades específicas, como "CARTAGENA" y
+    "BARRANQUILLA". Fueron reemplazados por el nombre del departamento
+    al que pertenecen.
 
 ```{r}
 data <- data %>%
@@ -571,12 +615,17 @@ data <- data %>%
 unique(data$ndep_resi)
 ```
 
-Luego, **cod_dpto_r** representa el código Divipola de cada departamento presente en la base
+Luego, **cod_dpto_r** representa el código Divipola de cada departamento
+presente en la base
 
 ```{r}
 summary(as.factor(data$cod_dpto_r))
 ```
-Ese par de niveles que son letras se cambian a NA, teniendo en cuenta que es una cantidad mínima de registros. Además, en los casos de departamentos fuera de Colombia se cambia **cod_dpto_r** a 0 para indicar que no aplica
+
+Ese par de niveles que son letras se cambian a NA, teniendo en cuenta
+que es una cantidad mínima de registros. Además, en los casos de
+departamentos fuera de Colombia se cambia **cod_dpto_r** a 0 para
+indicar que no aplica
 
 ```{r}
 data <- data %>% mutate(cod_dpto_r = case_when(cod_dpto_r %in% c("AY", "CL") ~ NA_character_,
@@ -584,21 +633,27 @@ data <- data %>% mutate(cod_dpto_r = case_when(cod_dpto_r %in% c("AY", "CL") ~ N
                                                TRUE ~ cod_dpto_r))
 ```
 
-Ahora, se verifica la concordancia de los códigos y nombres con ayuda de la codificación Divipola.
+Ahora, se verifica la concordancia de los códigos y nombres con ayuda de
+la codificación Divipola.
 
 ```{r, message=FALSE, warning=FALSE}
 DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text", "text", "text", 
         "text", "text","text"))
 ```
 
-1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+1.  Al analizar que códigos no están en la lista, se encontraron los
+    siguientes:
 
 ```{r}
 data %>%
   filter(!cod_dpto_r %in% DIVIPOLA$codigo_dane_departamento) %>% group_by(cod_dpto_r,ndep_resi) %>% summarise(cantidad = n(), .groups = "drop")
 ```
 
-En los casos de departamentos fuera de Colombia se cambia **cod_dpto_r** a 0 para indicar que no aplica. Cuando el código es 01 y departamento NA, se cambia a NA en código. Y en los demás casos se verificó que esos códigos efectivamente no corresponden a los códigos de esos departamentos. Se cambia a los códigos correctos
+En los casos de departamentos fuera de Colombia se cambia **cod_dpto_r**
+a 0 para indicar que no aplica. Cuando el código es 01 y departamento
+NA, se cambia a NA en código. Y en los demás casos se verificó que esos
+códigos efectivamente no corresponden a los códigos de esos
+departamentos. Se cambia a los códigos correctos
 
 ```{r}
 data <- data %>%
@@ -614,14 +669,17 @@ data <- data %>%
   )
 ```
 
-2.    Los departamentos que no se encuentran en la lista son:
+2.  Los departamentos que no se encuentran en la lista son:
 
 ```{r}
 data %>%
   filter(!str_to_lower(ndep_resi) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% group_by(cod_dpto_r,ndep_resi) %>% summarise(cantidad = n(), .groups = "drop")
 ```
 
-Se observa que los nombres que no están en la lista son los correspondientes a departamentos de otros países y NA. Los únicos casos que se pueden cambiar son los casos en que el código es 05 (Antioquia) y el departamento NA
+Se observa que los nombres que no están en la lista son los
+correspondientes a departamentos de otros países y NA. Los únicos casos
+que se pueden cambiar son los casos en que el código es 05 (Antioquia) y
+el departamento NA
 
 ```{r}
 data <- data %>% mutate(
@@ -629,7 +687,8 @@ data <- data %>% mutate(
 )
 ```
 
-3.    Los casos donde hay discordancia entre el código y el nombre del departamento son:
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    departamento son:
 
 ```{r}
 data %>%
@@ -638,17 +697,20 @@ data %>%
     by = c("cod_dpto_r" = "codigo_dane_departamento")
   ) %>% filter(str_to_lower(ndep_resi) != str_to_lower(nombre_departamento)) %>% group_by(cod_dpto_r, ndep_resi) %>% summarise(cantidad = n(), .groups = "drop")
 ```
+
 No hay discordancias.
 
 ```{r, include=FALSE}
 unique(data$ndep_resi)
 ```
 
-
 ### Municipio de residencia
 
-**nmun_resi** representa el nombre del municipio. Esta variable presentaba inconsistencias en los nombres de los municipios. Se reemplazaron los niveles que no tenían un nombre específico de
-municipio o que eran desconocidos por NA, así como aquellos que correspondían a países fuera de Colombia se cambiaron a Mun[País]
+**nmun_resi** representa el nombre del municipio. Esta variable
+presentaba inconsistencias en los nombres de los municipios. Se
+reemplazaron los niveles que no tenían un nombre específico de municipio
+o que eran desconocidos por NA, así como aquellos que correspondían a
+países fuera de Colombia se cambiaron a Mun[País]
 
 ```{r, include=FALSE}
 data <- data %>%
@@ -742,14 +804,18 @@ data <- data %>%
 unique(data$nmun_resi)
 ```
 
-También se cuenta con la columna **cod_mun_r**, que representa el código Divipola (últimos tres digitos) de cada municipio presente en la base. 
+También se cuenta con la columna **cod_mun_r**, que representa el código
+Divipola (últimos tres digitos) de cada municipio presente en la base.
 
 ```{r}
 unique(data$cod_mun_r)
 ```
-Ahora, se verifica la concordancia de los códigos y nombres con ayuda de la codificación Divipola:
 
-1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+Ahora, se verifica la concordancia de los códigos y nombres con ayuda de
+la codificación Divipola:
+
+1.  Al analizar que códigos no están en la lista, se encontraron los
+    siguientes:
 
 ```{r}
 data %>%
@@ -757,7 +823,11 @@ data %>%
   filter(!cod_mun %in% DIVIPOLA$codigo_dane_municipio)  %>% 
   count(cod_mun_r, nmun_resi, cod_dpto_r, ndep_resi, name = "cantidad")
 ```
-En los casos de municipios fuera de Colombia se cambia **cod_mun_r** a 0 para indicar que no aplica y cuando el código es "000" a NA, ya que no hay códigos existentes para esa combinación. También en el caso de "170" porque no hay información suficiente para determinar el municipio
+
+En los casos de municipios fuera de Colombia se cambia **cod_mun_r** a 0
+para indicar que no aplica y cuando el código es "000" a NA, ya que no
+hay códigos existentes para esa combinación. También en el caso de "170"
+porque no hay información suficiente para determinar el municipio
 
 ```{r}
 data <- data %>%
@@ -771,23 +841,27 @@ data <- data %>%
   )
 ```
 
-**Nota:** Una vez verificados los códigos, se tansforma esta variable para que tome como valor el código completo (5 digitos)
+**Nota:** Una vez verificados los códigos, se tansforma esta variable
+para que tome como valor el código completo (5 digitos)
 
 ```{r}
 data <- data %>%
   mutate(cod_mun_r = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r))
 ```
 
-2.    Los municipios que no se encuentran en la lista son:
+2.  Los municipios que no se encuentran en la lista son:
 
 ```{r}
 data %>%
   filter(!str_to_lower(nmun_resi) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(nmun_resi) %>% summarise(cantidad = n(), .groups = "drop")
 ```
 
-Se observa que los nombres que no están en la lista son los correspondientes a Municipios de otros países y NA. Los últimos casos se tratan en la sección de valores faltantes
+Se observa que los nombres que no están en la lista son los
+correspondientes a Municipios de otros países y NA. Los últimos casos se
+tratan en la sección de valores faltantes
 
-3.    Los casos donde hay discordancia entre el código y el nombre del municipio son:
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    municipio son:
 
 ```{r}
 data %>%
@@ -807,7 +881,11 @@ unique(data$nmun_resi)
 
 ### Comuna de residencia
 
-En la ficha de notificación no se encuentra campo para ingresar comuna y barrio de residencia pero sí se solicita la dirección, lo que puede suponer que estas columnas fueron creadas para la publicación de la base en el portal MEData. En este caso, se cuenta con el código y el nombre de la comuna.
+En la ficha de notificación no se encuentra campo para ingresar comuna y
+barrio de residencia pero sí se solicita la dirección, lo que puede
+suponer que estas columnas fueron creadas para la publicación de la base
+en el portal MEData. En este caso, se cuenta con el código y el nombre
+de la comuna.
 
 ```{r}
 unique(data$codigo_comuna)
@@ -816,12 +894,18 @@ unique(data$codigo_comuna)
 ```{r}
 unique(data$nombre_comuna)
 ```
-Se observa que en el nombre de la comuna también se especifica el código, se comprueba que en todos los casos ese código coincida con el que aparece en **codigo_comuna***
+
+Se observa que en el nombre de la comuna también se especifica el
+código, se comprueba que en todos los casos ese código coincida con el
+que aparece en **codigo_comuna**\*
 
 ```{r}
 data %>% filter(str_sub(nombre_comuna, 0,2) != codigo_comuna) %>% count(codigo_comuna,nombre_comuna, name = "cantidad")
 ```
-Los únicos casos donde no hay coincidencia es cuando no hay información. Por lo tanto, se cambia este código y nombre a NA, además, se elimina el código del nombre. 
+
+Los únicos casos donde no hay coincidencia es cuando no hay información.
+Por lo tanto, se cambia este código y nombre a NA, además, se elimina el
+código del nombre.
 
 ```{r, include=FALSE}
 data <- data %>%
@@ -840,7 +924,10 @@ data <- data %>%
 ```{r}
 unique(data$nombre_comuna)
 ```
-Ahora, todos los nombres corresponden a comunas de Medellín, sin embargo, se encontraron casos donde la víctima reside en otros municipios de Colombia. Por ejemplo:
+
+Ahora, todos los nombres corresponden a comunas de Medellín, sin
+embargo, se encontraron casos donde la víctima reside en otros
+municipios de Colombia. Por ejemplo:
 
 ```{r}
 aux <- DIVIPOLA %>% filter(nombre_municipio != "MEDELLÍN" & codigo_dane_departamento != "05001")
@@ -850,9 +937,20 @@ aux_data <- data %>% filter((!is.na(nombre_comuna) | !is.na(codigo_comuna)) &
 aux_data %>% count(cod_mun_r,nmun_resi,codigo_comuna,nombre_comuna, name="cantidad") %>% slice_sample(n=5)
 ```
 
-Esta situación de inconsistencia entre el municipio y la comuna no es extraña bajo el contexto del problema, ya que el experto de metroSalud explicó que cuando no se especifica información como la dirección de residencia en la ficha, se pone en la plataforma de SIVIGILA información sobre el lugar de notificación. Entonces estas inconsistencias puede deberse en que se puso en SIVIGILA la dirección del lugar de notificación en Medellín y al crear las variables comuna y barrio claramente serían de Medellín.
+Esta situación de inconsistencia entre el municipio y la comuna no es
+extraña bajo el contexto del problema, ya que el experto de metroSalud
+explicó que cuando no se especifica información como la dirección de
+residencia en la ficha, se pone en la plataforma de SIVIGILA información
+sobre el lugar de notificación. Entonces estas inconsistencias puede
+deberse en que se puso en SIVIGILA la dirección del lugar de
+notificación en Medellín y al crear las variables comuna y barrio
+claramente serían de Medellín.
 
-Para tratar de garantizar un poco la calidad de la información, se decide cambiar a NA el valor de comuna para estos casos y quedarse entonces con la información que brinda el municipio y departamento. Además, se pone NA y 0 en nombre y código, respectivamente, para los casos donde la residencia sea en el exterior
+Para tratar de garantizar un poco la calidad de la información, se
+decide cambiar a NA el valor de comuna para estos casos y quedarse
+entonces con la información que brinda el municipio y departamento.
+Además, se pone NA y 0 en nombre y código, respectivamente, para los
+casos donde la residencia sea en el exterior
 
 ```{r}
 data <- data %>%
@@ -887,14 +985,16 @@ data <-  data %>%
   )
 ```
 
-
-Ahora, se verifica que haya concordancia entre el código y el nombre de la comuna. El recurso utilizado para la verificación proviene del portal [GeoMedellín](https://www.medellin.gov.co/geomedellin/datosAbiertos/243)
+Ahora, se verifica que haya concordancia entre el código y el nombre de
+la comuna. El recurso utilizado para la verificación proviene del portal
+[GeoMedellín](https://www.medellin.gov.co/geomedellin/datosAbiertos/243)
 
 ```{r}
 comunas <- st_read(file.path(here(), "data/auxiliary/comunas_corregimientos_Medellin"))
 ```
 
-1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+1.  Al analizar que códigos no están en la lista, se encontraron los
+    siguientes:
 
 ```{r}
 data %>%
@@ -902,13 +1002,15 @@ data %>%
   count(codigo_comuna,nombre_comuna, name = "cantidad")
 ```
 
-2.    Las comunas que no se encuentran en la lista son:
+2.  Las comunas que no se encuentran en la lista son:
 
 ```{r}
 data %>%
   filter(!str_to_lower(nombre_comuna) %in% str_to_lower(comunas$nombre))  %>% count(codigo_comuna,nombre_comuna, name ="Cantidad")
 ```
-Las inconsistencias corresponden a escritura, por ende, solo se cambia a como aparece en la base auxiliar
+
+Las inconsistencias corresponden a escritura, por ende, solo se cambia a
+como aparece en la base auxiliar
 
 ```{r}
 data <- data %>% mutate(
@@ -922,7 +1024,8 @@ data <- data %>% mutate(
 )
 ```
 
-3.    Los casos donde hay discordancia entre el código y el nombre del municipio son:
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    municipio son:
 
 ```{r}
 data %>%
@@ -934,16 +1037,21 @@ data %>%
   count(codigo_comuna, nombre_comuna, name = "cantidad")
 ```
 
-No hay inconsistencias entre el código y el nombre. 
+No hay inconsistencias entre el código y el nombre.
 
 ```{r}
 data %>% count(codigo_comuna,nombre_comuna,name = "Cantidad")
 ```
 
-
 ### Barrio de residencia
 
-En la ficha de notificación no se encuentra campo para ingresar comuna y barrio de residencia pero si se solicita la dirección, lo que puede suponer que estas columnas fueron creadas para la publicación de la base en el portal MEData. En este caso, se cuenta con el código y el nombre del barrio o vereda. Para comenzar se cambian los indicativos de falta de información por NA y se unifica escritura en el variable **nombre_barrio**.
+En la ficha de notificación no se encuentra campo para ingresar comuna y
+barrio de residencia pero si se solicita la dirección, lo que puede
+suponer que estas columnas fueron creadas para la publicación de la base
+en el portal MEData. En este caso, se cuenta con el código y el nombre
+del barrio o vereda. Para comenzar se cambian los indicativos de falta
+de información por NA y se unifica escritura en el variable
+**nombre_barrio**.
 
 ```{r}
 data <- data %>%
@@ -959,7 +1067,6 @@ data <- data %>%
     )
   )
 ```
-
 
 ```{r}
 data <- data %>%
@@ -1025,13 +1132,18 @@ data <- data %>%
     ))
 ```
 
-Luego, se encontró que en algunos casos el barrio no tiene coherencia con el municipio de residencia. Por ejemplo:
+Luego, se encontró que en algunos casos el barrio no tiene coherencia
+con el municipio de residencia. Por ejemplo:
 
 ```{r}
 data %>% filter((!is.na(codigo_barrio) | !is.na(nombre_barrio)) & (cod_mun_r != "05001" | nmun_resi != "Medellín")) %>% count(cod_mun_r,nmun_resi,codigo_barrio,nombre_barrio) %>% slice_sample(n=5)
 ```
 
-Para tratar de garantizar un poco la calidad de la información, se decide cambiar a NA el valor de barrio para estos casos y quedarse entonces con la información que brinda el municipio y departamento. Además, se pone NA y 0 en nombre y código, respectivamente, para los casos donde la residencia sea en el exterior
+Para tratar de garantizar un poco la calidad de la información, se
+decide cambiar a NA el valor de barrio para estos casos y quedarse
+entonces con la información que brinda el municipio y departamento.
+Además, se pone NA y 0 en nombre y código, respectivamente, para los
+casos donde la residencia sea en el exterior
 
 ```{r}
 data <- data %>%
@@ -1065,16 +1177,22 @@ data <-  data %>%
   )
 ```
 
-Después, se verifica que haya concordancia entre el código y el nombre del barrio. El recurso utilizado para la verificación proviene del portal [GeoMedellín](https://www.medellin.gov.co/geomedellin/datosAbiertos/234). 
+Después, se verifica que haya concordancia entre el código y el nombre
+del barrio. El recurso utilizado para la verificación proviene del
+portal
+[GeoMedellín](https://www.medellin.gov.co/geomedellin/datosAbiertos/234).
 
-**Nota:** Se selecciona este recurso en vez de un recurso que indica barrios y veredas a nivel nacional, porque se omprobó que esta variable tendrá solo barrios de Medellín como sucede con la variable de comuna
+**Nota:** Se selecciona este recurso en vez de un recurso que indica
+barrios y veredas a nivel nacional, porque se omprobó que esta variable
+tendrá solo barrios de Medellín como sucede con la variable de comuna
 
 ```{r}
 barrios <- st_read(file.path(here(), "data/auxiliary/barrios_veredas_Medellin"))
 barrios <- barrios %>% mutate(nombre = str_squish(nombre))
 ```
 
-1.   Al analizar que códigos no están en la lista, se encontraron por ejemplo:
+1.  Al analizar que códigos no están en la lista, se encontraron por
+    ejemplo:
 
 ```{r}
 data %>%
@@ -1082,12 +1200,21 @@ data %>%
   count(nmun_resi,codigo_barrio,nombre_barrio, name = "cantidad") %>% slice_sample(n=5)
 ```
 
-Se busca en el [*catálogo geográfico de Medellín*](https://www.medellin.gov.co/giscatalogacion/srv/spa/catalog.search#/search?facet.q=groupOwner%2F374&resultType=details&sortBy=popularity&from=1&to=100&fast=index&_content_type=json) estos casos tanto por código como nombre para verificar que está generando la inconsistencia y se encontró que:
+Se busca en el [*catálogo geográfico de
+Medellín*](https://www.medellin.gov.co/giscatalogacion/srv/spa/catalog.search#/search?facet.q=groupOwner%2F374&resultType=details&sortBy=popularity&from=1&to=100&fast=index&_content_type=json)
+estos casos tanto por código como nombre para verificar que está
+generando la inconsistencia y se encontró que:
 
--   El prefijo "Suburbano" es para referirse a veredas de las 5 corregimientos. Se elimina de los nombres
--   Medellín cuenta con 20 Áreas institucionales (urbanas) que en la base auxiliar se codifican como "Inst_[#]", diferente a la base que codifica solo con números. Dado que no se encontró la codificación DIVIPOLA para comunas y barrios entonces se cambian los códigos para que sea acorde a la codificación de Medellín
--  En los casos donde el código no se encuentra en el listado auxiliar y tampoco se encontró en el geoportal, se cambia el código al que aparece en el listado oficial según el nombre del barrio/vereda
-
+-   El prefijo "Suburbano" es para referirse a veredas de las 5
+    corregimientos. Se elimina de los nombres
+-   Medellín cuenta con 20 Áreas institucionales (urbanas) que en la
+    base auxiliar se codifican como "Inst\_[\#]", diferente a la base
+    que codifica solo con números. Dado que no se encontró la
+    codificación DIVIPOLA para comunas y barrios entonces se cambian los
+    códigos para que sea acorde a la codificación de Medellín
+-   En los casos donde el código no se encuentra en el listado auxiliar
+    y tampoco se encontró en el geoportal, se cambia el código al que
+    aparece en el listado oficial según el nombre del barrio/vereda
 
 ```{r}
 data$nombre_barrio <- sub("^Suburbano ", "", data$nombre_barrio)
@@ -1137,7 +1264,6 @@ data <- data %>% mutate(
 )
 ```
 
-
 ```{r}
 data <- data %>% 
   mutate(
@@ -1157,14 +1283,14 @@ data <- data %>%
 
 ```
 
-2.    Los nombres de barrios que no se encuentran en la lista son:
+2.  Los nombres de barrios que no se encuentran en la lista son:
 
 ```{r}
 data %>%
   filter(!is.na(nombre_barrio) & !is.na(nmun_resi) & !str_to_lower(nombre_barrio) %in% str_to_lower(str_trim(barrios$nombre)))  %>% count(codigo_comuna,codigo_barrio,nombre_barrio, name ="Cantidad") %>% slice_sample(n=5)
 ```
 
-La inconsistencia se debe en la mayoría de casos a la escritura. 
+La inconsistencia se debe en la mayoría de casos a la escritura.
 
 ```{r}
 data <- data %>% mutate(
@@ -1182,7 +1308,7 @@ data <- data %>% mutate(
     nombre_barrio == "Pedregal Bajo" ~ "Pedregal Alto",
     
     # Existe una vereda llamada "El Vergel" pero no aparece en el Geoportal
-    nombre_barrio == "El Vergel" ~ NA,
+    nombre_barrio == "El Vergel" ~ "Los Cerros El Vergel",
     
     # "La Palma-El Patio" no existe. Existen separados, son veredas continuas de San Cristóbal. Para asignar una vereda especifica nos basamos en el código
     codigo_barrio == "6001" & nombre_barrio == "La Palma-El Patio" ~ "La Palma",
@@ -1203,7 +1329,7 @@ data <- data %>% mutate(
 )
 ```
 
-3.    
+3.  
 
 ```{r}
 # Como cada valor de barrios$identifica es único y ya se garantizó que data$codigo_barrio estuviera en la lista oficial, al hacer left_join solo habrá NA en las columnas añadidas cuando data$codigo_barrio sea NA. Así, solo basta buscar cuando el nombre del barrio no coincide con el de la lista oficial para cada código
@@ -1216,14 +1342,19 @@ aux_data <- data %>%
   filter(str_to_lower(nombre_barrio) != str_to_lower(nombre))
 ```
 
-Los casos donde hay discordancia entre el código y el nombre del barrio son `r nrow(aux_data)`. Por ejemplo:
+Los casos donde hay discordancia entre el código y el nombre del barrio
+son `r nrow(aux_data)`. Por ejemplo:
 
 ```{r}
 aux_data %>%  count(codigo_barrio,
          nombre_barrio,
          nombre, codigo_comuna, name = "Cantidad") %>% slice_sample(n=5)
 ```
-Muchos de estos casos se debe a la diferencia de codificación que se ha tratado de corregir en toda esta sección, por lo tanto, se decide cambiar el código al código de la codificación de Medellín en estos casos
+
+Muchos de estos casos se debe a la diferencia de codificación que se ha
+tratado de corregir en toda esta sección, por lo tanto, se decide
+cambiar el código al código de la codificación de Medellín en estos
+casos
 
 ```{r}
 # No se hace la unión con código porque se necesita para corregir. Se utiliza nombre + comuna como clave. Pero antes hay que tener en cuenta que en barrios hay dos combinaciones Cerro Nutibara + 16, lo que genera más filas al hacer left_join. Se encontró que todos los registros de la base donde la victima reside en el cerro Nutibara tienen código 1621, por ende, se elimina la otra combinación por facilidad
@@ -1246,7 +1377,9 @@ data <- data %>% mutate(
 data <- data %>% select(-identifica,-geometry)
 ```
 
-Luego de esto se siguen encontrando casos donde el nombre del barrio no coincide con el código. Estos casos se diferencian de los anteriores en que el código y el nombre son de diferentes comunas:
+Luego de esto se siguen encontrando casos donde el nombre del barrio no
+coincide con el código. Estos casos se diferencian de los anteriores en
+que el código y el nombre son de diferentes comunas:
 
 ```{r}
 data <- data %>%
@@ -1260,6 +1393,7 @@ data %>%
          nombre_barrio,
          nombre, codigo_comuna, name = "Cantidad")
 ```
+
 Por lo tanto, se cambia al nombre según el código
 
 ```{r}
@@ -1275,7 +1409,8 @@ data <- data %>% mutate(
 data <- data %>% select(-nombre,-geometry)
 ```
 
-4. se encontraron casos donde el barrio no pertenece a la comuna especificada 
+4.  se encontraron casos donde el barrio no pertenece a la comuna
+    especificada
 
 ```{r}
 data <- data %>%
@@ -1287,9 +1422,12 @@ data <- data %>%
 data %>% filter(is.na(identifica) & !is.na(nombre_barrio) & !is.na(codigo_comuna)) %>% count(codigo_barrio,nombre_barrio,codigo_comuna, name = "cant") %>% slice_sample(n=5)
 ```
 
-Se decide cambiar el valor de código y nombre comuna según el nombre del barrio, teniendo en cuenta que se busca rescatar la mayor cantidad posible de información
+Se decide cambiar el valor de código y nombre comuna según el nombre del
+barrio, teniendo en cuenta que se busca rescatar la mayor cantidad
+posible de información
 
 ```{r}
+
 data <- data %>%
   mutate(
     codigo_comuna = case_when(
@@ -1323,7 +1461,7 @@ data <- data %>%
       nombre_barrio %in% c("Corazón de Jesús", "Prado") ~ "La Candelaria",
       nombre_barrio %in% c("Calasanz", "Calasanz Parte Alta", "Ferrini", "Santa Lucía", "Santa Teresita") ~ "La América",
       nombre_barrio %in% c("Antonio Nariño", "El Pesebre", "Juan XXIII La Quiebra") ~ "San Javier",
-      nombre_barrio %in% c("Altos del Poblado", "Barrio Colombia", "Castropol", "El Tesoro", "San Lucas") ~ "El Poblado",
+      nombre_barrio %in% c("Barrio Colombia", "Castropol", "El Tesoro", "San Lucas") ~ "El Poblado",
       nombre_barrio %in% c("El Rodeo", "Guayabal") ~ "Guayabal",
       nombre_barrio %in% c("Altavista", "El Rincón", "La Hondonada", "La Loma de Los Bernal", "La Mota", "Las Mercedes", "Las Violetas") ~ "Belén",
       nombre_barrio %in% c("Cabecera Urbana Corregimiento San Cristóbal", "El Llano", "El Picacho", "La Loma", "Área de Expansión Pajarito", "San José de La Montaña") ~ "Corregimiento de San Cristóbal",
@@ -1357,10 +1495,10 @@ sí, lo que puede explicar porqué la gran cantidad de NA
 ```{r}
 summary(as.factor(data$estrato_))
 ```
+
 ```{r}
 table(as.factor(data$estrato_),as.factor(year(data$fec_not)))
 ```
-
 
 ### Sexo (sexo\_)
 
@@ -1414,10 +1552,10 @@ data %>% filter(ocupacion_ %in% c("99999.01","LIM","Cl")) %>% select(ocupacion_)
 ```
 
 Entonces se verifica que los valores tomados en esta variable se
-encuentran en la clasificación mediante una base de datos que
-contiene las 676 ocupaciones posibles (código de 5 dígitos) y en caso
-que el valor de la variable no coincida con los códigos posibles se
-convierte el valor a NA.
+encuentran en la clasificación mediante una base de datos que contiene
+las 676 ocupaciones posibles (código de 5 dígitos) y en caso que el
+valor de la variable no coincida con los códigos posibles se convierte
+el valor a NA.
 
 ```{r}
 CUOC <- load_data("CUOC.csv", type = "auxiliary")
@@ -1431,8 +1569,12 @@ CUOC`))
   }), ocupacion_, NA))
 ```
 
-Esta variable queda con `r sum(is.na(data$ocupacion_) | data$ocupacion_ == "")` celdas vacías.
-Pero puede servir para completar información de los niveles 26 (Otro) y 33 (Ninguna) de la variable **actividad**. Es importante resaltar que esta variable se pide en la ficha de datos básicos mientras que actividad en la ficha del evento.
+Esta variable queda con
+`r sum(is.na(data$ocupacion_) | data$ocupacion_ == "")` celdas vacías.
+Pero puede servir para completar información de los niveles 26 (Otro) y
+33 (Ninguna) de la variable **actividad**. Es importante resaltar que
+esta variable se pide en la ficha de datos básicos mientras que
+actividad en la ficha del evento.
 
 ### Actividad
 
@@ -1475,7 +1617,7 @@ aux_nrow <- data %>% filter((actividad == "Ninguna" |
 ```
 
 Son `r aux_nrow` registros con valor "Otro" o "Ninguna" en **actividad**
-y que tienen valor en **ocupación**. Para evitar tantas categorías, se
+y que tienen valor en **ocupación**.Por lo tanto, se completa entre sí. Para evitar tantas categorías, se
 extrae el primer dígito que representa los 10 grupos principales de
 ocupaciones:
 
@@ -1504,11 +1646,10 @@ Algunas categorías se cambian a su nombre equivalente en la CUOC:
     agropecuarios,forestales y pesqueros
 
 ```{r, include=FALSE}
-
 data <- data %>%
   mutate(
        actividad = case_when(
-         (actividad == "Ninguna" | actividad == "Otro") & (!is.na(ocupacion_) & ocupacion_ != "")  ~ ocupaciones[ str_sub(ocupacion_, 1, 1)],
+         (actividad == "Ninguna" | actividad == "Otro") & (!is.na(ocupacion_) & ocupacion_ != "")  ~ ocupaciones[str_sub(ocupacion_, 1, 1)],
          actividad == "Maestro(a)" ~ "Profesionales, científicos e intelectuales",
          actividad == "Trabajador(a) doméstico(a)" ~ "Ocupaciones elementales",
          actividad == "Campesino/a" ~ "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
@@ -1559,11 +1700,15 @@ data <- data %>% filter(( sem_ges_ >= 1 &
 ## Información del hecho
 
 ### Lugar de procendencia/ocurrencia del hecho
-Se refiere al lugar donde posiblemente el paciente adquirió o al cual se atribuye la exposición al
-agente o factor de riesgo que ocasionó el evento.
+
+Se refiere al lugar donde posiblemente el paciente adquirió o al cual se
+atribuye la exposición al agente o factor de riesgo que ocasionó el
+evento.
 
 #### País
-Se cuenta tanto con el código como con el nombre. Todos los casos son de Colombia
+
+Se cuenta tanto con el código como con el nombre. Todos los casos son de
+Colombia
 
 ```{r}
 summary(as.factor(data$cod_pais_o))
@@ -1586,7 +1731,8 @@ summary(as.factor(data$cod_dpto_o))
 summary(as.factor(data$ndep_proce))
 ```
 
-Se comienza modificando la escritura de los niveles y cambiando a NA el nivel "DEPTO DESCONOCIDO"
+Se comienza modificando la escritura de los niveles y cambiando a NA el
+nivel "DEPTO DESCONOCIDO"
 
 ```{r}
 data <- data %>% mutate(
@@ -1601,13 +1747,18 @@ data <- data %>% mutate(
 )
 ```
 
-Luego, se verifica la concordancia de los códigos y nombres con ayuda de la codificación Divipola.
+Luego, se verifica la concordancia de los códigos y nombres con ayuda de
+la codificación Divipola.
 
-1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+1.  Al analizar que códigos no están en la lista, se encontraron los
+    siguientes:
+
 ```{r}
 data %>% filter(!cod_dpto_o %in% DIVIPOLA$codigo_dane_departamento) %>% count(cod_dpto_o,ndep_proce, name = "Cantidad")
 ```
-Estos códigos no existen. El primer caso se cambia a NA y el segundo a *47* que es el código DIVIPOLA correspondiente a Magdalena
+
+Estos códigos no existen. El primer caso se cambia a NA y el segundo a
+*47* que es el código DIVIPOLA correspondiente a Magdalena
 
 ```{r}
 data <- data %>% mutate(
@@ -1619,13 +1770,15 @@ data <- data %>% mutate(
 )
 ```
 
-2.    Los departamentos que no se encuentran en la lista son:
+2.  Los departamentos que no se encuentran en la lista son:
 
 ```{r}
 data %>%
   filter(!str_to_lower(ndep_proce) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% count(cod_dpto_o,ndep_proce)
 ```
-3.    Los casos donde hay discordancia entre el código y el nombre del departamento son:
+
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    departamento son:
 
 ```{r}
 data %>%
@@ -1643,7 +1796,10 @@ unique(data$ndep_proce)
 
 #### Municipio
 
-Se cuenta tanto con el código como con el nombre. La variable **nmun_proce** correspondiente al nombre tomaba en algunos casos nombres de departamento o que indicaban desconocimiento del municipio, por ende, se cambian a NA
+Se cuenta tanto con el código como con el nombre. La variable
+**nmun_proce** correspondiente al nombre tomaba en algunos casos nombres
+de departamento o que indicaban desconocimiento del municipio, por ende,
+se cambian a NA
 
 ```{r}
 data <- data %>% mutate(
@@ -1673,9 +1829,11 @@ data <- data %>% mutate(
 )
 ```
 
-Luego, se verifica la concordancia de los códigos y nombres con ayuda de la codificación Divipola:
+Luego, se verifica la concordancia de los códigos y nombres con ayuda de
+la codificación Divipola:
 
-1.    Al analizar que códigos no están en la lista, se encontraron los siguientes:
+1.  Al analizar que códigos no están en la lista, se encontraron los
+    siguientes:
 
 ```{r}
 data %>%
@@ -1684,28 +1842,35 @@ data %>%
   count(cod_mun_o, nmun_proce, ndep_proce, name = "cantidad")
 ```
 
-Todos los casos se cambian a NA por indicar que no se conoce el municipio
+Todos los casos se cambian a NA por indicar que no se conoce el
+municipio
 
 ```{r}
 data <- data %>% mutate( cod_mun_o = ifelse(cod_mun_o %in% c("000","170"), NA_character_, cod_mun_o))
 ```
 
-**Nota:** Una vez verificados los códigos, se transforma esta variable para que tome como valor el código completo (5 dígitos)
+**Nota:** Una vez verificados los códigos, se transforma esta variable
+para que tome como valor el código completo (5 dígitos)
 
 ```{r}
 data <- data %>%
   mutate(cod_mun_o = ifelse(!is.na(cod_mun_o) & !is.na(cod_dpto_o), paste0(cod_dpto_o, cod_mun_o), cod_mun_o))
 ```
 
-
-2.    Los nombre de los municipios que no se encuentran en la lista auxiliar son:
+2.  Los nombre de los municipios que no se encuentran en la lista
+    auxiliar son:
 
 ```{r}
 data %>%
   filter(!str_to_lower(nmun_proce) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>%  count(cod_mun_o, nmun_proce,name = "cantidad")
 ```
 
-3.    Los casos donde hay discordancia entre el código y el nombre del municipio son:
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    municipio son:
+
+```{r}
+data <- data %>% mutate(cod_mun_o = ifelse(nmun_proce == "San Juan de Urabá","05659",cod_mun_o))
+```
 
 ```{r}
 data %>%
@@ -1715,6 +1880,7 @@ data %>%
   ) %>%
   filter(str_to_lower(nmun_proce) != str_to_lower(nombre_municipio)) %>%
   count(cod_mun_o, nmun_proce, name = "cantidad")
+ # lugar_hecho,
 ```
 
 No hay discordancias.
@@ -1746,9 +1912,10 @@ Cada variable tiene la siguiente función:
 Con el fin de estandarizar la información, y manejar los datos
 faltantes, se realizaron algunos ajustes:
 
-1.  **Limpieza de datos:** Se reemplazaron por NA los valores que indicaban
-    falta de información, tales como "SIN INFORMACIÓN", "NO REGISTRA",
-    "DESCONOCIDO", valores vacíos, valores inconsistentes, entre otros
+1.  **Limpieza de datos:** Se reemplazaron por NA los valores que
+    indicaban falta de información, tales como "SIN INFORMACIÓN", "NO
+    REGISTRA", "DESCONOCIDO", valores vacíos, valores inconsistentes,
+    entre otros
 
 2.  **Unificación de variables:**
 
@@ -1778,12 +1945,11 @@ faltantes, se realizaron algunos ajustes:
 -   Se eliminaron las variables originales (bar_ver\_, localidad\_,
     cen_pobla\_, vereda\_) después de construir la variable lugar_hecho.
 
-
 ```{r}
 regex_na <- paste0(
   "^(9+.*|000000|69999|1E\\+[0-9]+|^\\d{1,8}$|",
-  "^SIN\\s*(INFORM(A(C(CION)?)?|I[ÓO]N|VION)?|DAT(OS?|OP|OSQ)?|DTO|INF(R)?|N?INFORMACION|INFROMACION|NIFORMACION|INFORMAICON|INFOMACION|INFR\\s*NO\\s*RECUERDA|REGISTRO)|",
-  "^NO\\s*(SABE|REFIERE|DATOS?|REGISTRA|INFORMA?|INFROMA|INFORMACION)?$|^NOINFORMA$|^NO\\s+INFORMA$|^DESCONOCE$|^NINGUNO$|",
+  "SIN\\s*(INFORM(A(C(CION)?)?|I[ÓO]N|VION)?|DAT(OS?|OP|OSQ)?|DTO|INF(R)?|N?INFORMACION|INFROMACION|NIFORMACION|INFORMAICON|INFOMACION|INFR\\s*NO\\s*RECUERDA|REGISTRO)|SIN INFORMACIÓN|SIN INFORMACVION|",
+  "NO\\s*(SABE|REFIERE|DATOS?|REGISTRA|INFORMA?|INFROMA|INFORMACION)?|NOINFORMA|^NO\\s+INFORMA$|^DESCONOCE$|^NINGUNO$|NO|",
   "^CALLE\\s+\\d+.*|",
   "(CR|CRA|CL|CLL)\\s*\\d+.*|",
   "^AVENIDA\\s+(80|ORIENTAL|INDUSTRIALES)$|",
@@ -1792,10 +1958,9 @@ regex_na <- paste0(
   "^ANTI(OQUAI|OU?Q?UI[AI]|QUIA|QUAI)$|",
   "^BELEN\\s+(SUCRE|TRINIDAD)$|",
   "^(CABECERA MUNICIPAL|CABECERA MUNICIPAL MEDELLIN|CABECERA)$|",
-  "^(1?M[EO]D+[EL]{1,3}I+[NLÑA]{1,3}|MEDELLNI|MEDELLN|MEDELLLIN|MEDELLÍN|MEDELLIM|MEDELLI|MEDELELIN|MEDEÑÑIN|MEDEELLIN)$|",
-  "^(FFD|A|V|N|F|ND|NS|SD|SI|C|XXX|X|-|CALLE DESCONOCIDA|CALLE|NO STOS|SAN DATO|SI DATO|SINDATOS|SINI NFORMACION|SIN INF|AUTOPISTA MEDELLIN-B|KL 6 ANTIGUA VIA MAR|KL 6 VIA AL MAR|ASDA|AV 36 A 45 87|AV ORIENTAL|COLOMBIA|CONFECCIONISTA|COOSALUD|AMA DE CASA|EN EL METRO|EN BUS SERVICIO PUBL|ESTACION DE POLICIA|FCO ANTIOQUIA|HOTEL MEDELLIN|ICBF|INDETERMINADO|REGIONAL|REGIONAL- DISCOTK MA|SECTOR CENTRAL|VIVIENDAS DEL SUR|MEDELLIN  ANTIOQUIA|ANTIOQUIA MEDELLIN|BELLO LA ORQU[ÍI]DEA)$|",
-  "DESC(ONOCID[AO]|NOCIDA)|\\[?Otro\\]?|AEROPAQUE|ALBERGUE CARLOS M HO|NULL|TODOS LOS BARRIOS)"
-)
+  "^(1?M[EO]D+[EL]{1,3}I+[NLÑA]{1,3}|MEDELLNI|M[EA]DELLN|MEDELLLIN|MEDELLÍN|MEDELLIM|MEDELLI|MEDELELIN|MEDEÑÑIN|MEDEELLIN|MADELLIN|MEDELLIN CENTRO|MEELLIN|MRDELLIN)$|",
+  "(?i)^VIA(\\s+(A|AL))?\\s+[A-ZÁÉÍÓÚÑ]+(\\s+[A-ZÁÉÍÓÚÑ]+)?$|",
+  "FFD|A|V|N|F|ND|NS|SD|SI|C|XXX|X|-|CALLE DESCONOCIDA|CALLE|NO STOS|SAN DATO|SI DATO|SINDATOS|SINI NFORMACION|SIN INF|AUTOPISTA MEDELLIN-B|KL 6 ANTIGUA VIA MAR|KL 6 VIA AL MAR|ASDA|AV 36 A 45 87|AV ORIENTAL|COLOMBIA|CONFECCIONISTA|COOSALUD|AMA DE CASA|EN EL METRO|EN BUS SERVICIO PUBL|ESTACION DE POLICIA|FCO ANTIOQUIA|HOTEL MEDELLIN|ICBF|INDETERMINADO|REGIONAL|REGIONAL- DISCOTK MA|SECTOR CENTRAL|VIVIENDAS DEL SUR|MEDELLIN  ANTIOQUIA|ANTIOQUIA MEDELLIN|BELLO LA ORQU[ÍI]DEA|ROBLEDO VIA SANFELIX|SAN CRISTOBAL\\s+(LA AUR|FINCA DULCE HOGAR|VEREDA)|SANTO DOMINGO\\s+(VÍA A GUARNE|CAÑADA)|ALDEA SANTO DOMINGO|VEREDA EL LIMON - CHUPADERO|N A|PANTANOS KM 07|DESC(ONOCID[AO]|NOCIDA)|\\[?Otro\\]?|AEROPAQUE|ALBERGUE CARLOS M HO|NULL|TODOS LOS BARRIOS|ALTO DE LA ONDA|ALTO DE LUIS MIGUEL|ALTO GRANDE|ALTOS DE LA VILLA|ARENALES|ASTURIAS|ATALAYA|ATARDECERES|AVELLANAS|AVILA|BALADORES|BALBOA|BANQUEO|BARRIO BELLO|BARRION UNIDOS|BARRIOS UNIDOS|BELLANITA|BONAVIDA|BRISAS DEL EDEN|BRISAS DEL JARDIN|BUENOS DIAS|CALLE LOPEZ|CALLE NEGRA|CALLE SAN RAFAEL|CAMPESTRE|CAMPO CAMPO|CAMPO VERDE|CANTARRANA|CARRBE|CARVEDO|CASA LINDA|CARMELO|CERAZO|CESAR|PARQUE DE BARBOSA|CHOCO|CIUDADELA|COLSANITAS|COMPARTIR|COVEÑAS|CUCUTA|CUIDADELA FABRICATO|DESCANSO|EL DESCAN[ZS]O|DIVINO MAESTRO|EDUARDO ESCOBAR|EFE GOMEZ|EL BARZINO|EL BASTON|EL ESTADERO|DOCE DE OCTUBRE NO.1|MEDELLÍN|ANTIOQUIA|1|627|EL FARO|EL GUAYABO|EL LEON|EL BERTEL|EL BOAQ|EL CHISPERO|EL CHIZPERO|EL CHUZCAL|EL NARANJAL|EL PERICO|EL POLVORIN|EL RECREO|EL RODRO|BELLO ORIENTE|NUEVO ACCIDENTE|PABLO SEXTO|FINCA EN SOPETRAN|ESTRELLA|ESTRELLITA|GMUNEROS|GUANTEROS|HOGAR  LA CHINCA|HOGAR ASPÉRLA|HOGAR CLARET|HOGAR JUDIT JARAMILL(O)?|HOGARES CLARET|HOGARES CLARET MIRAFLORES|HORIZONTES|INMACULADA|INVASIÓN|JESÚS|LA 13|LA 80|LA AMELI|LA ARENERA|LA AVA|LA CALLE|LA CASETA|LA CATOLICA|LA CATORCE|LA CERCA|LA CERCAYA|LA DOCTORA|LA FERIA|LA FINQUIZA|LA FRIZOLA|LA GRACIELA|LA ISABELA|LA MAERICA|LA MANO DE DIOS|LA MARACANA|LA MARUCHENGA|LA MINA|LA MONTAÑA|NECISO|LA OCULTA|LA PALOMERA|LA PASTORA|NUEVO\\sO[C]+IDENTE(\\sCANT)?|NUEVO SANTANDER|OAISIS|OCCIDENTE|VEREDA TIERRADENTRO|VILLA LAURA|VILLA RITA|VILLA SANTA FE|VILLALISA|VILLAS DE CONFENALCO|VILLAS DE SANTA FE|VILLAS DEL SOL|ZARAGOZA|OCURRENCIA POPULAR|LA PAZ|NOREVERDE|PEÑITAS|PEÑITAS SANJAVIER|LA PIEDRA|LA QUERETA|LA ROMELIA|LA TABOGA|LA TERMINAL|PILSEN|PRADO  CORPOR CRESER|PRADO CAMPESTRE|PUEBLO NUEVO|PLAYITAS|LA Y|LAS CABAALLERIZAS|LAS CAMELIAS|LAS COLES|LAS ESCALAS|LEON XIII|LOMA SAN JULIAN|LOPEZ PARTE ALTA|LOS CANTARES|LOS HALCONES|LOS OLIVOS|LOS PATIOS|LOS QUINTANAS|LOS RIELES|LO[VB]AINA|LOVANIA|MACARENA|MANGA|MATURIN|MENIZALES|META GRANADA|MILLA DE ORO|MIRADOR|MINUTO DE DIOS|MIRADOR LA MOTA|MONTANITA|MONTERIA|PAIMADO|PALO BLANCO|PALO CABILDO|PARCELACIN PREMIUN|PARALELA|PARALELA ACEVEDO|PASEO SEVILLA|PUENTO CERO|PUERTO BOYACA|PUERTO MEDELLI[N]+|URBANIZACION EL REMA|VALEJAS|VEREDA CORREGIMIENTO PORCE|VEREDA EL BENEFICIO|VEREDA EL PANTANILLO|VEREDA EL PARAISO|VEREDA EL PINGUINO|VEREDA EL TABLAZO|VEREDA GRANIZAL|VEREDA|VALLE FUEGO|VALLE VIEJO|VALLEJUELO|QUITASOL|SAN TANDER|VALLE DEL CAUCA|RAUDAL|TIERRADENTRO|SAO PABLO|SECTOR DE LA 33|SOL DE ORIENTE|SEMILLA|SAN JUAQUIN|SAN JUDAS|SAN IGNACIO|SAN MARTIN|SANATA CECILIA|SANTA LUZ|SANTAMARIA|SAN BÑAS|SAN JUAN|SAN ROSA|SAN PIO|SAN LORENZO|SAN ESTEBAN|SAN EUGENIO|SAN GABRIEL|Bosque|CIUDADELA SEVILLA|COLINAS DE OCCIDENTE|EL SARZAL|EL SINAI|EL TEJAR|EL TIRON|EL TREBOL|HOGAR LA CHINCA|HOGAR SAN JOSE|HOGARES CLRET|HOTEL|JESUS|LA BAJA|LA MAGU|LA TRECE|MALL|PEREZ|PUNTO CERO|UBANA|VILLA(\\s)?CAF[EÉ]|NUEVA ESPERANZA|SAN JOSE DEL NUS|VEREDA JALISCO|CENTRI)$")
 
 data <- data %>%
   mutate(across(c(bar_ver_, localidad_, cen_pobla_, vereda_), 
@@ -1842,333 +2007,412 @@ data <- data %>%
 data <- data %>% select(-bar_ver_, -localidad_, -cen_pobla_, -vereda_,-ver_cen,-loc_bar)
 ```
 
-6. **Depuración variable final:** la variable **lugar_hecho** sería entonces el equivalente a **barrio de ocurrencia** pero queda con un `r round((sum(is.na(data$lugar_hecho))*100) / nrow(data),3)`% de NA. Este es un motivo por el cual se decide unificar más adelante esta variable con **barrio de residencia**, para ello se debe hacer una limpieza de **lugar_hecho**
+6.  **Depuración variable final:** la variable **lugar_hecho** sería
+    entonces el equivalente a **barrio de ocurrencia** pero queda con un
+    `r round((sum(is.na(data$lugar_hecho))*100) / nrow(data),3)`% de NA.
+    Este es un motivo por el cual se decide unificar más adelante esta
+    variable con **barrio de residencia**, para ello se debe hacer una
+    limpieza de **lugar_hecho**
 
--     Se unifica la escritura para evitar repeticiones
+-   Se unifica la escritura para evitar repeticiones
 
 ```{r}
 # Manejar casos compuestos: dos barrios, barrio - comuna, barrio - departamento
 
-arreglada <- arreglada %>%
+data <- data %>%
   mutate(lugar_hecho = str_trim(lugar_hecho))
 
-arreglada <- arreglada %>%  mutate(lugar_hecho = case_when(
-  # str_detect(lugar_hecho, "^ANDAL[AU]C[IÍ]A\\b.+") ~ str_extract(lugar_hecho, "^ANDAL[OU]C[IÍ]A"),
-  str_detect(lugar_hecho, "^ANTIOQUIA\\s+GIRARDOTA$") ~ "GIRARDOTA",
-  str_detect(lugar_hecho, "^ARANJUEZ\\b.+") ~ str_remove(lugar_hecho, "^ARANJUEZ\\s+"),
-  str_detect(lugar_hecho, "^BARRIO CAYCEDO\\s*-") ~ str_extract(lugar_hecho, "^BARRIO CAYCEDO"),
-  str_detect(lugar_hecho, "^BEL[ÉE]N\\s+|^BELAN\\s+(ALTAVISTA|GRANADA|LA GLORIA|LA MOTA|LAS VIOLETAS|LOMA BERNAL|LAS MARGARITAS|L[AO]S\\s+MERE?CEDES|LS MERCEDES|ROSALES|SAN BERNARDO|SAN BERNANADO|SAN BERNANDO|SAN CARLOS|VIOLETAS|AGUA[\\s]?FR[ÍI]AS?|AGUAS\\s+FR[ÍI]AS?|AGUAFR[ÍI]A|AGUS\\s+FR[ÍI]AS?|VICLETAS)$") ~ str_remove(lugar_hecho,"^BEL[ÉE]N\\s+|^BELAN\\s+"),
-  str_detect(lugar_hecho, "^ALTAVISTA\\b.+") ~ str_extract(lugar_hecho, "^ALTAVISTA"),
-  str_detect(lugar_hecho, "^BELENCITO SN JAVIER$") ~ str_extract(lugar_hecho, "SN JAVIER"),
- str_detect(lugar_hecho, "^B\\s+(MANRIQUE|CENTRO|CRISTOBAL|RINCON|TRINIDAD)$") ~ str_remove(lugar_hecho, "^B\\s+"),
- str_detect(lugar_hecho, "^B[AOY][Y]?AC[AC]?S?\\s+LAS BRISAS$")& str_sub(codigo_barrio,3,4) == "02" ~ str_extract(lugar_hecho, "LAS BRISAS$"),
-str_detect(lugar_hecho, "^B[AOY][Y]?AC[AC]?S?\\s+LAS BRISAS$") & str_sub(codigo_barrio,3,4) == "05" ~ str_remove(lugar_hecho, "\\s+LAS BRISAS$"),
-str_detect(lugar_hecho, "^B[AOY][Y]?AC[AC]?S?\\s+LAS BRISAS$") & !str_sub(codigo_barrio,3,4) %in% c("02","05") ~ str_extract(lugar_hecho, "LAS BRISAS$"),
-
-  TRUE ~ lugar_hecho
-))
+data <- data %>%  mutate(
+  lugar_hecho = case_when(
+    str_detect(lugar_hecho, "^ANTIOQUIA\\s+GIRARDOTA$") ~ "GIRARDOTA",
+    str_detect(lugar_hecho, "^ARANJUEZ\\b.+") ~ str_remove(lugar_hecho, "^ARANJUEZ\\s+"),
+    str_detect(lugar_hecho, "^BARRIO CAYCEDO\\s*-") ~ str_extract(lugar_hecho, "^BARRIO CAYCEDO"),
+    
+    str_detect(lugar_hecho,"^BEL[ÉE]N(\\s|-)+|^BELAN(\\s|-)+(ALTAVISTA|GRANADA|LA GLORIA|LA MOTA|LAS VIOLETAS|LOMA BERNAL|LAS MARGARITAS|L[AO]S\\s+MERE?CEDES|LS MERCEDES|ROSALES|SAN BERNARDO|SAN BERNANADO|SAN BERNANDO|SAN CARLOS|VIOLETAS|AGUA[\\s]?FR[ÍI]AS?|AGUAS\\s+FR[ÍI]AS?|AGUAFR[ÍI]A|AGUS\\s+FR[ÍI]AS?|VICLETAS|RODEO(\\sALTO)?)$") ~ str_remove(lugar_hecho, "^BEL[ÉE]N(\\s|-)+|^BELAN(\\s|-)+"),
+    
+    str_detect(lugar_hecho, "^ALTAVISTA\\b.+") ~ str_extract(lugar_hecho, "^ALTAVISTA"),
+    str_detect(lugar_hecho, "^BELENCITO SN JAVIER$") ~ str_extract(lugar_hecho, "SN JAVIER"),
+    str_detect(lugar_hecho,"^B\\s+(MANRIQUE|CENTRO|CRISTOBAL|RINCON|TRINIDAD)$") ~ str_remove(lugar_hecho, "^B\\s+"),
+    
+    str_detect(lugar_hecho,"^(B[AOY][Y]?AC[AC]?S?|BOTACA|BOYA)\\s+LAS BRISAS$") & str_sub(codigo_barrio, 3, 4) == "02" ~ str_extract(lugar_hecho, "LAS BRISAS$"),
+    
+    str_detect(lugar_hecho,"^(B[AOY][Y]?AC[AC]?S?|BOTACA|BOYA)\\s+LAS BRISAS$") & str_sub(codigo_barrio, 3, 4) == "05" ~ str_remove(lugar_hecho, "\\s+LAS BRISAS$"),
+    
+    str_detect(lugar_hecho,"^(B[AOY][Y]?AC[AC]?S?|BOTACA|BOYA)\\s+LAS BRISAS$") & !str_sub(codigo_barrio, 3, 4) %in% c("02", "05") ~ str_extract(lugar_hecho, "LAS BRISAS$"),
+    
+    str_detect(lugar_hecho,"^CAICEDO(\\s|-)+(LA ESTRECGURA|VILLA LILIAM|VILLA LILIA|PERLA|LA TOMA|LA SIERRA)$") ~ str_remove(lugar_hecho, "^CAICEDO(\\s|-)+"),
+    
+    lugar_hecho %in% c("CASTILLA FLORENCIA", "FLORENCIA - CASTILLLA") ~ "Florencia",
+    str_detect(lugar_hecho, "\\bCOMUNA\\s*\\d+") ~ str_remove(lugar_hecho, "^.*?(?=\\bCOMUNA\\s*\\d+)"),
+    lugar_hecho %in% c("GUAYABAL LA COLINA","ENTRECOLINAS","COLINAS","COLINITA","LA COLINITA") ~ "La Colina",
+    lugar_hecho == "LA GABRIELA - SAN JAVIER" ~ "Eduardo Santos",
+    lugar_hecho == "LAURELESNOGAL" ~ "Laureles",
+    lugar_hecho %in% c("LA SIERRA VILLA HERMOSA", "VILLA SIERRA") ~ "La Sierra",
+    lugar_hecho %in% c("LASUCIA EL MORRON", "VEREDA LA SUCIA") ~ "La Sucia",
+    lugar_hecho == "LA MANSION" ~ "La Mansión",
+    
+    str_detect(lugar_hecho,"^MA(N)?R+IQUE(\\s|-)+(LAS ESMERALDAS|LAS ESMERAL|ESMERALDA|GUADALUPE|AL CRUZ|LA CRUZ|EL PINAL|LAS GRANJA|LA SALLE I|VERSALLES 2|STA CECILIA|SANTA INES|SAN PABLO|LOS BALSOS|LAS GRANJAS|LA SALLE|LA HONDA|JARDÍN|LA ESMERALD|LA CIMA|L CRUZ)$") ~ str_remove(lugar_hecho, "^MA(N)?R+IQUE(\\s|-)+"),
+    
+    str_detect(lugar_hecho,"^ROBLEDO[\\s\\-]*((VILLA\\s?FLORA)|(SAN GERMAN)|(EL\\s)?PESEBRE|(PEDREGAL)|(PAJARITO)|OLAYA(\\s+HERRERA)?|(KEN(EDY|EDDY|NEDY))|(EL\\s)?(DIAMANTE|DIAMENTE|DIMAMANTE)|(CUCARACHO)|(CORDOBA)|(BLANQUIZAL)|(BELLO HORIZONTE)|(AURES(1)?|AUREA|AURA)|(ALTAMIRA)|(ALPES)|(ESTADIO)|(SAN PEDRO))$") ~ str_remove(lugar_hecho, "^ROBLEDO(\\s|-)+"),
+    
+    str_detect(lugar_hecho, "^SAN CRISTOBAL(\\s|-)+(AGUAS|LA LOM)$") ~ str_remove(lugar_hecho, "^SAN CRISTOBAL(\\s|-)+"),
+    str_detect(lugar_hecho, "^SANA? JAVIER(\\s|-)(20 DE JU(LIO)?|EL SOCORRO)$") ~ str_remove(lugar_hecho, "^SANA? JAVIER(\\s|-)+"),
+    str_detect(lugar_hecho, "^SANTA CRUZ(\\s|-)+(ECUADOR|ARANJUEZ)$") ~ str_extract(lugar_hecho, "^SANTA CRUZ"),
+    str_detect(lugar_hecho, "^SANTA CRUZ(\\s|-)+(LA ROSA|DE LA ROSA)$") ~ str_remove(lugar_hecho, "^SANTA CRUZ(\\s|-)+"),
+    str_detect(lugar_hecho,"^SANTO DOMINGO[-\\s]+(EL PINAR|EL PINAL|LA AVA|LA ESP(ERANZA)?|PINAR)$") ~ str_remove(lugar_hecho, "^SANTO DOMINGO(\\s|-)+"),
+    
+    lugar_hecho %in% c("TOSCANA - LA PARALELA","BARRIO TOSCANA","LA TOSCANA","LA PLAYITA") ~ "Toscana",
+    str_detect(lugar_hecho,"^(MORAVIA\\s+(INVASIÓN|EL OASIS|EL MORRO|EL BOSQUE)|BOSQUE MORAVIA)$") ~ str_extract(lugar_hecho, "^MORAVIA"),
+    str_detect(lugar_hecho,"^BARRIO(\\s|-)+(EL BOSQUE|ESTADIO|LOPEZ PARTE ALTA|LOS ANGELES|TRINIDAD|SANTA CRUZ|POPULAR(\\s2)?)$") ~ str_remove(lugar_hecho, "^BARRIO(\\s|-)+"),
+    str_detect(lugar_hecho,"^CORR SAN ANTONIO DE PRADO(\\s|-)+(LA VERDE|MONTAÑITA|POTRERITO)$") ~ str_remove(lugar_hecho, "^CORR SAN ANTONIO DE PRADO(\\s|-)+"),
+    str_detect(lugar_hecho, "^CORR SAN CRISTOBAL(\\s|-)+(BOQUERÓN)$") ~ str_remove(lugar_hecho, "^CORR SAN CRISTOBAL(\\s|-)+"),
+    str_detect(lugar_hecho,"^(SAN JAVIER|SANJAVIER)(\\s|-)+(LA PRADERA|LA PEÑITA|LA LOMA|LA DIVISA|EL SALADO)$") ~ str_remove(lugar_hecho, "^(SAN JAVIER|SANJAVIER)(\\s|-)+"),
+    str_detect(lugar_hecho,"^(VEREDA)(\\s|-)+(BUGA|EL MAZO- SECTOR ES|EL PATIO|EL UVITO|LA ALDEA|LA CUCHILLA|LA LOMA(\\sCOLOMBIA)?|LA VOLCANA(\\sSAN SEBASTIAN DE PALMITAS|MANZANILLO|TRAVESIAS|URQUITA|YARUMALITO)?)$") ~ str_remove(lugar_hecho, "^(VEREDA)(\\s|-)+"),
+    TRUE ~ lugar_hecho
+  )
+)
 ```
 
-
 ```{r}
-nom <- arreglada %>% count(lugar_hecho,nombre_barrio,nmun_proce,ndep_proce, name = "cantidad")
-sum(is.na(arreglada$lugar_hecho))
-
-arreglada <- arreglada %>%
+data <- data %>%
   mutate(
     lugar_hecho = case_when(
-      nmun_proce == "Medellín" &
-        lugar_hecho %in% c(
-          "AURORA",
-          "ROBLEDO LA AURORA",
-          "LA  AURORA",
-          "LA AURORA",
-          "LA AURORAA",
-          "LA AURORA EL TIROL",
-          "LAAURORA",
-          "ROBLEDO LAS FLORES",
-          "LAS FLOREZ",
-          "LAS FLORES"
-        ) ~ "Santa Margarita", 
-            str_detect(lugar_hecho, "(ALPUJARRA|PLAZA MAYOR)") ~ "La Alpujarra",
-      str_detect(lugar_hecho,
-                 regex("alfon(s[aoz]?|zos?)\\s?lo(p|b)?e[zs]?|alfonsol\\s?lopez|alfonos\\s?lopez|alfonoslopez",
-                       ignore_case = TRUE)) ~ "Alfonso López",
-      str_detect(lugar_hecho, regex("anadalucia|andlaucia|andulucia|anda\\s*luc[ai]|andal[uú]cia(?!.*la\\s*franci[ao][s]?)", ignore_case = TRUE)) ~ "Andalucía",
-          str_detect(lugar_hecho, regex("andal[uú]cia.*(la\\s*franci[ao][s]?|l\\s*francia)|Andalacia La Francia|Andalucía La Francia", ignore_case = TRUE)) ~ "La Francia",
-     str_detect(lugar_hecho, "^ANTI[O]*QUIA$") ~ NA_character_,
+      lugar_hecho == "ÁREA DE EXPANSIÓN ALTAVISTA" ~ "Área de Expansión Altavista",
+      lugar_hecho == "ÁREA DE EXPANSIÓN PAJARITO" ~ "Área de Expansión Pajarito",
+      lugar_hecho == "ÁREA DE EXPANSIÓN SAN ANTONIO DE PRADO" ~ "Área de Expansión San Antonio de Prado",
+      lugar_hecho == "ALPES" ~ "Los Alpes",
+      lugar_hecho %in% c("ACACIAS", "LAS ACASIAS") ~ "Las Acacias",
+      lugar_hecho %in% c("AVANZADA", "LA AVA") ~ "La Avanzada",
+      lugar_hecho == "PREDO" ~ "Prado",
+      str_detect(lugar_hecho,"^(ANTINIO NARIÑO|NARIN?O|NARIÑO|ANTONIO NARINO|ANTONIO NARIÑO|QUINTAS DE SAN JAVIER)$") ~ "Antonio Nariño",
+      str_detect(lugar_hecho, "^(ALPUJARRA|PLAZA MAYOR)$") ~ "La Alpujarra",
+      
+      str_detect(lugar_hecho,regex("alfon(s[aoz]?|zos?)\\s?lo(p|b)?e[zs]?|alfonsol\\s?lopez|alfonos\\s?lopez|alfonoslopez",       ignore_case = TRUE)) ~ "Alfonso López",
+      
+      str_detect(lugar_hecho,regex("andal[uú]cia.*(la\\s*franci[ao][s]?|l\\s*francia)|Andalacia La Francia|Andalucía La Francia",ignore_case = TRUE)) ~ "La Francia",
+      
+      str_detect(lugar_hecho,regex("anadalucia|andlaucia|andulucia|anda\\s*luc[ai]|andal[uú]cia(?!.*la\\s*franci[ao][s]?)",ignore_case = TRUE)) ~ "Andalucía",
+      
+      str_detect(lugar_hecho, "^ANTI[O]*QUIA$") ~ NA_character_,
       lugar_hecho %in% c("ALTAVISTA", "ALTAVIASTA", "ALTA VISTA", "ALTAVIATA") ~ "Altavista",
       lugar_hecho == "ALTAVISTA CENTRAL" ~ "Altavista Sector Central",
-      lugar_hecho %in% c("ARAJUEZ", "ARAMJUEZ","ARAN JUEZ", "ARANJUE", "ARANJUERZ", "ARANJUEZ3", "ARANJUUEZ", "ARANJUZ", "ARNJUEZ", "SAN CAYETANO ARNJUEZ") ~ "Aranjuez",
-    str_detect(lugar_hecho, regex("aranjuez berlin|^berlin$", ignore_case = TRUE)) ~ "Berlín",
-    str_detect(lugar_hecho, regex("aranjuez palermo|^palermo$", ignore_case = TRUE)) ~ "Palermo",
-    str_detect(lugar_hecho, regex("aranjuez san isidro|^san isidro$", ignore_case = TRUE)) ~ "San Isidro",
+      lugar_hecho %in% c("ARAJUEZ","ARAMJUEZ","ARAN JUEZ", "ARANJUE","ARANJUERZ","ARANJUEZ3", "ARANJUUEZ", "ARANJUZ","ARNJUEZ",
+        "SAN CAYETANO ARNJUEZ") ~ "Aranjuez",
+      
+      str_detect(lugar_hecho,regex("aranjuez berlin|^berlin$", ignore_case = TRUE)) ~ "Berlín",
+      str_detect(lugar_hecho,regex("aranjuez palermo|^palermo$", ignore_case = TRUE)) ~ "Palermo",
+      str_detect(lugar_hecho,regex("aranjuez san isidro|^s(a)?n isidro$", ignore_case = TRUE)) ~ "San Isidro",
       str_detect(lugar_hecho, "ASOMADERA") ~ "Asomadera No.1",
-      lugar_hecho %in% c(
-        "AURES",
-        "ROBLEDO AUREA",
-        "ROBLEDO AURES",
-        "ROBLEDO AURA",
-        "ROBLEDO AURES 1",
-        "VILLASOFIA",
-        "ROBLEDO VILLA SOFIA",
-        "VILLA SOFIA",
-        "ROBLEDO VILLASOFIA",
-        "ROBLEDO  AURES",
-        "Aures Nro 1" 
-      ) ~ "Aures No.1",
-      str_detect(lugar_hecho, regex("\\bAURES\\s*(NO|NRO)?\\.?\\s*-?2\\b", ignore_case = TRUE)) ~ "Aures No.2",
-            str_detect(lugar_hecho, "ALAMOS") ~ "Bermejal-Los Álamos",
-      lugar_hecho %in% c("AGIAS FRIS", "AGUAS FRIAS", "VEREDA AGUAS FRIAS") ~ "Aguas Frías",
-     
-      str_detect(lugar_hecho, "\\bB[UEO]{2,5}N[IOS]*\\sAIRES\\b") ~ "Buenos Aires",
-      str_detect(lugar_hecho, "\\bBARRIO\\sANTI[OQ]UIA\\b") ~ "Barrio Antioquia",
+      str_detect(lugar_hecho, "ALAMOS") ~ "Bermejal-Los Álamos",
+      lugar_hecho %in% c("AGIAS FRIS","AGUAS FRIAS","VEREDA AGUAS FRIAS","AGUAFRIA","AGUAS","AGUS  FRIAS") ~ "Aguas Frías",
+      str_detect(lugar_hecho,"^(BARR[R]?IO ANTIOQUIA|GIAUAYABAL|GUAYABAL1|GUYABAL)$") ~ "Guayabal",
+      codigo_barrio == "1315" &  str_detect(lugar_hecho, "^(CONQUISTADORE[SA]|NUEVA CONQUISTA)$") ~ "Nuevos Conquistadores",
+      str_detect(lugar_hecho, "^(NUEVO(S)? CONQUISTADORE(S)?)$") ~ "Nuevos Conquistadores",
+      str_detect(lugar_hecho, "^(CONQUISTADORE[SA])$") ~ "Los Conquistadores",
+      lugar_hecho %in% c("COLONES", "COLORES", "FLORES Y COLORES", "LOS COLOERES") ~ "Los Colores",
+      lugar_hecho %in% c("COLON", "BARRIO COLÓN", "BARRIO COLON") ~ "Barrio Colón",
+      lugar_hecho %in% c("INDUSTRIALES") ~ "Barrio Colombia",
+      lugar_hecho %in% c("CORDOBA", "COEDOBA") ~ "Córdoba",
+      lugar_hecho %in% c("COMPROMISO", "EL COMPROMISIO") ~ "El Compromiso",
+      lugar_hecho %in% c("BOYA", "BOYACA", "GRATAMIRA") ~ "Boyacá",
+      lugar_hecho %in% c("BOSQUEZ DE SAN PABLO","BOSQUE DE SAN PABLO","BOSQUES DE SAN PABLO","CC FLORIDA") ~ "Bosques de San Pablo",
+      lugar_hecho %in% c("BARRO BLANCO-SANTA ELENA", "CORR SANTA ELENA SECTOR CENTRAL BARRO BLANCO") ~ "Barro Blanco",
+      lugar_hecho == "BELLOHORIZONTE" ~ "Bello Horizonte",
+      codigo_barrio != "0903" &  str_detect(lugar_hecho, "^(BOMBON[AÁ])$") ~ "Bomboná No.1",
+      codigo_barrio == "0903" & str_detect(lugar_hecho, "^(BOMBON[AÁ])$") ~ "Bomboná No.2",
+      str_detect(lugar_hecho,"^(BOMBONA(\\s+NO\\.?\\s*|\\s+)1|BOMBONA No.1)$") ~ "Bomboná No.1",
+      str_detect(lugar_hecho,"^(BOMBONA(\\s+NO\\.?\\s*|\\s+)2|BOMBONA No.2|QUINTA LINDA)$") ~ "Bomboná No.2",
+      
+      lugar_hecho %in% c("BRANQUIZAL", "BLNQUIZAL", "BLANQIZAL") ~ "Blanquizal",
+      lugar_hecho %in% c("BUGA") ~ "Buga Patio Bonito",
+      str_detect(lugar_hecho,"^(B[UEO]{2,5}N[IOS]*\\sAIRES|BUENBOS AIRES|BUENOA IRES|BUENOS|BUENOS A|BUENOS AIERES|BUENOS AIIRES|BUENOS AIRE|BUENOS AIRE S|BUENOS AIRRES|BUENOS AIRTES|BUENOS AOIRES|BUENOS IARES|BUENOS IRES|BUEOS AIES|BUNOS AIRES|BUEOS AIRES)$") ~ "Buenos Aires",
+      str_detect(lugar_hecho, "^(BARR(R)?IO\\sANTI[OQ]UIA)$") ~ "Trinidad",
+      str_detect(lugar_hecho,"^(BARRIO\\sCAYCEDO|CACIEDO|CAICEDIO|C[AE][IY]CEDO|CAICEDRO|CICEDO)$") ~ "Barrio Caicedo",
+      lugar_hecho %in% c("VEREDA BOQUERON", "BOQUERON") ~ "Boquerón",
       lugar_hecho %in% c("BELLA VISTA") ~ "Bellavista",
-      str_detect(lugar_hecho, "\\b(BEL[ÉE]N\\s(RINC[ÓO]N|RINCO|RICO|RONCON)|BELEN\\sBELEN\\sRINCON)\\b") ~ "Área de Expansión Belén Rincón",
-      str_detect(lugar_hecho, "\\b(EL\\sRINC[ÓO]N|B\\sRINC[ÓO]N|RINC[ÓO]N|BELEN LA CAPILLA|BELEN RINCON LA CAPI)\\b") ~ "El Rincón",
-      str_detect(lugar_hecho, "^(BELEN\\s+(PARQUE|ALAMEDA|PORVEN[IO]R|VICUÑA)|BELEB)$") ~ "Belén",
-      str_detect(lugar_hecho, "^BELEN\\s+(LA NUVIA|LA NUBIA|ALIADA|SAN CARLOS)$") ~ "La Gloria",
-      str_detect(lugar_hecho, "^BELEN\\s+RODEO(\\sALTO)?$") ~ "El Rodeo",
-      str_detect(lugar_hecho, "^(BELEN\\s+(BUENA\\s?VIST[AA]?|LOS ALPINOS|ZAFRA|SAFRA)|LOS ALPINOS|ZAFRA)$") ~ "Altavista",
-      str_detect(lugar_hecho, "^BEL[ÉE]N\\s+MALIB[ÚU]$") ~ "Rosales",  
+      str_detect(lugar_hecho,"^(BEL[ÉE]N\\s(RINC[ÓO]N|RINCO|RICO|RONCON)|BELEN\\sBELEN\\sRINCON)$") ~ "Área de Expansión Belén Rincón",
+      str_detect(lugar_hecho,"^(EL\\sRINC[ÓO]N|B\\sRINC[ÓO]N|RINCÓN|BELEN LA CAPILLA|BELEN RINCON LA CAPI|LA CAPILLA|RICO|RICON|RINCO|RINCON LA CAPI|RONCON|RINCON)$") ~ "El Rincón",
+      
+      str_detect(lugar_hecho, "^(BELA[LR]CAZAR)$") ~ "Belalcázar",
+      str_detect(lugar_hecho,"^(PORVENOR|(EL\\s)?PORVENIR|(BELEN\\s+(PARQUE|ALAMEDA|PORVEN[IO]R|VICUÑA))|BELEB|BELEN|ALAMEDA|VICUÑA)$") ~ "Belén",
+      
+      str_detect(lugar_hecho,"^(LA NU[VB]IA|ALIADA(S)?|SAN CARLOS|ROBLEDO PRIMAVERAL|PRIMAVERAL|LA  GLORIA|GLORIA)$") ~ "La Gloria",
+      str_detect(lugar_hecho,"^(BELEN\\s+(BUENA\\s?VIST[AA]?|LOS ALPINOS|ZAFRA|SAFRA)|LOS ALPINOS|ZAFRA|SAFRA)$") ~ "Altavista",
+      str_detect(lugar_hecho, "^(BEL[ÉE]N\\s+MALIB[ÚU]|MALIB[ÚU])$") ~ "Rosales",
       lugar_hecho == "BELEN SAN FERNANDO" ~ "San Bernardo",
       lugar_hecho == "BELENCITO BETONIO" ~ "Betania",
       str_detect(lugar_hecho,"^BEL[AE]?[LNRSB]*[CS]ITO\\s*CORAZ[ÓO]N?$|^BEL[AE]?[LNRSB]*CITO\\s*\\}?$") ~ "Belencito",
-lugar_hecho == "BELLO ORIENTE MEDELLIN" ~ "Manrique",  
-lugar_hecho == "BELLO SANTA ANA" ~ "Santa Ana",
-      lugar_hecho %in% c("BELLO LA GABRIELA") ~ "La Gabriela",
+      lugar_hecho == "BELLO SANTA ANA" ~ "Santa Ana",
       lugar_hecho %in% c("BELLO MANCHESTER") ~ "Mánchester",
-lugar_hecho %in% c("BELLO NIQUIA") ~ "Niquía",
-str_detect(lugar_hecho, "^(BELLO)?PACHEL{1,2}I{0,2}Y?$") ~ "Pachelly",
-lugar_hecho == "BOSTON SUCRE" ~ "Boston",
-lugar_hecho == "BOLIVAR" ~ "Simón Bolívar",
-lugar_hecho == "BOSTONLA LADERA" ~ "La Ladera",
-      lugar_hecho %in% c("BARRIO DE JESUS", "BARRIOS DE JESUS", "DE JESUS", "BARRIO TRISTE") ~ "Barrios de Jesús",
+      str_detect(lugar_hecho, "^(BELLO)?PACHEL{1,2}I{0,2}Y?$") ~ "Pachelly",
+      lugar_hecho %in% c("BOSTON SUCRE","BOSBTON","BOSTONB","PLACITA DE FLOREZ","PLACITA DE FOLRES") ~ "Boston",
+      lugar_hecho %in% c("BOLIVAR", "SIMON BOLIVAR", "SIMON BOLVAR", "SIMÓN BOLIVAR") ~ "Simón Bolívar",
+      lugar_hecho %in% c("BOSTONLA LADERA", "LA LADERA BOSTON") ~ "La Ladera",
+      lugar_hecho %in% c( "BARRIO DE JESUS","BARRIOS DE JESUS", "DE JESUS","BARRIO TRISTE","BARRIO DE JESUS BUENO","BARRIOS DE JESÚS") ~ "Barrios de Jesús", 
+      
+      lugar_hecho %in% c("SAN CRISTOBAL-BARICHARA","CORREGIMIENTO SAN ANTONIO DE PRADO BARICHARA","BARICHARA") ~ "Barrios de Jesús",
       lugar_hecho %in% c("B CRISTOBAL", "BARRIO CRISTOBAL") ~ "Barrio Cristóbal",
-      str_detect(lugar_hecho, "BARRIO ESTADIO") ~ "Estadio",
-      lugar_hecho %in% c(
-        "BARRIO OLAYA",
-        "OAYA HERRERA",
-        "OLAYA",
-        "OLYA",
-        "OYOLA",
-        "ROBLEDO OLAYA",
-        "ROBLEDO OLAYA HERRERA",
-        "HOLAYA  HERRERA"
-      ) ~ "Olaya Herrera",
-            lugar_hecho %in% c("CENTRO POBLADO","CENTRO POBLADO DE PALMITAS","CENTRO POBLADO DE SAN CRISTOBAL") ~ lugar_hecho,
-      lugar_hecho %in% c("B CENTRO","CENTRO DIA","CENTRI","CENTRO","CENTRO OPERA","CENTRO MEDELLIN","CENTRO ORIENTAL","CENTRO-HOTEL GOLDEN","HOSTAL DEL CENTRO","CENTRO BARBACOAS","LA PLAYA CENTRO","CENTRO DE LA CIUDAD","CENTRO DE LA CIUDAD","CENTRO DIA","CENTRO DE MEDELLIN","CENTRO MEDELLI","CENTROON") ~ "La Candelaria", 
+      str_detect(lugar_hecho, "^(BARRIO ESTADIO|OBELISCO)$") ~ "Estadio",
+      lugar_hecho %in% c( "BARRIO OLAYA","OAYA HERRERA","OLAYA","OLYA","OYOLA","OLAYA BLANQUIZAL","OLAYA HERRERA","HOLAYA  HERRERA","LA OYOLA") ~ "Olaya Herrera",
+      
+      str_detect(lugar_hecho, "^(CHAGU(A)?LO(N)?|CHAWALO|CHGUALO|CAGUALO)$") ~ "El Chagualo",
+      lugar_hecho %in% c("CERRO EL VOLADOR", "EL VOLADOR", "VOLADOR") ~ "B. Cerro El Volador",
+      lugar_hecho == "CORAZÓN DE JESÚS" ~ "Corazón de Jesús",
+      codigo_barrio != "7003" & lugar_hecho == "EL CORAZON" ~ "El Corazón",
+      (codigo_barrio == "7003" & lugar_hecho == "EL CORAZON") | lugar_hecho == "EL CORAZON EL MORRO" ~ "El Corazón El Morro",
+      lugar_hecho %in% c("CORAZÓN DE JESÚS") ~ "Corazón de Jesús",
+      lugar_hecho %in% c("CASTELLANA", "LA CASTEÑANA", "LA CASTELLANA", "SANTA GEMA") ~ "La Castellana",
+      str_detect(lugar_hecho,"^(CAST(I)?L(L)?[SA]+S?|CASTILLQA|CASTILLS|CASTLLA)$") ~ "Castilla",
+      lugar_hecho %in% c("CASTILLAS","CASTILLAA","TOSCANA CASTILLA", "CASTILA","CASTILL") ~ "Castilla",
+      lugar_hecho %in% c("B CENTRO","CENTRO", "CENTRO OPERA","CENTRO MEDELLIN", "CENTRO ORIENTAL","CENTRO-HOTEL GOLDEN","HOSTAL DEL CENTRO","CENTRO BARBACOAS","LA PLAYA CENTRO", "CENTRO DE LA CIUDAD",  "CENTRO DE LA CIUDAD", "CENTRO DIA","CENTRO DE MEDELLIN", "CENTRO MEDELLI", "CENTROON","PARQUE BOTERO", "PARQIUE BICENTENARIO", "PARQUE DEL PERIODIST",  "PARQUE BOLIVAR","PARQUE DE BOLIVAR", "PARQUE BERRIO", "PARQUE SAN ANTONIO",   "CANDELARIA","LA  CANDELARIA","LA CANDELRIA", "TORRES DE BOMBONA","CARABOBO","EL PALO","ESTACION VILLA","HOTEL PALMETTO","JUNIN", "MINORISTA", "MINOTISTA", "VILLANUEVA","LA GABRIELA", "MINOSRISTA", "NIQUITA","NIQUITAO","NIQUIAO") ~ "La Candelaria",
+      
+      lugar_hecho == "LOS ALCAZARES" ~ "Los Alcázares",
+      lugar_hecho == "LA ILUSION" ~ "La Ilusión",
       lugar_hecho == "CENTRO POBLADO" ~ NA_character_,
-      lugar_hecho %in% c("PRADO  CENTRO","BARRIO PRADO","PRADITO","PRADO BELLO","PRDAO","PRODO","PRADO LA CANDELARIA","PRADO CENTROL","PRADO - LA CANDELARIA","PRADO-CENTRO","PRADO CENTRO","PADO CENTRO","PADRO CENTRO","PRADRO CENTRO") ~ "Prado",
-
-      str_detect(lugar_hecho, "\\bCENTRO ADMINISTRATIV(O|OI|)\\b") ~  "Centro Administrativo",
-      str_detect(lugar_hecho, "\\bCALA[SNZ]{2,}Z?\\b") ~ "Calasanz",
-      str_detect(lugar_hecho, "\\b(CALASA[NZ]A?\\sPARTE\\sALTA|ALTOS\\sDE\\sCALAZANS)\\b") ~ "Calasanz Parte Alta",
-      str_detect(lugar_hecho, "\\bCAMPO\\sVALD[ÉE]S\\sNO[\\.]?\\s?1\\b") ~ "Campo Valdés No.1",
-    str_detect(lugar_hecho, "\\bCAMPO\\sVALD[ÉE]S\\sNO[\\.]?\\s?2\\b") ~ "Campo Valdés No.2",
-    str_sub(codigo_barrio,1,2) == "04" & str_detect(lugar_hecho, "\\b(VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES)\\b") ~ "Campo Valdés No.1",
-    str_sub(codigo_barrio,1,2) == "03" & str_detect(lugar_hecho, "\\b(VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES)\\b") ~ "Campo Valdés No.2",
-    !(str_sub(codigo_barrio,1,2) %in% c("03","04")) & str_detect(lugar_hecho,"\\b(VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES)\\b") ~ NA_character_,
-
+      lugar_hecho %in% c("PRADO  CENTRO", "BARRIO PRADO","PRADITO", "PRADO BELLO","PRDAO","PRODO","PRADO LA CANDELARIA","PRADO CENTROL","PRADO - LA CANDELARIA", "PRADO-CENTRO","PRADO CENTRO","PADO CENTRO", "PADRO CENTRO","PRADRO CENTRO") ~ "Prado",
+    
+        lugar_hecho == "CARLOS E RESTREPO" ~ "Carlos E. Restrepo",
+      str_detect(lugar_hecho, "^(CENTRO ADMINISTRATIV(O|OI|))$") ~  "Centro Administrativo",
+      str_detect( lugar_hecho,"^(C[A]+L(A)?[SNZ]{2,}Z?|CAKAZANS|CALANAZS|CALASANS|CALA[SZ]AN|CALASAZN|CALASAZN|CALAZANÍA|CALSANZ|CLAZANS|ÁREA DE EXPANSIÓN CALASANZ|CAALSANZ|CALAZANS|CALAZANZ|MIRADOR(\\sDE)?\\sCALA[ZS]AN[ZS])$") ~ "Calasanz",
+      
+      str_detect(lugar_hecho,"^((CALASA[NZ]A?\\sPARTE\\sALTA|ALTOS\\sDE\\sCALAZANS))$") ~ "Calasanz Parte Alta",
+      str_detect(lugar_hecho, "^(CAMPO\\sVALD[ÉE]S\\sNO[\\.]?\\s?1)$") ~ "Campo Valdés No.1",
+      str_detect(lugar_hecho,"^(CAMPO\\sVALD[ÉE]S(\\sNO[\\.]?\\s?)?2|CAMPO VALDES 2)$") ~ "Campo Valdés No.2",
+      str_sub(codigo_barrio, 1, 2) == "04" &  str_detect(lugar_hecho, "^((VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES))$") ~ "Campo Valdés No.1",
+      
+      str_sub(codigo_barrio, 1, 2) == "03" & str_detect(lugar_hecho, "^((VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES))$") ~ "Campo Valdés No.2",
+      
+      !(str_sub(codigo_barrio, 1, 2) %in% c("03", "04")) & str_detect( lugar_hecho, "^((VAMPO|CAMPO)\\s?(VALD[ÉE]S|VALDEZ|VALDES|VLADES|VALEZ|VALEDS|VALEDES))$") ~ NA_character_,
+      
       str_detect(lugar_hecho, "^DOCE DE OCTUBRE (N|NO\\.?|No\\.?) ?1$") ~ "Doce de Octubre No.1",
       str_detect(lugar_hecho, "^DOCE DE OCTUBRE (N|NO\\.?|No\\.?) ?2$") ~ "Doce de Octubre No.2",
       
-      str_detect(lugar_hecho,"\\b(CORR\\sSANTA\\sEL[ÉE]NA\\sEL\\sLLANO|EL\\sLLANO(\\s|\\s*\\(?)SANTA\\sEL[ÉE]NA\\)?)\\b") ~ "El Llano SE",
-          str_sub(codigo_barrio,1,2) == "60" & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano",
-    str_sub(codigo_barrio,1,2) == "90" & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano SE",
-    !is.na(codigo_barrio) & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano",
-      str_detect(lugar_hecho, "\\bENCIS[OZQ](\\s(EL\\s)?PINAL)?\\b") ~ "Enciso",
-      str_detect(lugar_hecho, "(RODEO|ROEO)") ~ "El Rodeo",
-      str_detect(lugar_hecho, "^SALADO$") ~ "El Salado",
+      str_detect(lugar_hecho,"^((EL\\s)?PINA[LR]|INVASION EL PINAL|QUINTAS DE PLAYA|(EL\\s)?PINA[R]|EL PINAR ENCISO|ELPINAL)$") ~ "El Pinal",
+      
+      codigo_barrio == "0810" & str_detect(lugar_hecho, "^(ENCI[SZ]O(\\s)+?(EL)?\\sPINA[L])$") ~ "El Pinal",
+      str_detect(lugar_hecho, "^(ENCI[SZ]O(\\s)+?(EL)?\\sPINA[L])$") ~ "El Pinal",
+      str_detect(lugar_hecho, "^(CORR SANTA ELENA EL LLANO|EL LLANO \\(SANTA ELENA\\)|EL LLANO SANTA ELENA)$") ~ "El Llano SE",
+      str_sub(codigo_barrio, 1, 2) == "60" & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano",
+      str_sub(codigo_barrio, 1, 2) == "90" & lugar_hecho == "VEREDA EL LLANO" ~ "El Llano SE",
+      lugar_hecho == "VEREDA EL LLANO" ~ "El Llano",
+      str_detect(lugar_hecho,"^(ENCI[SOZQ]([\\s-]?EL)?\\s*[A-ZÁÉÍÓÚÑ0-9\\s\\-\\}]+|COLINAS DE ENCI[SZ]O|ENCISO-VILLA HERMOSA|ENCISO - VILLA HERMOSA|EMCISO|ENCEISO|EN[SZ]I[SZ]O|ENCISO LLANADAS|ENCISO(\\s|-)LLANADAS)$") ~ "Enciso",
+      
+      str_detect(lugar_hecho, "^(SALADO|ALTOS DE SAN JUAN|ALTOS SAN JUAN)$") ~ "El Salado",
       str_detect(lugar_hecho, "^RAIZAL$") ~ "El Raizal",
+      str_detect(lugar_hecho,"^((FRANCISCO|FCO|SAN FRANCISCO)(\\sANTONIO)?(\\sZEA)?|FRANCISCO [CZ]EA|FRANCISCO A|FRANCIS(C)?O ANTONIO(\\s)+ZE(A)?)$") ~ "Francisco Antonio Zea",
       
-      lugar_hecho %in% c("FLORESTA", "FLORESTA LA PRADERA", "FLORESTAQ", "FLORETA") ~ "La Floresta",
+      lugar_hecho %in% c("FLORESTA","FLORESTA LA PRADERA", "FLORESTAQ","FLORETA","LA  FLORESTA") ~ "La Floresta",
       str_detect(lugar_hecho, "FATIMA") ~ "Fátima",
-      str_detect(lugar_hecho, "FLORIDA") ~ "La Florida",
+      str_detect(lugar_hecho, "^FLORIDA$") ~ "La Florida",
+      lugar_hecho %in% c("MIRADOR DEL 12", "MIRADOR DEL DOCE") ~ "Mirador del Doce",
+      lugar_hecho %in% c("GIRARDOTH") ~ "Girardot",
+      lugar_hecho %in% c("GIRARDOTH", "GRANIZAL POPULAR #1", "GRANIZAR", "GRASNIZAL") ~ "Girardot",
+      str_detect(lugar_hecho, "^(JUAN PABLO(\\s)?(2|2Q|II)?|JUAN II)$") ~ "Juan Pablo II",
+      lugar_hecho %in% c("JESUS NAZARENO", "JESÚS DE NAZARETH") ~ "Jesús Nazareno",
+      lugar_hecho %in% c("EL JARDIN") ~ "El Jardín",
+      lugar_hecho %in% c("JARDIN", "MANRIQUE JARDIN", "JARDÍN") ~ "Oriente",
+      lugar_hecho %in% c("INST JARDIN BOTÁNICO", "JARDIN BOTANICO") ~ "Jardín Botánico",
+      str_detect(lugar_hecho,"^(JUAN\\s(23|203|XIII|X{2,3}I{0,3}|XVII|XXI{1,2}I{0,2}|XX111)(\\s*-?\\s*LA\\sQUIEBRA|\\s*-?\\s*LA\\sDIVISA)?|LA\\sQUIEBRA(\\sSANTA\\sELENA)?|SAN JAVIER LA DIVISA|LA DIVISA|JUAN XIII - LA QUIEB|JUAN XXIII LA DIVIZA|JUNA XXIII|ALTOS DE LA VIRGEN|LA DICISA)$") ~ "Juan XXIII La Quiebra",
       
-      lugar_hecho %in% c("GIAUAYABAL", "GUAYABA", "GUAYABAL1", "GUYABAL") ~ "Guayabal",
+      lugar_hecho %in% c("MANRIQUE HOTEL","MANRIQUE SANBLAS","MANRIQUE SAN BLAS","SAMBLAS MARIQUE","SAN BLAS", "SANBLAS","LAS GRANJA") ~ "Las Granjas",
       
-      str_detect(lugar_hecho, "\\bJUAN\\s(23|XIII|X{2,3}I{0,3}|XVII|XXI{1,2}I{0,2}|XX111)(\\s*-?\\s*LA\\sQUIEBRA|\\s*-?\\s*LA\\sDIVISA)?\\b") ~ "Juan XXIII La Quiebra",
-      
+      lugar_hecho == "LA ESP" ~ "La Esperanza No.2",
+      lugar_hecho == "LA MIRANDA" ~ "Miranda",
+      lugar_hecho %in% c("LA PLAYAS", "PLAYA") ~ "Las Playas",
       lugar_hecho == "LOS BALSOS" ~ "Los Balsos No.1",
-      str_detect(lugar_hecho, "LAS LOMAS") ~ "Las Lomas No.1",
-      str_detect(lugar_hecho, "(PALMAS|PALAMAS|PLMAS)") ~ "Las Palmas",
-      str_detect(lugar_hecho, "LA LOMA") ~ "La Loma",
-      str_detect(lugar_hecho, "VERGEL") ~ "Los Cerros El Vergel",
+      lugar_hecho %in% c("AL CRUZ", "LACRUZ", "L CRUZ") ~ "La Cruz",
+      lugar_hecho %in% c("BRISAS DE ROBLEDO", "BRISAS") ~ "Las Brisas",
+      str_detect(lugar_hecho,"^((LA\\s+)?LOMA(\\s+DE\\s+LOS)?\\s+BERNAL?|LOMA LOS BERNAL|LOS BERNAL)$") ~ "La Loma de Los Bernal",
+      lugar_hecho == "CORR SANTA ELENA MEDIA LUNA" ~ "Media Luna",
+      str_detect(lugar_hecho,"^(VEREDA LA LOMA(\\s+[A-ZÁÉÍÓÚÑ]+)?|LA LOM|LA LOMA COLOMBIA)$") ~ "La Loma",
+      str_detect(lugar_hecho, "^(LAS LOMAS|LAS LOMAS NO 1)$") ~ "Las Lomas No.1",
+      str_detect(lugar_hecho,"^(BARRIO PALMAS|(LAS|LS)?\\s?(PALMAS|PALAMAS|PLMAS))$") ~ "Las Palmas",
+      lugar_hecho %in% c("PALMAS DE CATALUÑA", "CATALUNA") ~ "Cataluña",
+      lugar_hecho == "LA OPALMA" ~ "La Palma",
+      lugar_hecho == "LA PINUELA" ~ "La Piñuela",
+      str_detect(lugar_hecho,"^((EL\\s)?VERGEL|LOS CERROS|EL VERGEL CANTARRANA|LOS CERROS-EL VERGEL)$") ~ "Los Cerros El Vergel",
+      lugar_hecho %in% c("LA INDEPENDENCIA", "INDEPENDENCIAS", "INDEPENDENCIA") ~ "Las Independencias",
+      str_detect(lugar_hecho, "^(LIBERTAD|LA LIBERTAD EL PINAR)$") ~ "La Libertad",
+      str_detect(lugar_hecho, "^L[OÓ]PEZ DE MESA$") ~ "López de Mesa",
+      lugar_hecho %in% c("M ORIENTAL", "M ORINTAL","MANRIQUE-ORIENTAL", "MANRQUE ORIENTAL","MANRRIQUE ORIENTAL","MANRIQUE ORIENTAL", "LA HONDA","LA HONZA","LAS NIEVES", "MARIQUE ORIENTAL") ~ "Manrique Oriental",
+      
+      codigo_barrio == "0409" &  str_detect(lugar_hecho,"(?i)^(MANRIQUE\\sCEN[TR]{1,2}A?L(\\s+NO\\.?)?|MANRRIQUE  CENTRAL|MANRRIQUE CENTRAL|M CENTRAL|MANRIQUE CENTARL)$") ~ "Manrique Central No.1",
+      
+      codigo_barrio == "0307" & str_detect(lugar_hecho,"(?i)^(MANRIQUE\\sCEN[TR]{1,2}A?L(\\s+NO\\.?)?|MANRRIQUE  CENTRAL|MANRRIQUE CENTRAL|M CENTRAL|MANRIQUE CENTARL)$") ~ "Manrique Central No.2",
+      str_detect( lugar_hecho,"(?i)^(MANRIQUE\\sCEN[TR]{1,2}A?L(\\s+NO\\.?)?|MANRRIQUE  CENTRAL|MANRRIQUE CENTRAL)$") ~ "Manrique Central No.1",
+      str_detect(lugar_hecho,"^(MANRIQUE\\sCENTRAL(\\s?(NO|No|no)?[\\.#]?\\s?1))$") ~ "Manrique Central No.1",
+      str_detect(lugar_hecho,"^(MANRIQUE\\sCENTRAL(\\s?(NO|No|no)?[\\.#]?\\s?2))$") ~ "Manrique Central No.2",lugar_hecho %in% c("MIRA FLOREZ", "MIRAFLORES CABECERA") ~ "Miraflores",
 
-      str_detect(lugar_hecho, "LIBERTAD") ~ "La Libertad",
-      str_detect(lugar_hecho, "LOPEZ DE MESA") ~ "López de Mesa",
-      str_detect(lugar_hecho, "^LOS MESAS$") ~ "San Antonio de Prado",
-      str_detect(lugar_hecho, "^LA TORRE$") ~ "Altos De La Torre",
-      
-      
-      str_detect(lugar_hecho, "(?i)MORAVI?[A]") ~ "Moravia",
-      str_detect(lugar_hecho, "\\b(MARIA\\sCANO\\s-\\s)?CARAMBO(LAS)?\\b") ~ "María Cano-Carambolas",
+      lugar_hecho %in% c("VEREDA EL MAZO- SECTOR ES", "EL MAZO- SECTOR ES") ~ "Mazo",
+      str_detect(lugar_hecho, "^(MOR[AB]VI(A)?|MORABIA|EL BOSQUE)$") ~ "Moravia",
+      lugar_hecho %in% c("MOSCU NRO 1", "MOSCU No.1") ~ "Moscú No.1",
+      lugar_hecho %in% c("MOSCU", "MOSCU No.2", "MOSCÚ NO 2", "SANTA CECILIA", "STA CECILIA") ~ "Moscú No.2",
+      str_detect(lugar_hecho,"^((MARIA\\sCANO\\s-\\s)?CARA[MN]BO(L[AO]S)?|MARIA CANO|CARAMBOLO)$") ~ "María Cano-Carambolas",
       str_detect(lugar_hecho, "(MILAGROSA|MILOGROSA|MILAROSA|ILAGROSA)") ~ "La Milagrosa",
+      str_detect(lugar_hecho, regex("^(NUEVA\\sVILLA\\sDE\\sLA?\\sH?IGUAN[ÁAÃ]?|LA\\sH?IGUAN[ÁAÃ]?|IGUANA|NUEVA VILLA DE LA IG|NUEVA VILLA DE LA IGUAN\\?|Nueva Villa De La Iguanã�)$", ignore_case = TRUE)) ~ "Nueva Villa de La Iguaná",
+      str_detect(lugar_hecho, "^(NUEVA VILLA DE ABURR(A)?|VILLA DE ABURRA)$") ~ "Nueva Villa del Aburrá",
+      str_detect(lugar_hecho,"^(\\s*(LAS\\s|LA\\s)?ESMERALD(A|AS)?\\s*|LAS ESMERAL)$") ~ "Las Esmeraldas",
+      str_detect(lugar_hecho, "^(EL NOGAL - LOS ALMEN(DROS)?)$") ~ "El Nogal-Los Almendros",
+      lugar_hecho %in% c( "EL PEDREGAL","PEDREGA","PEDREGAL BAJO","PEDRGAL","PEDREGAL","DREGAL") ~ "Pedregal",
+      lugar_hecho %in% c("EL PALYON", "PLAYÓN DE LOS COMUNEROS") ~ "Playón de Los Comuneros",
+      lugar_hecho == "PILARICA" ~ "La Pilarica",
+      str_detect(lugar_hecho,"^(CENTRO\\s(POBLADO\\sDE)?\\sPALMITAS|CENTRO PALMITAS|CORREGIMIENTO PALMITAS|PALMITAS)$") ~ "Palmitas Sector Central",
+      lugar_hecho == "PARQUES DE ALTAMIRA" ~ "Altamira",
+      str_detect(lugar_hecho,"^((EL\\s)?PLAYON(\\sDE\\sLOS\\sCOMUNEROS|\\sDE\\sLOS\\sCOM)?)$") ~ "Playón de Los Comuneros",
+      str_detect(lugar_hecho,"^(CARPINE[LR]O(\\s|-)+POPULAR|CARPENELO|(EL\\s)?CARPINE[L]+O?|CARPINELO\\}|CARPINERO)$") ~ "Carpinelo",
+      str_detect(lugar_hecho,"^(EL POPULAR|´POPULAR 1|(POPULAR|PIOPULAR|POLPULAR|POLULAR|POPILAR|POPULRA|PUPULAR|PÓPULAR)\\s*(#?\\d{1,2}|UNO|DOS|I{1,3})?(\\s+SECTOR LA BASE)?)$") ~ "Popular",
       
-      str_detect(lugar_hecho,"\\b(NUEVA\\sVILLA\\sDE\\sLA?\\sH?IGUAN[ÁAÃ]?|LA\\sH?IGUAN[ÁAÃ]?|IGUANA)\\b") ~ "Nueva Villa de La Iguaná",
-
-      lugar_hecho %in% c(
-        "EL PEDREGAL",
-        "PEDREGA",
-        "PEDREGAL BAJO",
-        "PEDRGAL",
-        "ROBLEDO PEDREGAL",
-        "DREGAL"
-      ) ~ "Pedregal",
-      str_detect(lugar_hecho, "(PARQUE BOLIVAR|PARQUE BERRIO)") ~ "La Candelaria",
-      str_detect(lugar_hecho,"\\b(EL\\s)?PLAYON(\\sDE\\sLOS\\sCOMUNEROS|\\sDE\\sLOS\\sCOM)?\\b") ~ "Playón de Los Comuneros",
-      str_detect(
-        lugar_hecho,
-        "(POPULAR|PIOPULAR|POLPULAR|POLULAR|POPILAR|POPULRA|PUPULAR|PÓPULAR)") ~ "Popular",
-      str_detect(lugar_hecho, "(POBLADO|LLERAS|POBADO|OBLADO|POBLDO)") ~ "El Poblado",
-      str_detect(lugar_hecho, "PRADERA") ~ "La Pradera",
-      str_detect(lugar_hecho, "PROGRESO") ~ "El Progreso",
-      str_detect(lugar_hecho, "PESEBRE") ~ "El Pesebre",
-      str_detect(lugar_hecho, "PUEBLO VIEJO") ~ "Puebloviejo",
-      # str_detect(lugar_hecho, "PALMITAS") ~ "Palmitas Sector Central",
-      str_detect(lugar_hecho, "^PARIS$") ~ "París",
+      str_detect(lugar_hecho, "^(POBLADO|LLERAS|(EL)?\\sPOBADO|(EL)?\\sOBLADO|POBLDO|PARQUE LLERAS|MIRADOR DEL POBLADO|POBLADO SAN LUCAS|POBLADO|MIRADOR ELPOBLADO|ALTOS DEL POBLADO|LOMA LOS PARRA)$") ~ "El Poblado",
       
-      str_detect(lugar_hecho, "\\bROBLEDO(\\sEL)?\\s(DIAMANT[AE]|DIAMENTE)\\b") ~ "El Diamante",
+      str_detect( lugar_hecho,"^(PRADERA|FLORESTA LA PRADERA|PRADERA|PRADERA ALTA|SAN JAVIER LA PRADERA)$") ~ "La Pradera",
+      str_detect(lugar_hecho,"^(PROGRESO|PROGRESAR|SANTO DOMINGO EL PROGRESO)$") ~ "El Progreso",
+      lugar_hecho == "PROGRESO NO.2" ~ "Progreso No.2",
+      lugar_hecho == "PROGRESO NO.2" ~ "Progreso No.2",
+      str_detect(lugar_hecho,"^(PESEBRE|SAN JAVIER EL PESEBRE|EL PESIBRE|COLINAS DE CALAZANS)$") ~ "El Pesebre",
+      str_detect(lugar_hecho,"^(PARIS|PARIS INVASION|MARUCHENGA|LA MARUCHENGA|LAMARUCHENGA|LOS SAUCES)$") ~ "París",
+      lugar_hecho %in% c( "PARQUE ARVI","CORR SANTA ELENA PIEDRAS BLANCAS", "PIEDRA BLANCA","PIEDRAS BLANCAS MATASANO","PIEDRAS BLANCAS-MATASANO") ~ "Piedras Blancas - Matasano",
+      
+      lugar_hecho %in% c("AURES", "AURES NRO 1", "ROBLEDO AURES 1") ~ "Aures No.1",
+      str_detect(lugar_hecho, "^(ROBLEDO VILLASANTAFE|ROBLEDO VILLAS DE SA)$") ~ "Monteclaro",
+      str_detect(lugar_hecho,"^(VIÑA CAMPIÑA ROBLEDO|ROBLEDO[\\s\\-]*(TULIPANES|SANTA CATALI(NA)?|PENINSULA|LA\\s*CAMPI(Ñ[AO]|N[AO])|(LA\\s)?CAMPIÑA|CADIZ|LA\\s?POLA)|(LA\\s)?CAMPIÑA|LA\\s?POLA(\\s+ROBLEDO)?)$") ~ "Cucaracho",
+      
+      str_detect(lugar_hecho,"^(ROBLEDO[\\s\\-]*SAN(TA|ATA)[\\s\\-]*MARIA|R PALENQUE|ROBLEDALES|SANTA MARIA)$") ~ "Palenque",
+      str_detect(lugar_hecho, "^(ROBLEDO PELICANOS|EL PICACHITO|PECACHO)$") ~ "Picachito",
+      lugar_hecho %in% c("PICACCHO", "PICACHU", "PICAVHO", "PICCHO", "PIKACHO") ~ "Picacho",
+      str_detect(lugar_hecho, "^(ROBLEDO PORVENIR)$") ~ "Fuente Clara",
+      str_detect(lugar_hecho,"^(ROBLEDO[\\s\\-]*(MIRAMAR|MIRA\\s*MAR|MIRAMA)|KENE[D]+[YI]|MIRAMAR|ROBELDO MIRAMAR)$") ~ "Kennedy",
+      str_detect(lugar_hecho, "^(VEREDA PEDREGAL|CARCEL PEDREGAL)$") ~ "Pedregal Alto",
+      str_detect( lugar_hecho,"^(ROBLEDO[\\s\\-]*LA HUERTA|LA HUERTA|LAHUERTA)$") ~ "Pajarito",
+      str_detect(lugar_hecho, "^((\\sEL\\s)?(DIAMANT[AE]|(EL\\s)?DIAMENTE)|EL DIMAMANTE)$") ~ "El Diamante",
       lugar_hecho %in% c("ROBEDO", "ROBELDO", "ROBLED", "ROBLEOD", "ROBLESO", "ROBLRDO") ~ "Robledo",
-      lugar_hecho == "ROBLEDO PAJARITO" ~ "Pajarito",
+      str_detect(lugar_hecho, "^(RODEO|ROEO(\\sALTO)?|RODEO(\\sALTO)?|RODEO ALTIO|RODEO VILLA LILIANA|EL  RODEO)$") ~ "El Rodeo",
+      lugar_hecho == "DE LA ROSA" ~ "La Rosa",
+      lugar_hecho %in% c("SURAMERICA", "SURA") ~ "Suramericana",
+      lugar_hecho %in% c("LAS MERECEDES", "LS MERCEDES", "ALTOS DEL CASTILLO") ~ "Las Mercedes",
+      lugar_hecho == "LA SALLE I" ~ "La Salle",
+      str_detect(lugar_hecho, "^(SANTA\\sROSA(\\sDE\\sLIMA)?)$") ~ "Santa Rosa de Lima",
+      codigo_barrio != "0315" &  str_detect(lugar_hecho,"^(SAN\\sJOS[ÉE](\\sDE)?\\sLA\\sCIMA(\\sN[Oo](\\.?\\s?1)?)?|SAN\\sJOS[ÉE]|LA\\sCIMA)$") ~ "San José La Cima No.1",
       
-  str_detect(
-    lugar_hecho,
-    "\\b(ÁREA\\sURBANA\\sCGTO\\.\\sSAN\\sCRIST[ÓO]BAL)\\b") ~ "Cabecera Urbana Corregimiento San Cristóbal",
-      lugar_hecho == "SANTA ELENEA SECTOR CENTRAL" ~ "Santa Elena Sector Central",
- str_detect(
-    lugar_hecho,
-    "\\bSAN\\sJAVIER(\\sNO\\.?\\s?1|\\sN?1|\\s#1)\\b"
-  ) ~ "San Javier No.1",
-  str_detect(
-    lugar_hecho,
-    "\\bSAN\\sJAVIER(\\sNO\\.?\\s?2|\\sN?2)\\b"
-  ) ~ "San Javier No.2",
-      str_detect(
-        lugar_hecho,
-        "\\b(SAN\\sJOS[ÉE]?\\s(DE|DEL)\\sMANZANILLO|VEREDA\\sMANZANILLO|MANZANILLO)\\b"
-      ) ~ "San José del Manzanillo",
-      str_detect(
-        lugar_hecho,
-        "\\b(SANTA|STA)\\sMARIA\\sDE\\sLOS\\s(ANGELES|A)\\b") ~ "Santa María de Los Ángeles",
-      str_detect(lugar_hecho,"\\b(SANANTONIO\\sDE\\sPRADO\\s)?(PORTON\\sDEL\\s)?LIMONAR(\\s?(1|2|4|II))?\\b") ~ "San Antonio de Prado",
-      str_detect(
-        lugar_hecho,
-        "\\b(ÁREA\\sURBANA\\sCGTO\\.\\sSAN\\sANTONIO\\sDE\\sPRADO|SN\\sANTONIO\\sDE\\sPRADO|SAN\\sA[QK]?NTONIOO?\\sDE\\sPRAD[O]?)\\b") ~ "San Antonio de Prado",
-      str_detect(lugar_hecho, "(SALVADOR|SALVALDOR|SLAVADOR)") ~ "El Salvador",
+      codigo_barrio == "0315" & str_detect(lugar_hecho,"^(SAN\\sJOS[ÉE](\\sDE)?\\sLA\\sCIMA(\\sN[Oo](\\.?\\s?2)?)?)$") ~ "San José La Cima No.2",
+      
+      str_detect(lugar_hecho,"^(SAN JOS[EÉ] DE LA MONTA[ÑN]A|SAN JOSE CIMA 2|SAN JOSE DE LA CIMA No.2)$") ~ "San José La Cima No.2",
+      str_detect(lugar_hecho, "^(SAN JOSÉ LA CIMA NO 1|SAN JOSE DE LA CIMA No.1)$") ~ "San José La Cima No.1",
+      lugar_hecho == "SANTA LUCIA" ~ "Santa Lucía",
+      lugar_hecho %in% c("SANDIEGO","SANN DIEGO","LOMA DEL INDIO", "LOMA EL INDIO", "LOMA DE INDIO", "SAN DEIGO","SAN DIE") ~ "San Diego",
+      str_detect(lugar_hecho, "^(SAN MART[ÍI]N DE PORR[EA]S)$") ~ "San Martín de Porres",
+      lugar_hecho %in% c("SAN JOAQUIN", "SIAN JUAQUIN") ~ "San Joaquín",
+      lugar_hecho %in% c("SAN BERNANADO", "SAN BERNANDO", "SAN FERNANDO") ~ "San Bernardo",
+      lugar_hecho %in% c("SANTA LUCIA - LAS ESTANCIAS", "STA LUCIA LAS ESTANC") ~ "Las Estancias",
+      lugar_hecho %in% c("SANTANDER - DOCE DE OCTUBRE", "SAN TANDER", "SANTANADER","SANTNDER") ~ "Santander",
+      codigo_barrio == "1210" & lugar_hecho == "CRISTOBAL" ~ "Barrio Cristóbal",
+      lugar_hecho %in% c(  "SABTA CRUZ","SAN CRUZ",  "SANT CRUZ","SANTA CRIZ","SANTA CRUA", "SANTA CUZ", "SANTACRUZ","SNTACRUZ") ~ "Santa Cruz",
+      
+      lugar_hecho %in% c("SUCRE BOSTON") ~ "Sucre",
+      lugar_hecho %in% c("SAN GERMAN", "SANGERMAN") ~ "San Germán",
+      lugar_hecho %in% c("SANTA FE","SANTA FE DE ANTIOQUIA", "SANTAFE","SANTAFE DE ANTIOQUIA") ~ "Santa Fé",
+      str_detect(lugar_hecho,"^(ÁREA\\sURBANA\\sCGTO\\.\\sSAN\\sCRIST[ÓO]BAL|NAZARETH\\sSAN\\sCRISTOBAL|SAN CRISTOBAL ROBLEM|ROBLEMAR|SAN CRISTOBAL BALMOR)$") ~ "Cabecera Urbana Corregimiento San Cristóbal",
+      
+      lugar_hecho %in% c("SANTA ELENEA SECTOR CENTRAL", "CORR SANTA ELENA SECTOR CENTRAL") ~ "Santa Elena Sector Central",
+      str_detect(lugar_hecho,"^(SAN\\sJAVIER(\\sNO\\.?\\s?1|\\sN?1|\\s#1))$") ~ "San Javier No.1",
+      str_detect(lugar_hecho, "^(SAN\\sJAVIER(\\sNO\\.?\\s?2|\\sN?2))$") ~ "San Javier No.2",
+      str_detect(lugar_hecho, "^((SAN\\sJOS[ÉE]?\\s(DE|DEL)\\sMANZANILLO)|VEREDA\\sMANZANILLO|(EL\\s)?MANZANILLO|VEREDA LA MONTAÑA)$") ~ "San José del Manzanillo",
+
+      str_detect(lugar_hecho,"^((SANTA|STA)\\sMARIA\\sDE\\sLOS\\s(ANGELES|A))$") ~ "Santa María de Los Ángeles",
+      lugar_hecho == "LOS ANGELES" ~ "Los Ángeles",
+      str_detect(lugar_hecho,"^(SANANTONIO DE PRADO EL LIMONAR|(SANANTONIO\\sDE\\sPRADO\\s)?(PORTON\\sDEL\\s)?LIMONAR(\\s?(1|2|4|II))?|LOS MESAS|EL LIMONAR|LIMONAR(\\s?(1|2|4|II))|EL LIMINAR|LA(S)?\\sMANGU(ALA)?|LOS SALINAS|NARANJITOS|PRADOS DEL CAMPO|VEGAS DE ALCALA|VILLA LOMA|LIMINAR 2|LIMORA 2|LIMORAR 1|PALLAVECINE|SANANTONIO DE PRADO)$") ~ "San Antonio de Prado",
+      
+      str_detect(lugar_hecho, "^(ÁREA\\sURBANA\\sCGTO\\.\\sSAN\\sANTONIO\\sDE\\sPRADO|SN\\sANTONIO\\sDE\\sPRADO|SAN\\sA[QK]?NTONIOO?\\sDE\\sPRAD[O]?)$") ~ "San Antonio de Prado",
+      
+      str_detect(lugar_hecho,"^((ES\\s)?SALVADOR|SALVALDOR|SLAVADOR|QUINTAS\\sDE(L)?\\sSALVADOR|EL SALVADORE|SALVADOR BUENOS AIRE|EL SALVALDOR|EL SLAVADOR)$") ~ "El Salvador",
       
       str_detect(lugar_hecho, "URQUITA") ~ "Urquitá",
+      lugar_hecho %in% c( "2 DE JULIO","20 DE JULIO","20 JULIO","20JULIO","VEITE DE JULIO","VEINTE DE JULIO - SAN JAVIER", "VEINTE DE JULIO","SAN JAVIER - 20 DE J") ~ "Veinte de Julio",
       
-      lugar_hecho %in% c("2 DE JULIO", "20 DE JULIO", "20 JULIO", "20JULIO", "VEITE DE JULIO") ~ "Veinte de Julio",
-      lugar_hecho %in% c(
-        "VILLA HERMOA",
-        "VILLA HERMOSO",
-        "VILLA HERMPSA",
-        "VILLAHERMOSA",
-        "VILLA  HERMOSA"
-      ) ~ "Villa Hermosa",
- 
-      str_detect(lugar_hecho, "(VILLA FLORA|VILLAFLORA)") ~ "Villa Flora",
-      str_detect(lugar_hecho, "(?i)VERS[aeiou]LL[aeiou]S") ~ "Versalles No.1",
-      str_detect(lugar_hecho, "VELODROM?") ~ "El Velódromo",
-      str_detect(lugar_hecho, "VEREDA EL UVITO") ~ "El Uvito",
+      lugar_hecho %in% c("VILLA HERMOSA 13 NOV","VILLA HERMOA","VILLA HERMOSO", "VILLA HERMPSA", "VILLAHERMOSA","VILLA HERMNOSA", "VILLA  HERMOSA", "LA TOMA") ~ "Villa Hermosa",
+      
+      str_detect(lugar_hecho, "^(VILLA LILIA|VILLA LILIAM)$") ~ "Villa Lilliam",
+      str_detect(lugar_hecho, "^(VERSALLES)$") & (str_sub(codigo_barrio, 3, 4) != "10" | is.na(codigo_barrio))  ~ "Versalles No.1",
+      str_detect(lugar_hecho, "^(VERSALLES)$") & str_sub(codigo_barrio, 3, 4) == "10"  ~ "Versalles No.2",
+      str_detect(lugar_hecho,"^(VILLA FLORA|VILLAFLORA|PARQUE DE ROBLEDO|VILLA FLORA-ROBLEDO)$") ~ "Villa Flora",
+      str_detect(lugar_hecho, "^(VERSALLES\\s+NO\\.?\\s*1)$") ~ "Versalles No.1",
+      str_detect(lugar_hecho, "^VERSALLES(\\s+NO\\.?\\s*|\\s+)2$") ~ "Versalles No.2",
+      lugar_hecho == "TRICENTENERIO" ~ "Tricentenario",
+      lugar_hecho == "TRINIDADA" ~ "Trinidad",
+      lugar_hecho %in% c("TRAVESIAS", "VEEDA TRAVESIAS", "VEREDA TRAVESIAS") ~ "Travesías",
+      str_detect(lugar_hecho, "^((EL\\s)?VELODROMO|EL VELODROMP)$") ~ "El Velódromo",
+      lugar_hecho %in% c("UNIVERSIDAD DE ANTIOQUIA", "PUENTE DE BARRANQUILLA U DE A") ~ "Universidad de Antioquia",
+      lugar_hecho == "VEREDA EL UVITO" ~ "El Uvito",
       str_detect(lugar_hecho, "^VALLEJUELOS$") ~ "Santa Margarita",
-      str_detect(lugar_hecho, "^VEREDA YARUMALITO$") ~ "Yarumalito",
+      str_detect(lugar_hecho, "^(VEREDA YARUMALITO|YARUMAL)$") ~ "Yarumalito",
       str_detect(lugar_hecho, "^VIOLETAS$") ~ "Las Violetas",
-       
- 
+      lugar_hecho %in% c("VEREDA LA VOLCANA SAN SEBASTIAN DE PALMITAS", "LA VOLCANA","VEREDA LA VOLCANA","LA VOLCANA SAN SEBASTIAN DE PALMITAS") ~ "Volcana Guayabal",
+      
       str_detect(lugar_hecho, regex("nov", ignore_case = TRUE)) ~ "Trece de Noviembre",
       str_detect(lugar_hecho, regex("marz", ignore_case = TRUE)) ~ "Ocho de Marzo",
-      str_detect(lugar_hecho, regex("^acebedo$|^avecedo$|^acevedo$", ignore_case = TRUE)) ~ "Acevedo",
-      str_detect(lugar_hecho, regex("villa\\s?niza|villaniza", ignore_case = TRUE)) ~ "Villa Niza",
+      str_detect(lugar_hecho,regex( "^(acebedo|avecedo|acevedo|Est Acevedo|Hector\\sAbad(\\sGomez)?|Plaza Colon)$",ignore_case = TRUE)) ~ "Héctor Abad Gómez",
+      
+      str_detect(lugar_hecho,regex("villa\\s?ni[zs]a|villaniza|Viila Niza|Niza", ignore_case = TRUE)) ~ "Villa Niza",
+      str_detect(lugar_hecho,regex("^(Viilla|Villa|villas)(\\s)?(del|de)?\\ssocor+o$",ignore_case = TRUE)) ~ "Villa del Socorro",
+      str_detect(lugar_hecho,regex("^(Ciudad Del Rio|Ciudadela Del Rio)$", ignore_case = TRUE)) ~ "Villa Carlota",
+      str_detect(lugar_hecho,regex("^(Villa De Guadalupe|Guadalupe)$", ignore_case = TRUE)) ~ "Villa Guadalupe",
+      str_detect(lugar_hecho,regex("Viilla Tina|Vilatina|Villa Anita|Villatina\\}|VILLATINA LA TORRE|VILLA TINA|BILLATINA", ignore_case = TRUE)) ~ "Villatina",
       str_detect(lugar_hecho, regex("^AGUACATALA$", ignore_case = TRUE)) ~ "La Aguacatala",
-      str_detect(lugar_hecho, regex("^Alcasares$", ignore_case = TRUE)) ~ "Los Alcázares",
-      str_detect(lugar_hecho, regex("aldea.*pablo\\s*(vi|sexto)", ignore_case = TRUE)) ~ "Aldea Pablo VI",
+      str_detect(lugar_hecho, regex("^(los\\s)?Alcasares$", ignore_case = TRUE)) ~ "Los Alcázares",
+      str_detect(lugar_hecho,regex("aldea.*pablo\\s*(vi|sexto)", ignore_case = TRUE)) ~ "Aldea Pablo VI",
       str_detect(lugar_hecho, regex("^Alejandria$", ignore_case = TRUE)) ~ "Alejandría",
-      str_detect(lugar_hecho, "(ALEJANDRO ECHAVARRIA|ALEJANDRO ECHAVARRÍA|ALEJANDRO CHAVARRIA)") ~ "Alejandro Echavarría",
-      str_detect(lugar_hecho, regex("^Aliadas$", ignore_case = TRUE)) ~ "La Gloria",
+      str_detect(lugar_hecho,"(ALEJANDRO ECHAVARRIA|ALEJANDRO ECHAVARRÍA|ALEJANDRO CHAVARRIA)") ~ "Alejandro Echavarría",
       str_detect(lugar_hecho, regex("^Alhambra$", ignore_case = TRUE)) ~ "San José La Cima No.1",
-      str_detect((lugar_hecho), regex("altos\\s+de\\s+la\\s+torre", ignore_case = TRUE)) ~ "Llanaditas", # REVISAR
-      str_detect(lugar_hecho, "^LA TORRE$") ~ "Santo Domingo Savio No.1",
-      str_detect(lugar_hecho, "^VILLATINA LA TORRE$") ~ "Villatina",
-      str_detect(lugar_hecho, regex("^(la\\s+)?america(\\s+niza)?$", ignore_case = TRUE)) ~ "La América",
+      lugar_hecho %in% c("LLANADAS GOLONDRINAS","LLANADITA-ENCISO","CERRO LLANADITAS","LAS GOLONDRINAS","GOLONDRINAS","LLANADIOTAS","LLANADAS","LLANADA","GRANADITAS","LLANADITA") ~ "Llanaditas",
+      
+      nombre_barrio == "Belén" & lugar_hecho == "PARQUE" ~ "Belén",
+      nombre_barrio == "San Antonio de Prado" & lugar_hecho == "PARQUE" ~ "San Antonio de Prado",
+      (str_sub(codigo_barrio, 3, 4) != "02" | is.na(codigo_barrio)) &  str_detect(lugar_hecho,"^((SANTO|SAN TO|SANYTO)\\s+(DOMINGO|DOIGO|DOMIGO|DOMINDO)(\\s+SA[VB]IO)?(\\s*(1|NO))?|ANTO DOMINGO|STO DOMINGO|SANTODMINGO|SANTODOMIGNO|SANTODOMINGO|SANTOI DOMINGO|SANTA DOMINGO|DOMINGO SAVIO|SANT DOMINGO|SANTIO DOMINGP|STO DOMINGO|SANTO)$") ~ "Santo Domingo Savio No.1",
+      
+      str_sub(codigo_barrio, 3, 4) == "02" & str_detect(lugar_hecho,"^((SANTO|SAN TO|SANYTO)\\s+(DOMINGO|DOIGO|DOMIGO|DOMINDO)(\\s+SA[VB]IO)?(\\s*(1|NO))?|ANTO DOMINGO|STO DOMINGO|SANTODMINGO|SANTODOMIGNO|SANTODOMINGO|SANTOI DOMINGO|SANTA DOMINGO|DOMINGO SAVIO|SANT DOMINGO|SANTIO DOMINGP|STO DOMINGO|SANTO)$") ~ "Santo Domingo Savio No.2",
+      
+      str_detect(lugar_hecho, "^(SANTO DOMINGO SAVIO\\s+NO(\\.?\\s*1(\\s*-\\s*POPULAR)?)?|SANTO DOMINGO P #1)$") ~ "Santo Domingo Savio No.1",
+      str_detect(lugar_hecho,"^(SANTO DOMINGO SAVIO\\s+NO\\.?\\s*2|LA TORRE|ALTOS DE LA TORRE)$") ~ "Santo Domingo Savio No.2",
+      str_detect(lugar_hecho,regex("^(LAS AMERICAS|(la\\s+)?america(\\s+niza)?)$", ignore_case = TRUE)) ~ "La América",
+      lugar_hecho %in% c("SANTA MONICA", "SANTA MONIC", "SANTAMONICA", "STA MONICA") ~ "Santa Mónica",
+      lugar_hecho == "SANTA INES" ~ "Santa Inés",
+      lugar_hecho %in% c("PABLO VI", "PABLO BI", "PABLO SESTO", "PABLO SEXTO","PABLO XI","PSBLO SEXTO","PABLO SEXO") ~ "Pablo VI",
+      lugar_hecho == "ALDEA PABLO VI" ~ "Loreto",
+      lugar_hecho == "VILLA NUEVA CENTRO" ~ "Villa Nueva",
+      lugar_hecho == "VILLA SANTA TERESITA" ~ "Santa Teresita",
+      lugar_hecho == "ESTACION UNIVERSIDAD" ~ "Sevilla",
+      lugar_hecho %in% c("PABLO ESCOBAR", "PABLO ESCOBRA") ~ "Medellín sin tugurios",
+      lugar_hecho %in% c("CONDICION DE CALLE", "SITUACION DE CALLE", "HABITANTE DE CALLE") ~ "Habitante de Calle",
+      str_detect(lugar_hecho,regex("^(AURES\\s*(NO|NRO)?\\.?\\s*-?\\s*2|ROBLEDO\\s*-?\\s*VILLA\\s*SOFIA|ROBLEDO\\s*VILLASOFIA|VILLA SOFIA|VILLA SOFIA ROBLEDO|AURA|AUREA|VILLASOFIA)$",ignore_case = TRUE)) ~ "Aures No.2",
+      lugar_hecho %in% c("AURORA","ROBLEDO LA AURORA", "ROBLEDO AURA","LA AURORA-ROBLEDO","ROBLEDO - LA AURORA","LA  AURORA","LA AURORA", "LAURORA- MANRIQUE", "LA AURORAA", "LA AURORA EL TIROL","LAAURORA", "ROBLEDO LAS FLORES","LAS FLOREZ", "LAS FLORES","LA FLORES","ROBLEDO LAS MARGARITAS", "ROBLEDO MARGARITAS", "ROBLEDO LAS MARGARIT", "ROBLEDO LA CASCADA", "ROBLEDO - LA CASCADA", "ROBLEDO - LAS FLORES",  "ROBLEDO CANTARES 4","ROBLEDO - LAS FLORES", "LA CASCADA", "LA CASCAD","ROBLEDO - LA AURORA","ROBLEDO EL TIROL", "ROBLEDO CANTARES 4",  "ROBLEDO EL TIROL 2","EL TIROL 3", "TIROL","TIROL 2","TIROL 3","LAS MAREGARITA", "LAS MARGARITAS", "MARGARITAS", "CANTRES 5","LA CAPILLA",
+"RENACERES") ~ "Santa Margarita",
 
       TRUE ~ str_to_title(tolower(lugar_hecho))
-     )
-  )
-
-arreglada <- arreglada %>%
-  mutate(
-    lugar_hecho = case_when(
-      lugar_hecho == "Pablo Vi" ~ "Pablo VI",
-      lugar_hecho == "Aldea Pablo Vi" ~ "Aldea Pablo VI",
-      TRUE ~ lugar_hecho  # Mantiene los valores originales si no hay coincidencia
     )
   )
 ```
 
-```{r}
-# CÓDIGOS DE APOYO PARA LUEGO DE CREAR NUEVAS VARIABLES
-
-# str_detect(lugar_hecho,"\\bCORREGIMIENTO\\sSAN\\sANTONIO\\b(?!\\sDE\\sPRADO)|\\bCORREGIMIENTO\\sSAN\\sAN\\b(?!\\sDE\\sPRADO)") ~ NA_character_,
-# str_detect(lugar_hecho,"\\bS{0,2}N?\\s?JA(V[IE]{1,3}R?|VIAER|VIER|JAIER)Q?\\b(?!\\s*(NO|#)?\\s?\\d)") ~ NA_character_,
-# str_detect(lugar_hecho,"\\b(SS?ANTA\\s(EL[ÉE]NA|HELENA|ELENEA)(?!\\sEL\\sLLANO)|CORREGIMIEN(TO)?\\sSANTA(\\s(EL[ÉE]NA|HELENA|EL))?)\\b") ~ NA_character_,
-# str_detect(lugar_hecho,"\\b(SAN\\s?CRIST[ÓO]B[A-Z]*|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL)\\b") ~ NA_character_,
-# str_detect(lugar_hecho,"\\b(MANRIQUE|MANRIUE|MANRI|MANRIOQUE|MNRIQUE)\\b") ~ NA_character_,
-# str_detect(lugar_hecho, "\\b(CORREGIMIENTO|CORR)\\sALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\sLOS\\sCHIVOS\\b") ~ NA_character_,
-# lugar_hecho %in% c(
-      #   "DOCE OCTUBRE",
-      #   "DPCE DE OCTUBRE",
-      #   "DOCE DE OCTUBRE COMUNA 6",
-      #   "DOCE DE OCTUBRE",
-      #   "DOCE DE COTUBRE",
-      #   "12 OCTUBRE",
-      #   "12 DE OCTUBRE",
-      #   "12  DE OCTUBRE",
-      #   "12 DE OCTUBTRE",
-      #   "DOCE DE OCTUNRE",
-      #   "12 DE COTUBRE",
-      #   "12 De CTUBRE",
-      #   "12 De OCYUBRE",
-      #   "12-OCT",
-      #   "12 DE OCYUBRE",
-      #   "12 DE OCTUBTRE",
-      #   "12 DE CTUBRE",
-      #   "12-oct"
-      #   
-      # ) ~ NA_character_,
-```
-
--     Como se vio en secciones anteriores, la mayoría de los casos ocurrieron en Medellín entonces se comienza verificando si los barrios/veredas sí corresponden a Medellín y en caso de qué no, cuando se trata de barrios/veredas de otros municipios:
+-   Como se vio en secciones anteriores, la mayoría de los casos
+    ocurrieron en Medellín entonces se comienza verificando si los
+    barrios/veredas sí corresponden a Medellín y en caso de qué no,
+    cuando se trata de barrios/veredas de otros municipios:
 
 ```{r}
-# aux_data <- arreglada %>%
-#    filter(!str_to_lower(lugar_hecho) %in% str_to_lower(str_trim(barrios$nombre))) 
-
-aux_data <- arreglada %>% filter(lugar_hecho %in% barrios$nombre)
+aux_data <- data %>% filter(!str_to_lower(lugar_hecho) %in% str_to_lower(str_trim(barrios$nombre)))
 ```
 
-Son `r nrow(aux_data)` casos donde no se conoce el barrio de residencia de la víctima y el hecho ocurrió en barrios/veredas que aparentemente no pertenecen a Medellín. Por ejemplo: 
+Son `r nrow(aux_data)` casos donde no se conoce el barrio de residencia
+de la víctima y el hecho ocurrió en barrios/veredas que aparentemente no
+pertenecen a Medellín. Por ejemplo:
 
 ```{r}
-corr <- arreglada %>%  count(lugar_hecho,nombre_barrio,codigo_barrio,nmun_proce,ndep_proce, name = "cantidad")
-# %>% slice_sample(n=5)
-corr
+aux_data %>%  count(lugar_hecho,nombre_barrio,codigo_barrio,nmun_proce,ndep_proce, name = "cantidad") %>% slice_sample(n=5)
 ```
 
-
-- conocer cuales categprías de lugar_hecho no pertenecen a la base de datos oficial de barrios
-
-```{r}
-aux_data_2 <- arreglada %>% filter(!lugar_hecho %in% barrios$nombre)
-
-corr_2 <- aux_data_2 %>%  count(lugar_hecho,name = "cantidad")
-corr_2
-```
-
-
-Se encontró que estas inconsistencias están dadas por: diferencia de escritura con la base de barrios auxilar, se registro fue nombres de municipios o lugares específicos como edificios, parques o calles y en los demás casos Sí corresponden a barrios/veredas de municipios diferentes a Medellín
+Se encontró que estas inconsistencias están dadas por: diferencia de
+escritura con la base de barrios auxilar, se registro fue nombres de
+municipios o lugares específicos como edificios, parques o calles y en
+los demás casos Sí corresponden a barrios/veredas de municipios
+diferentes a Medellín. Se procede a arreglar estas inconsistencias
 
 ```{r}
 data <- data %>%
@@ -2176,77 +2420,131 @@ data <- data %>%
     # cAMBIAR MUNICIPIO DEL HECHO
     nmun_proce = case_when(
       str_detect(lugar_hecho, "^(7 De Agosto|Álamos|Bogotá|Bogota)$") ~ "Bogotá, D.C.",
-      str_detect(lugar_hecho, "(BELLO|BELLLO)") ~ "Bello",
-      str_detect(lugar_hecho, "^(Bello|La Gabriela|La Orquídea|Hato Viejo|Madera|Obra 2000|París|Zamora)$") ~ "Bello",
-      str_detect(lugar_hecho, "^Bolombolo$") ~ "Venecia",
-      str_detect(lugar_hecho, "^Barbosa$") ~ "Barbosa",
-      lugar_hecho %in% c("BARBOSA", "BARBOZA") ~ "Barbosa",
-      str_detect(lugar_hecho, "^El Bagre$") ~ "El Bagre",
+      str_detect(lugar_hecho, "^(Belllo|Bello|Bello La Gabriela|La Orquídea|(?i)Hato(\\s)?[Vv]iejo|Madera|Machado|Obra 2000|París|[ZS]amora|Aclala|Alcala|Altos De Oriente|Araucarias 2|Barrio Nuevo|Bello Antioquia|(La\\s)?Cabaña(s)?|Cabañita(s)?|Bello Niqu[ií]a|Niqu[ií]a|Niquia Camacol|Nuev[ao] Je[rs]usalen|Jerusalen Invasion|(La\\s)?Nueva\\sJerusalem|Nueva Herusalen|Pachelly|El Cairo|El Paraiso|La Camila|La Cumbr[ae]|Vereda La Cumbre|Las Vegas|Los Bucaros|Manantiales De Paz|Mamantiales|Manantial(\\sSector\\s5)?|Manantalies|(Los\\s)?Manantiales|Invasion Manantiales|Manatiales|Molinares|Mánchester|Machado|(La\\s)?Navarra|Playa Rica|San Felix Antioquia|San Felix Nazared Be|(Sanata|Santa)\\sRita(s)?|Santa Ana|Trapiche|Villa Linda|Villa Mar(ia)?|Bello O|Bello Oriente Medellin|Bello Horiente|Obrero|SAMORA)$") ~ "Bello",
+      str_detect(lugar_hecho, "^(San Juan De Uraba|Vereda Sinai)$") ~ "San Juan De Urabá",
+      str_detect(lugar_hecho, "^(Bolombolo|Venecia)$") ~ "Venecia",
+      str_detect(lugar_hecho, "^(Barbosa|Parque De Barbosa|Barboza|Popalito)$") ~ "Barbosa",
       str_detect(lugar_hecho, "^El Retiro$") ~ "Retiro",
-      str_detect(lugar_hecho, "^Guadalupe$") ~ "Guadalupe",
       str_detect(lugar_hecho, "^El Rosario$") ~ "El Rosario",
-      str_detect(lugar_hecho, "^Tarazá$") ~ "Tarazá",
-      str_detect(lugar_hecho, "(TARAZ?|TARZA)") ~ "Tarazá",
+      str_detect(lugar_hecho, "(Taraz(a)?|Tarza|Pavas Alto)") ~ "Tarazá",
       str_detect(lugar_hecho, "^Guatape$") ~ "Guatapé",
-      str_detect(lugar_hecho, "^(Itagüí|Yarumito)$") ~ "Itagüí",
+      str_detect(lugar_hecho, "^(Itagüí|Yarumito|Balcones De Sevilla|Balcones|Itagui|Pilsen|Santa Catalina)$") ~ "Itagüí",
       str_detect(lugar_hecho, "^Girardota$") ~ "Girardota",
       str_detect(lugar_hecho, "^(Meta|Tolima|Sur De Bolivar)$") ~ NA_character_,
-      str_detect(lugar_hecho, "^La Estrella$") ~ "La Estrella",
-            str_detect(lugar_hecho, "ESTRELLA") ~ "La Estrella",
-      str_detect(lugar_hecho, "^Olaya Herrera$") ~ "Medellín",
-      str_detect(lugar_hecho, "^Ipiales$") ~ "Ipiales",
       str_detect(lugar_hecho, "^Peque$") ~ "Peque",
       str_detect(lugar_hecho, "^Segovia$") ~ "Segovia",
-      str_detect(lugar_hecho, "^Turbo$") ~ "Turbo",
+      str_detect(lugar_hecho, "^(Turbo(\\sAntioquia)?)$") ~ "Turbo",
       str_detect(lugar_hecho, "^Zaragoza$") ~ "Zaragoza",
       str_detect(lugar_hecho, "^La Paz$") ~ "La Paz",
-      str_detect(lugar_hecho, "^Puebloviejo$") ~ "Puebloviejo",
-      str_detect(lugar_hecho, "^Popalito") ~ "Barbosa",
+      str_detect(lugar_hecho, "^Pueblo Viejo$") ~ "Puebloviejo",
+      str_detect(lugar_hecho, "^Abriaqu[ií]") ~ "Abriaquí",
+      str_detect(lugar_hecho, "^Am(a)?ga") ~ "Amagá",
+      str_detect(lugar_hecho, "^Angeliopolis") ~ "Angelópolis",
       str_detect(lugar_hecho, "^Supia") ~ "Supía",
-      str_detect(lugar_hecho, "^(Argelia|Arboletes|Abriaquí|Amagá|Belmira|Betulia|Yarumal|Salgar|Pereira|Uramita)$") ~ lugar_hecho,
+      str_detect(lugar_hecho, "^Aragon") ~ "Santa Rosa de Osos",
+      str_detect(lugar_hecho, "^(Andes|Batallon Cacique Nutibara)") ~ "Andes",
+      str_detect(lugar_hecho, "^(Cald(a)?s|Los Cerezos|Manzanares)$") ~ "Caldas",
+      str_detect(lugar_hecho, "^Caracoli$") ~ "Caracolí",
+      str_detect(lugar_hecho, "^Caucacia$") ~ "Caucasia",
+      str_detect(lugar_hecho, "^(Carmen De Viboral|Carmen V)$") ~ "El Carmen De Viboral",
+      str_detect(lugar_hecho, "^(Cañas Gordas)$") ~ "Cañasgordas",
+      str_detect(lugar_hecho, "^(Don Matias)$") ~ "Donmatías",
+      str_detect(lugar_hecho, "^(Cañaveralejo|La Bahia|Maria Auxiliadora|Sabaneta)$") ~ "Sabaneta",
+      str_detect(lugar_hecho, "^(Ciudad Bolivar)$") ~ "Ciudad Bolívar",
+      str_detect(lugar_hecho, "^(Marini[l]+a)$") ~ "Marinilla",
+      str_detect(lugar_hecho, "^(Cordoba Monteria)$") ~ "Montería",
+      str_detect(lugar_hecho, "^(El Concilio)$") ~ "Salgar",
+      str_detect(lugar_hecho, "^(Entrerios)$") ~ "Entrerríos",
+      str_detect(lugar_hecho, "^(Envigad(o)?|Ewnvigado|Trianon)$") ~ "Envigado",
+      str_detect(lugar_hecho, "^(Gomez Plata)$") ~ "Gómez Plata",
+      str_detect(lugar_hecho, "^(Dabeiba|Sabeiba)$") ~ "Dabeiba",
+      str_detect(lugar_hecho, "^(Santa Barbara)$") ~ "Santa Bárbara",
+      str_detect(lugar_hecho, "^(Sonso+n(\\sAnt)?)$") ~ "Sonsón",
+      str_detect(lugar_hecho, "^(Sopetran)$") ~ "Sopetrán",
+      str_detect(lugar_hecho, "^(El Santuario|Santuario)$") ~ "El Santuario",
+      str_detect(lugar_hecho, "^(Tamesis)$") ~ "Támesis",
+      str_detect(lugar_hecho, "^(Titiribi)$") ~ "Titiribí",
+      str_detect(lugar_hecho, "^(Vegachi)$") ~ "Vegachí",
+      str_detect(lugar_hecho, "^(Cocorna|Corcona)$") ~ "Cocorná",
+      str_detect(lugar_hecho, "^(Guarne)$") ~ "Guarne",
+      str_detect(lugar_hecho,"^(San Jeronimo)$") ~ "San Jerónimo",
+      str_detect(lugar_hecho,"^(Belén)$") & cod_mun_o != "05034" ~ "Medellín",
+      str_detect(lugar_hecho, "^(Argelia|Arboletes|Belmira|Betulia|Salgar|Pereira|Uramita|Barranquilla|Copacabana|El Bagre|La Estrella|Ipiales|Concordia|Fredonia|Frontino|La Ceja|Liborina|Rionegro|San Francisco|San Pedro De Los Milagros|San Rafael)$") ~ lugar_hecho,
       TRUE ~ nmun_proce
     ),
     
     # CAMBIAR CÓDIGO DEL MUNICIPIO DEL HECHO
     cod_mun_o = case_when(
       str_detect(lugar_hecho, "^(7 De Agosto|Álamos|Bogotá|Bogota)$") ~ "11001",
-      str_detect(lugar_hecho, "^(Bello|La Gabriela|La Orquídea|Hato Viejo|Madera|Obra 2000|París|Zamora)$") ~ "05088",
-      str_detect(lugar_hecho, "^Bolombolo$") ~ "05861",
-      str_detect(lugar_hecho, "^Barbosa$") ~ "05079",
-      lugar_hecho %in% c("BARBOSA", "BARBOZA") ~ "Barbosa",
+      str_detect(lugar_hecho, "^(Belllo|Bello|Bello La Gabriela|La Orquídea|(?i)Hato(\\s)?[Vv]iejo|Madera|Machado|Obra 2000|París|[ZS]amora|Aclala|Alcala|Altos De Oriente|Araucarias 2|Barrio Nuevo|Bello Antioquia|(La\\s)?Cabaña(s)?|Cabañita(s)?|Bello Niqu[ií]a|Niqu[ií]a|Niquia Camacol|Nuev[ao] Je[rs]usalen|Jerusalen Invasion|(La\\s)?Nueva\\sJerusalem|Nueva Herusalen|Pachelly|El Cairo|El Paraiso|La Camila|La Cumbr[ae]|Vereda La Cumbre|Las Vegas|Los Bucaros|Manantiales De Paz|Mamantiales|Manantial(\\sSector\\s5)?|Manantalies|(Los\\s)?Manantiales|Invasion Manantiales|Manatiales|Molinares|Mánchester|Machado|(La\\s)?Navarra|Playa Rica|San Felix Antioquia|San Felix Nazared Be|(Sanata|Santa)\\sRita(s)?|Santa Ana|Trapiche|Villa Linda|Villa Mar(ia)?|Bello O|Bello Oriente Medellin|Bello Horiente|Obrero|SAMORA)$") ~ "05088",
+      str_detect(lugar_hecho, "^(San Juan De Uraba|Vereda Sinai)$") ~ "05659",
+      str_detect(lugar_hecho, "^(Bolombolo|Venecia)$") ~ "05861",
+      str_detect(lugar_hecho, "^(Barbosa|Parque De Barbosa|Barboza|Popalito)$") ~ "05079",
       str_detect(lugar_hecho, "^El Bagre$") ~ "05250",
       str_detect(lugar_hecho, "^El Retiro$") ~ "05607",
-      str_detect(lugar_hecho, "^Guadalupe$") ~ "05315",
       str_detect(lugar_hecho, "^El Rosario$") ~ "52256",
-      str_detect(lugar_hecho, "^Tarazá$") ~ "05790",
-      str_detect(lugar_hecho, "(BELLO|BELLLO)") ~ "Bello",
-      str_detect(lugar_hecho, "(TARAZ?|TARZA)") ~ "Tarazá",
+      str_detect(lugar_hecho, "(Taraz(a)?|Tarza|Pavas Alto)") ~ "05790",
       str_detect(lugar_hecho, "^Guatape$") ~ "05321",
-      str_detect(lugar_hecho, "^(Itagüí|Yarumito)$") ~ "05360",
+      str_detect(lugar_hecho, "^(Itagüí|Yarumito|Balcones De Sevilla|Balcones|Itagui|Pilsen|Santa Catalina)$") ~ "05360",
       str_detect(lugar_hecho, "^Girardota$") ~ "05308",
+      str_detect(lugar_hecho, "^(Cocorna|Corcona)$") ~ "05197",
       str_detect(lugar_hecho, "^(Meta|Tolima|Sur De Bolivar)$") ~ NA_character_,
       str_detect(lugar_hecho, "^La Estrella$") ~ "05380",      
-      str_detect(lugar_hecho, "ESTRELLA") ~ "La Estrella",
-      
-      str_detect(lugar_hecho, "^Olaya Herrera$") ~ "05001",
       str_detect(lugar_hecho, "^Ipiales$") ~ "52356",
       str_detect(lugar_hecho, "^Peque$") ~ "05543",
       str_detect(lugar_hecho, "^Segovia$") ~ "05736",
-      str_detect(lugar_hecho, "^Turbo$") ~ "05837",
+      str_detect(lugar_hecho, "^(Turbo(\\sAntioquia)?)$") ~ "05837",
       str_detect(lugar_hecho, "^Zaragoza$") ~ "05895",
       str_detect(lugar_hecho, "^La Paz$") ~ NA_character_,
-      str_detect(lugar_hecho, "^Puebloviejo$") ~ "47570",
-      str_detect(lugar_hecho, "^Popalito") ~ "05079",
+      str_detect(lugar_hecho, "^Pueblo Viejo$") ~ "47570",
       str_detect(lugar_hecho, "^Supia") ~ "17777",
+      str_detect(lugar_hecho, "^Abriaqu[ií]$") ~ "05004",
+      str_detect(lugar_hecho, "^Aragon") ~ "05686",
       lugar_hecho == "Betulia" & cod_dpto_o == "05" ~ "05093",
       lugar_hecho == "Arboletes" ~ "05051",
-      lugar_hecho == "Abriaquí" ~ "05004",
-      lugar_hecho == "Amagá" ~ "05030",
+      str_detect(lugar_hecho, "^Am(a)?ga$") ~ "05030",
       lugar_hecho == "Belmira" ~ "05086",
-      lugar_hecho == "Yarumal" ~ "05887",
       lugar_hecho == "Salgar" ~ "05642",
       lugar_hecho == "Pereira" ~ "66001",
       lugar_hecho == "Uramita" ~ "05842",
+      lugar_hecho %in% c("Andes","Batallon Cacique Nutibara") ~ "05034",
+      lugar_hecho == "Argelia" ~ "05055",
+      lugar_hecho == "Angeliopolis" ~ "05036",
+      lugar_hecho == "Barranquilla" ~ "08001",
+      lugar_hecho == "Concordia" ~ "05209",
+      str_detect(lugar_hecho, "^(Cald(a)?s|Los Cerezos|Manzanares)$") ~ "05129",
+      str_detect(lugar_hecho, "^Caracoli$") ~ "05142",
+      str_detect(lugar_hecho, "^(Carmen De Viboral|Carmen V)$") ~ "05148",
+      str_detect(lugar_hecho, "^Caucacia$") ~ "05154",
+      str_detect(lugar_hecho, "^(Cañas Gordas)$") ~ "05138",
+      str_detect(lugar_hecho, "^(Cañaveralejo|La Bahia|Maria Auxiliadora|Sabaneta)$") ~ "05631",
+      str_detect(lugar_hecho, "^(Copacabana)$") ~ "05212",
+      str_detect(lugar_hecho, "^(Don Matias)$") ~ "05237",
+      str_detect(lugar_hecho, "^(Marini[l]+a)$") ~ "05440",
+      str_detect(lugar_hecho, "^(Ciudad Bolivar)$") ~ "05101",
+      str_detect(lugar_hecho, "^(Envigad(o)?|Ewnvigado|Trianon)$") ~ "05266",
+      str_detect(lugar_hecho, "^(Cordoba Monteria)$") ~ "23001",
+      str_detect(lugar_hecho, "^(El Concilio)$") ~ "05642",
+      str_detect(lugar_hecho, "^(El Santuario|Santuario)$") ~ "05697",
+      str_detect(lugar_hecho, "^(Entrerios)$") ~ "05264",
+      str_detect(lugar_hecho, "^(Fredonia)$") ~ "05282",
+      str_detect(lugar_hecho, "^(Frontino)$") ~ "05284",
+      str_detect(lugar_hecho, "^(Gomez Plata)$") ~ "05310",
+      str_detect(lugar_hecho, "^(Guarne)$") ~ "05318",
+      str_detect(lugar_hecho, "^(La Ceja)$") ~ "05376",
+      str_detect(lugar_hecho, "^(Liborina)$") ~ "05411",
+      str_detect(lugar_hecho, "^(Rionegro)$") ~ "05615",
+      str_detect(lugar_hecho, "^(Dabeiba|Sabeiba)$") ~ "05234",
+      str_detect(lugar_hecho, "^(San Francisco)$") ~ "05652",
+      str_detect(lugar_hecho, "^(San Pedro De Los Milagros)$") ~ "05664",
+      str_detect(lugar_hecho, "^(San Rafael)$") ~ "05667",
+      str_detect(lugar_hecho, "^(Santa Barbara)$") ~ "05679",
+      str_detect(lugar_hecho, "^(Sonso+n(\\sAnt)?)$") ~ "05756",
+      str_detect(lugar_hecho, "^(Sopetran)$") ~ "05761",
+      str_detect(lugar_hecho, "^(Tamesis)$") ~ "05789",
+      str_detect(lugar_hecho, "^(Titiribi)$") ~ "05809",
+      str_detect(lugar_hecho, "^(Vegachi)$") ~ "05858",
+      str_detect(lugar_hecho,"^(San Jeronimo)$") ~ "05656",
       TRUE ~ cod_mun_o
     ),
     
@@ -2255,11 +2553,13 @@ data <- data %>%
       str_detect(lugar_hecho, "^Tolima$") ~ "Tolima",
       str_detect(lugar_hecho, "^Meta$") ~ "Meta",
       str_detect(lugar_hecho, "^Sur De Bolivar$") ~ "Bolívar",
-      str_detect(lugar_hecho, "^Puebloviejo$") ~ "Magdalena",
+      str_detect(lugar_hecho, "^Pueblo Viejo$") ~ "Magdalena",
       str_detect(lugar_hecho, "^(Balboa|La Paz|Bolívar)$") ~ NA_character_,
       str_detect(lugar_hecho, "^(El Rosario|Ipiales)$") ~ "Nariño",
       str_detect(lugar_hecho, "^Pereira$") ~ "Risaralda",
+      str_detect(lugar_hecho, "^Barranquilla$") ~ "Atlántico",
       str_detect(lugar_hecho, "^(7 De Agosto|Álamos|Bogotá|Bogota)$") ~ "Cundinamarca",
+      str_detect(lugar_hecho, "^(Cordoba Monteria)$") ~ "Córdoba",
       TRUE ~ ndep_proce
     ),
     
@@ -2269,53 +2569,132 @@ data <- data %>%
       str_detect(lugar_hecho, "^Tolima$") ~ "73",
       str_detect(lugar_hecho, "^Meta$") ~ "50",
       str_detect(lugar_hecho, "^Sur De Bolivar$") ~ "13",
-      str_detect(lugar_hecho, "^Puebloviejo$") ~ "47",
+      str_detect(lugar_hecho, "^Pueblo Viejo$") ~ "47",
       str_detect(lugar_hecho, "^(Balboa|La Paz|Bolívar)$") ~ NA_character_,
       str_detect(lugar_hecho, "^(El Rosario|Ipiales)$") ~ "52",
       str_detect(lugar_hecho, "^Pereira$") ~ "66",
       str_detect(lugar_hecho, "^(7 De Agosto|Álamos|Bogotá|Bogota)$") ~ "25",
+      str_detect(lugar_hecho, "^Barranquilla$") ~ "08",
+      str_detect(lugar_hecho, "^(Cordoba Monteria)$") ~ "23",
       TRUE ~ cod_dpto_o
     ),
 
     # CAMBIAR LUGAR DEL HECHO
     lugar_hecho = case_when(
-      str_detect(lugar_hecho, "(Arboletes|Argelia|Abriaquí|Amagá|Balboa|Bello|Belmira|Betulia|Bogotá|8 De Marzo|Aeropaque|Alto De Luis Miguel|Altos De La Villa|Baladores|Barbosa|Bellavista|El Bagre|El Bosque|El Bosuqe|El Retiro|Estrellita|Girardota|Guadalupe|Guatape|Itagüí|Hogar Asperla|Hogar Aspérla|Hogar De Paso|Hogar Miraflorez|La Alfarera|La Almería|La Bahía|La Divisa|La Esmeralda|La Frizola|(?i)Huerta|La Isabela|La Paralela|Yarumal|La Perla|La Piedra|La Romelia|La Taboga|Meta|Tolima|Dabeiba|Girardota|La Estrella|Salgar|Pereira|El Rosario|Peque|Segovia|Turbo|Uramita|Zaragoza|Ipiales|La Paz|El Paraiso|La Almeria|Bogota|(?i)m[aeiou]rgarit[aeiou]s|Tarazá|Puebloviejo|Tablaza|Vereda El Tablazo|La Bahia|Las Vegas|Los Rieles|Mirador Del Valle|Obra 2000|Paralela|Peñitas|Playa Soledad|Playitas|Potrera|Supia|Sur De Bolivar|Valle Fuego|Progresar|Villa Del Beerro|Villalisa|Villas Del Sol|Tirol|(?i)Pola|(?i)Mirama|Robledo Margaritas)") ~ NA_character_,
+      str_detect(lugar_hecho,"^((La\\s)?Navarra)$") ~ "La Navarra",
+      str_detect(lugar_hecho,"^(?i)Hato(\\s)?[Vv]iejo$") ~ "Hatoviejo",
+      lugar_hecho == "Chaparra De San Vicn" ~ "Chaparral",
+      lugar_hecho == "Córdoba" & nmun_proce == "Los córdobas" ~ NA_character_,
+      lugar_hecho == "La Candelaria" & nmun_proce == "Valparaíso" ~ NA_character_,
+      lugar_hecho == "Las Acacias" & nmun_proce == "Acacías" ~ NA_character_,
+      lugar_hecho == "San Pedro" & nmun_proce == "San Pedro De Los Milagros" ~ NA_character_,
+      lugar_hecho == "Santa Fé" & cod_mun_o == "05042" ~ NA_character_,
+      lugar_hecho == "Santa Inés" & cod_mun_o == "05854" ~ NA_character_,
+      lugar_hecho == "Santa Margarita" & cod_mun_o == "05628" ~ NA_character_,
+      lugar_hecho == "Tejelo" & cod_mun_o == "05088" ~ NA_character_,
+      lugar_hecho == "Veinte de Julio" & cod_mun_o == "05004" ~ NA_character_,
+      lugar_hecho == "San Pablo" & cod_mun_o == "05686" ~ NA_character_,
+      lugar_hecho == "Olaya Herrera" & cod_mun_o == "05659" ~ NA_character_,
+      lugar_hecho == "Belén" & cod_mun_o == "05034" ~ NA_character_,
+      lugar_hecho == "Samora" ~ "Zamora",
+      lugar_hecho == "Aragon" ~ "Aragón",
+      str_detect(lugar_hecho,"^(Aclala|Alcala)$") ~ "Alcalá",
+      str_detect(lugar_hecho,"^Bello La Gabriela$") ~ "La Gabriela",
+      str_detect(lugar_hecho,"^(Llanos De Cuiva)$") ~ "Llanos De Cuiva",
+      str_detect(lugar_hecho,"^((La\\s)?Cabaña(s)?)$") ~ "Cabañas",
+      str_detect(lugar_hecho,"^(Cabañita)$") ~ "Cabañitas",
+      str_detect(lugar_hecho,"^(Balcones De Sevilla|Balcones)$") ~ "Balcones de Sevilla",
+      str_detect(lugar_hecho,"^(El Paraiso)$") ~ "El Paraíso",
+      str_detect(lugar_hecho,"^(Sanata|Santa)\\sRita(s)?$") ~ "Santa Rita",
+      str_detect(lugar_hecho,"^(Los Bucaros)$") ~ "Los Búcaros",
+      str_detect(lugar_hecho,"^(Trapiche)$") ~ "El Trapiche",
+      str_detect(lugar_hecho,"^(Maria Auxiliadora)$") ~ "María Auxiliadora",
+      str_detect(lugar_hecho,"^(San Felix Antioquia|San Felix Nazared Be)$") ~ "San Félix",
+      str_detect(lugar_hecho,"^(San Jeronimo)$") ~ "San Jerónimo",
+      str_detect(lugar_hecho,"^(Villa Linda|Villa Mar(ia)?)$") ~ "Villa María",
+      str_detect(lugar_hecho,"^(Trianon)$") ~ "El Trianon",
+      str_detect(lugar_hecho,"^(Nuev[ao] Je[rs]usalen|Jerusalen Invasion|(La\\s)?Nueva\\sJerusalem|Nueva Herusalen)$") ~ "Nueva Jerusalén",
+      str_detect(lugar_hecho,"^(Manantiales De Paz|Mamantiales|Manantial(\\sSector\\s5)?|Manantalies|(Los\\s)?Manantiales|Invasion Manantiales|Manatiales)$") ~ "Manantiales",
+      str_detect(lugar_hecho, "^(Araucarias 2|Andes|Angeliopolis|Arboletes|Argelia|Abriaqu[ií]|Am(a)?ga|Balboa|Bello|Belmira|Betulia|Bogot[áa]|8 De Marzo|Aeropaque|Alto De Luis Miguel|Altos De La Villa|Baladores|Barbosa|Parque De Barbosa|Barboza|Barranquilla|Bellavista|El Bagre|El Bosque|El Bosuqe|El Retiro|Estrellita|Girardota|Guatape|Itagüí|Hogar Asperla|Hogar Aspérla|Hogar De Paso|Hogar Miraflorez|La Alfarera|La Almer[íi]a|La Bahía|La Frizola|La Isabela|La Paralela|(La\\s)?Perla|La Piedra|La Romelia|La Taboga|Meta|Tolima|[DS]abeiba|La Estrella|Salgar|Pereira|El Rosario|Peque|Segovia|(Turbo(\\sAntioquia)?)|Uramita|Zaragoza|Ipiales|La Paz|El Paraiso|(?i)m[aeiou]rgarit[aeiou]s|Pueblo Viejo|Tablaz[ao]|La Bahia|Las Vegas|Los Rieles|Mira(dor|nda)\\sDel\\sValle|Obra 2000|Paralela|Playa Soledad|Playitas|Potrera|Supia|Sur De Bolivar|Valle Fuego|Progresar|Villa Del Beerro|Villalisa|Villas Del Sol|(?i)Pola|(?i)Mirama|Batallon Cacique Nutibara|Bello Antioquia|Cald(A)?s|Caracoli|Carmen De Viboral|Carmen V|Cauca[cs]ia|Cañas Gordas|Bello Niqu[ií]a|Niqu[ií]a|Niquia Camacol|Cisneros|Cocorna|Corcona|Copacabana|Fusagasuga|Itagui|Ituango|Marini[l]+a|Ciudad Bolivar|Concordia|Cordoba Monteria|Entrerios|Envigad(o)?|Ewnvigado|Fredonia|Frontino|Gomez Plata|Guarne|La Ceja|La Cumbr[ae]|La Estrecgura|La Pintada|Liborina|Parque|Rionegro|Sabaneta|San Francisco|San Juan De Uraba|San Pedro De Los Milagros|San Rafael|Santa Barbara|Santa Rosa De Osos|(El\\s)Santuario|Sonso+n(\\sAnt)?|Sopetran|Tamesis|Titiribi|Vegachi|Venecia|Vereda La Cumbre|Vereda Sinai|Bello O|Bello Oriente Medellin|Blanquita|Bello Horiente|Don Matias|La Cima|Las Perlas|Lopez Parte Alta|Los Causes De Orient|(El\\s)?Oasis|Pimpollo|Piñales Bedon|San Jose|Taraz(a)?|Tarza|Vicletas|Vereda Rio Grande|Belllo|Buena Vista|Buenavist|Buenavista|La Peñita|Santa Marta|San Andres)$") ~ NA_character_,
       TRUE ~ lugar_hecho
     )
   )
-
-data %>% count(nmun_proce,cod_mun_o, cod_dpto_o,ndep_proce)
 ```
 
--     Luego, es necesario verificar que el barrio/vereda si sea coherente con el municipio. Recordar que se están depurando solo los casos donde no se conozca el barrio de residencia de la víctima
+-   Luego, es necesario verificar que el barrio/vereda si sea coherente
+    con el municipio
 
 ```{r}
-data %>% filter(is.na(nombre_barrio) & !is.na(lugar_hecho)) %>% count(lugar_hecho,nmun_proce,cod_mun_o)
+data %>% count(lugar_hecho,nmun_proce,cod_mun_o)
 ```
 
--     Finalmente, se corrigen algunos casos donde el área no es coherente con el barrio/vereda. Por ejemplo:
+-   Finalmente, se corrigen algunos casos donde el área no es coherente
+    con el barrio/vereda. Por ejemplo:
 
 ```{r}
-data %>% filter(is.na(nombre_barrio) & !is.na(lugar_hecho)) %>% count(lugar_hecho, area_,nmun_proce) %>% slice_sample(n=5)
+aux <- data %>% count(lugar_hecho, area_,nmun_proce) %>% slice_sample(n=5)
 ```
-Para determinar si el tipo de área era o no correcta, se utilizó este [**recurso**](https://geoportal.dane.gov.co/geovisores/territorio/consulta-divipola-division-politico-administrativa-de-colombia/)
+
+Para determinar si el tipo de área era o no correcta, se utilizó este
+[**recurso**](https://geoportal.dane.gov.co/geovisores/territorio/consulta-divipola-division-politico-administrativa-de-colombia/)
 
 ```{r}
 data <- data %>% mutate(
   area_ = case_when(
-    lugar_hecho %in% c("Guayabal","Olaya Herrera","París","Pedregal","Robledo","Santa Margarita","La Loma","La Pradera") ~ 1,
-    lugar_hecho %in% c("Aguas Frías","Altavista","La Aldea","La Palma","La Verde","Las Playas","Mazo","Palmitas Sector Central","Piedra Gorda","Potrerito","Vereda La Palma","Vereda Las Playas","Vereda Palma Alta") ~ 2,
-    lugar_hecho %in% c("El Astillero","Pedregal Alto","Vereda Pedregal") ~ 3,
+    lugar_hecho %in% c("Guayabal","Olaya Herrera","París","Pedregal","Robledo","Santa Margarita","La Loma","La Pradera","Alcalá","Cabañas","Cabañitas","Machado","Nueva Jerusalén","Playa Rica","Villa María","Zamora","Aures No.1","Balcones de Sevilla","San Jerónimo","Altavista","Andalucía","Aranjuez","Barrio Caicedo","Barrio Colón","Barrios de Jesús","Barrio Cristóbal","Belalcázar","Belencito","Belén","Blanquizal","Boston","Buenos Aires","Cabecera Urbana Corregimiento San Cristóbal","Calasanz","Campo Valdés No.1","","","Caribe","Castilla","Cucaracho","El Chagualo","El Pesebre","El Picacho","El Pinal","El Poblado","El Rodeo","El Salvador","Enciso","Estadio","Florencia","Fuente Clara","Girardot","Guayaquil","Héctor Abad Gómez","Juan XXIII La Quiebra","Kennedy","La América","La Candelaria","La Francia","La Isla","La Milagrosa","Las Granjas","Las Violetas","Laureles","Medellín sin tugurios","Miraflores","Monteclaro","Moravia","Moscú No.2","Nueva Villa de La Iguaná","Palenque","Picacho","Playón de Los Comuneros","Popular","Prado","Robledo","San José La Cima No.2","San Pedro","Santa Cruz","Santa Lucía","Santa Mónica","Tricentenario","Santo Domingo Savio No.2","Santo Domingo Savio No.1","Villa Guadalupe","Villa Hermosa","Villa Niza","Villa del Socorro","Villatina","Comuna 8") ~ 1,
+    str_detect(lugar_hecho, regex("\\bS{0,2}N?\\s?JA(V[IE]{1,3}R?|VIAER|VIER|JAIER)Q?\\b(?!\\s*(NO|#)?\\s?\\d)", ignore_case = TRUE)) ~ 1,
+    
+    str_detect(lugar_hecho, regex("\\b(MANRIQUE|MANRIUE|MANRI|MANRIOQUE|MNRIQUE|Manrrique)\\b", ignore_case = TRUE)) ~ 1,
+    
+    lugar_hecho %in% c("Doce Octubre", "Dpce De Octubre", "Doce De Octubre Comuna 6", "Doce De Octubre",
+  "Doce De Cotubre", "12 Octubre", "12 De Octubre", "12  De Octubre", "12 De Octubtre",
+  "Doce De Octunre", "12 De Cotubre", "12 De Ctubre", "12 De Ocyubre", "12-Oct",
+  "12 De Ocyubre", "12 De Octubtre", "12 De Ctubre", "12-Oct") ~ 1,
+  
+    lugar_hecho %in% c("Aguas Frías","La Aldea","Piedra Gorda","Potrerito","Vereda La Palma","Vereda Las Playas","Vereda Palma Alta","Popalito","San Félix","Doradal","Cañaveralejo","María Auxiliadora","El Concilio","Aragón","Bolombolo","Área de Expansión Altavista","Corr Altavista","Corregimiento Altavista","El Cerro","El Llano","El Llano SE","El Patio","El Plan","La Aldea","La Cuchilla","Palmitas Sector Central","Potrerito","San José del Manzanillo","Travesías","Urquitá","Vereda Las Palmas","Vereda Pajarito","Vereda Palma Baja") ~ 2,
+    
+    str_detect(lugar_hecho, regex("\\b(SS?ANTA\\s(EL[ÉE]NA|HELENA|ELENEA)(?!\\sEL\\sLLANO)|CORREGIMIEN(TO)?\\sSANTA(\\s(EL[ÉE]NA|HELENA|EL))?)\\b", ignore_case = TRUE)) ~ 2,
+    
+    lugar_hecho %in% c("El Astillero","Pedregal Alto","Vereda Pedregal","Llanos De Cuiva","Barro Blanco","Boquerón","El Placer","Piedras Blancas - Matasano","Media Luna","La Verde","Mazo","El Corazón El Morro","El Jardín","Volcana Guayabal","Yarumalito") ~ 3,
+    
     TRUE ~ area_
   )
 )
 ```
 
+Luego de este tratamiento, la columna quedó con un
+`r round((sum(is.na(data$lugar_hecho))*100) / nrow(data),3)` de valores
+faltantes. Cabe resaltar que se está tomando algunos valores
+correspondientes a comunas ya que pueden servir más adelante para
+completar.
+
+Existen algunos casos donde se especifica como lugar de hecho *Habitante
+de Calle*, por lo tanto, al no indicar un lugar concreto se utiliza esta
+información para completar en la variable **Actividad** cuando sea
+*habitante de calle* y actividad sea *Ninguna* u *Otra*
+
+```{r}
+data %>% filter(lugar_hecho == "Habitante de Calle") %>% select(lugar_hecho,nmun_proce,actividad)
+```
+
+```{r}
+en <- data %>% mutate(
+  actividad = if_else(
+    lugar_hecho == "Habitante de Calle" & (actividad %in% c("Ninguna", "Otro")),
+    lugar_hecho,
+    actividad,
+    missing = actividad
+  ),
+  lugar_hecho = if_else(lugar_hecho == "Habitante de Calle", NA_character_, lugar_hecho)
+)
+
+```
 
 ### Hora del hecho
 
 Esta variable no se solicita en las versiones recientes de la ficha, lo
-que explica los `r sum(is.na(data$hora_hecho) | data$hora_hecho == "")` registros con NA.
+que explica los `r sum(is.na(data$hora_hecho) | data$hora_hecho == "")`
+registros con NA.
 
 ```{r}
 data <- data %>% mutate(hora_hecho = ifelse(hora_hecho == "", NA_character_, hora_hecho))
@@ -2343,6 +2722,7 @@ data <- data %>% select(-c(naturaleza,nat_viosex))
 ```
 
 ### Mecanismo utilizado para la agresión
+
 Se observa que en todos los casos de violencia física se utilizó un
 mecanismo. También en algunos casos de violencia psicológica, abandono y
 otras violencias sexuales.
@@ -2352,7 +2732,8 @@ otras violencias sexuales.
 ```
 
 Se tiene `r sum(is.na(data$armas))` registros con valores faltantes en
-esta variable. Analizando el tipo de violencia de estos casos, se obtiene:
+esta variable. Analizando el tipo de violencia de estos casos, se
+obtiene:
 
 ```{r}
 aux <- data %>% filter(is.na(data$armas)) %>% select(armas,def_naturaleza)
@@ -2360,8 +2741,11 @@ aux <- data %>% filter(is.na(data$armas)) %>% select(armas,def_naturaleza)
 summary(as.factor(aux$def_naturaleza))
 ```
 
-Entonces se podría pensar que en los casos donde la violencia sea física, y
-tenga NA en armas, se cambie NA a otro mecanismo (15). Sin embargo, vemos que los casos donde no se conoce si utilizó un arma, son muy pocos de violencia física a comparación de los otros tipos de violencia
+Entonces se podría pensar que en los casos donde la violencia sea
+física, y tenga NA en armas, se cambie NA a otro mecanismo (15). Sin
+embargo, vemos que los casos donde no se conoce si utilizó un arma, son
+muy pocos de violencia física a comparación de los otros tipos de
+violencia
 
 ```{r}
 aux_nrow <- data %>%
@@ -2451,7 +2835,6 @@ aux_data <- data %>% filter(year(data$fec_not) >= 2015)
 
 table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
 ```
-
 
 ```{r}
 data <- data %>%
@@ -2590,35 +2973,6 @@ data <- data %>%
 
 ## Información de la atención/notificación
 
-### Mes de reporte caso (mes_caso)
-
-Esta variable podría ser una variable candidata a eliminar, pues no nos
-arriesgamos a que existan inconsistencias entre la fecha y el mes.
-Además tenemos algunos (aunque pocos valores faltantes). Una mejor
-opción es calcularla manualmente con la variable de la fecha. Al igual
-que el año y la semana
-
-```{r}
-data <- data %>% select(-c(mes_caso))
-```
-
-```{r}
-data <- data %>%
-  mutate(
-    semana_hecho = case_when(
-      fec_not == fec_hecho ~ semana,  # Usa la semana de notificación si las fechas son iguales
-      TRUE ~ week(fec_hecho)       # Calcula la semana epidemiológica de la fecha del hecho
-    ),
-    
-    mes_hecho = month(fec_hecho),
-    año_hecho = year(fec_hecho)  
-  )
-```
-
-```{r}
-data <- data %>% select(-c(semana))
-```
-
 ### Atención integral en salud
 
 Este grupo de variables corresponden a las atenciones en salud que se le
@@ -2683,8 +3037,7 @@ data <- data %>% mutate(
 
 ```{r}
 # Se quita también sem_ges_ porque son eventos que dependen de otro evento, entonces tendrán muchos NA pero no es porque falte info sino que no aplica
-aux_data <- data %>% select(-all_of(c("sem_ges_"
-)))
+aux_data <- data %>% select(-all_of(c("sem_ges_")))
 ```
 
 ```{r, echo=FALSE}
@@ -2718,14 +3071,13 @@ NA_sem_ges <- data %>% filter(
 ) %>% nrow()
 ```
 
-Con respecto a la variable **sem_ges\_**, que toman un
-valor solo si la víctima estaba embarazada, `r NA_sem_ges`
-registros no cuentan con un valor en ella
+Con respecto a la variable **sem_ges\_**, que toman un valor solo si la
+víctima estaba embarazada, `r NA_sem_ges` registros no cuentan con un
+valor en ella
 
-De acuerdo a lo anterior, son
-`r sum(na_empty$total_na) + NA_sem_ges` celdas NA y
-`r sum(na_empty$total_empty)` celdas que fueron definidas como vacías
-poniendo "".
+De acuerdo a lo anterior, son `r sum(na_empty$total_na) + NA_sem_ges`
+celdas NA y `r sum(na_empty$total_empty)` celdas que fueron definidas
+como vacías poniendo "".
 
 ```{r, include=FALSE}
 # Filtrar filas con uno o más valores faltantes o celdas vacias
@@ -2747,13 +3099,14 @@ una columna pueden recibir un valor a partir de otra columna.
 
 ```{r}
 data <- data %>% left_join(
-  barrios %>% filter(!(identifica == "Inst_18")),
+  barrios %>% filter(!(identifica == "Inst_18")) %>% select(nombre,limitecomu,identifica),
   by = c("nombre_barrio" = "nombre", "codigo_comuna" = "limitecomu")) 
 
 aux_data <- data %>% filter(is.na(nombre_barrio) | is.na(codigo_barrio)) 
 ```
 
-Son `r nrow(data)` casos donde se puede completar el código del barrio a partir del nombre. Por ejemplo:
+Son `r nrow(aux_data)` casos donde se puede completar el código del
+barrio a partir del nombre. Por ejemplo:
 
 ```{r}
 aux_data %>% count(codigo_barrio,nombre_barrio) %>% slice_sample(n=5)
@@ -2766,28 +3119,36 @@ data <- data %>%
 
 El número de NA disminuye a `r sum(is.na(data$codigo_barrio))`
 
+```{r}
+data <- data %>% select(-c(identifica,geometry))
+```
+
 #### Comuna de residencia a partir de barrio:
+
 ```{r}
 data %>% filter((is.na(codigo_comuna) | is.na(nombre_comuna)) & (!is.na(codigo_barrio) | !is.na(nombre_comuna))) %>% count(codigo_comuna,nombre_comuna,codigo_barrio,nombre_barrio)
 ```
 
-No hay casos donde se puede completar información de comuna de residencia a partir de barrio.
-
+No hay casos donde se puede completar información de comuna de
+residencia a partir de barrio.
 
 #### Comuna de residencia:
+
 ```{r}
 data %>% filter(is.na(codigo_comuna) | is.na(nombre_comuna)) %>% count(codigo_comuna,nombre_comuna)
 ```
+
 No hay casos donde se pueda completar comuna de residencia entre sí.
 
 #### Municipio de residencia:
+
 ```{r}
 aux_data <- data %>% filter(is.na(cod_mun_r) | is.na(nmun_resi)) 
 
 aux_data %>% count(cod_mun_r,nmun_resi)
 ```
 
-Son `r nrow(aux_data)` registros con código o nombre del municipio NA. 
+Son `r nrow(aux_data)` registros con código o nombre del municipio NA.
 
 ```{r}
 data <- data %>% mutate(
@@ -2801,14 +3162,15 @@ data <- data %>% mutate(
 )
 ```
 
-
 #### Municipio de residencia a partir de comuna:
 
 ```{r}
 aux_data <- data %>% filter(is.na(cod_mun_r) | is.na(nmun_resi))
 aux_data %>% count(cod_mun_r,nmun_resi,codigo_comuna,nombre_comuna)
 ```
-Son `r nrow(aux_data) - 22` registros con información faltante del municipio de residencia que se pueden completar mediante la comuna
+
+Son `r nrow(aux_data) - 22` registros con información faltante del
+municipio de residencia que se pueden completar mediante la comuna
 
 ```{r}
 data <- data %>% mutate(
@@ -2829,7 +3191,9 @@ aux_data <- data %>% filter(is.na(cod_dpto_r) | is.na(ndep_resi))
 
 aux_data %>% count(cod_dpto_r,ndep_resi)
 ```
-No hay manera de completar código y nombre del departamento de residencia entre sí
+
+No hay manera de completar código y nombre del departamento de
+residencia entre sí
 
 #### Departamento de residencia a partir de municipio:
 
@@ -2837,7 +3201,13 @@ No hay manera de completar código y nombre del departamento de residencia entre
 aux_data <- data %>% filter(is.na(cod_dpto_r) | is.na(ndep_resi))
 aux_data %>% count(cod_dpto_r,ndep_resi,cod_mun_r,nmun_resi)
 ```
-Tampoco hay manera de completar mediante municipio
+
+```{r}
+data <- data %>% mutate(
+  cod_dpto_r = ifelse(cod_mun_r == "05001" & is.na(cod_dpto_r),"05",cod_dpto_r),
+  ndep_resi = ifelse(cod_mun_r == "05001" & is.na(ndep_resi),"Antioquia",ndep_resi),
+)
+```
 
 #### País de residencia:
 
@@ -2846,10 +3216,11 @@ aux_data <- data %>% filter(is.na(cod_pais_r) | is.na(npais_resi))
 
 aux_data %>% count(cod_pais_r,npais_resi)
 ```
-No hay manera de completar código y nombre del país de residencia entre sí
 
+No hay manera de completar código y nombre del país de residencia entre
+sí
 
-#### País de residencia a partir de departamento: 
+#### País de residencia a partir de departamento:
 
 ```{r}
 aux_data <- data %>% filter(is.na(cod_pais_r) | is.na(npais_resi))
@@ -2878,10 +3249,12 @@ data$cod_pais_r <- ifelse(data$ndep_resi %in% deptos_colombia,
 ```
 
 #### Área de ocurrencia a partir de lugar:
+
 ```{r}
 aux_data <- data %>% filter(is.na(area_))
 aux_data %>% count(area_,lugar_hecho)
 ```
+
 No hay manera de completar información sobre área del hecho
 
 #### Municipio de ocurrencia:
@@ -2891,28 +3264,23 @@ aux_data <- data %>% filter(is.na(cod_mun_o) | is.na(nmun_proce))
 aux_data %>% count(cod_mun_o,nmun_proce,cod_dpto_o,ndep_proce)
 ```
 
-Para el caso donde el código del municipio es **05042** se asigna **Santa Fé De Antioquia** al nombre. Y en el caso de **La paz** se deja en NA porque en Colombia hay dos municipios llamados de esa manera y no se puede determinar a cuál corresponde. Por ende, no se puede asignar un código
+No hay manera de completar código y nombre del municipio de ocurrencia
+entre sí
 
-```{r}
-data <- data %>% 
-  mutate(nmun_proce = if_else(cod_mun_o == "05042", "Santa Fé De Antioquia", nmun_proce, missing = nmun_proce))
-```
-
-
-#### Municipio de ocurrencia a partir de lugar 
+#### Municipio de ocurrencia a partir de lugar
 
 ```{r}
 aux_data <- data %>% filter(is.na(cod_mun_o) | is.na(nmun_proce))
 aux_data %>% count(cod_mun_o,nmun_proce,lugar_hecho)
 ```
 
-Se asigna Medellín al caso donde el lugar del hecho es **Robledo**
+Se asigna Medellín a todos los casos
+
 ```{r}
 data <- data %>% 
-  mutate(nmun_proce = if_else(lugar_hecho == "Robledo", "Medellín", nmun_proce, missing = nmun_proce),
-         cod_mun_o = if_else(lugar_hecho == "Robledo", "05001", cod_mun_o, missing = cod_mun_o))
+  mutate(nmun_proce = ifelse((is.na(cod_mun_o) | is.na(nmun_proce)) & !is.na(lugar_hecho), "Medellín", nmun_proce),
+         cod_mun_o = ifelse((is.na(cod_mun_o) | is.na(nmun_proce)) & !is.na(lugar_hecho), "05001", cod_mun_o))
 ```
-
 
 #### Departamento de ocurrencia:
 
@@ -2920,7 +3288,9 @@ data <- data %>%
 aux_data <- data %>% filter(is.na(cod_dpto_o) | is.na(ndep_proce))
 aux_data %>% count(cod_dpto_o,ndep_proce)
 ```
-No hay manera de completar código y nombre del delpartamento de ocurrencia entre sí
+
+No hay manera de completar código y nombre del delpartamento de
+ocurrencia entre sí
 
 #### Departamento de ocurrencia a partir de municipio:
 
@@ -2938,17 +3308,20 @@ data <- data %>%
 ```
 
 #### País de ocurrencia:
+
 ```{r}
 aux_data <- data %>% filter(is.na(cod_pais_o) | is.na(npais_proce))
 aux_data %>% count(cod_pais_o,npais_proce)
 ```
-Todos los casos se pueden compeltar a partir de **cod_pais_o**
+
+Todos los casos se pueden completar a partir de **cod_pais_o**
 
 ```{r}
 data <- data %>% mutate(npais_proce = if_else(cod_pais_o == 170, "Colombia", npais_proce, missing = npais_proce))
 ```
 
 #### País de ocurrencia a partir de departamento:
+
 ```{r}
 aux_data <- data %>% filter(is.na(cod_pais_o) | is.na(npais_proce))
 aux_data %>% count(cod_pais_o,npais_proce,cod_dpto_o,ndep_proce)
@@ -2956,117 +3329,30 @@ aux_data %>% count(cod_pais_o,npais_proce,cod_dpto_o,ndep_proce)
 
 No hay casos por completar.
 
-### Crear nuevas variables de georeferencia
+#### Grupos poblacionales
 
-#### Barrio
-
-Si **nombre_barrio** no es NA, la n ueva variable toma su valor. En caso de ser NA, se la asigna a la nueva variable valor de **lugar_hecho**:
-
-```{r}
-# Nombre del barrio
-data <- data %>%
-  mutate(barrio_nuevo = coalesce(nombre_barrio, lugar_hecho) %>% str_to_title())
-
-```
-
+Según la ficha de notificación, si la víctima no pertenece a los grupos
+listados (**gp_discapa, gp_desplaz,etc**) se debe llenar con "Sí" la
+variable **gp_otros** para indicar que pertenece a otro grupo
+poblacional.
 
 ```{r}
-data <- data %>%
-  mutate(
-    barrio_nuevo = recode(
-      barrio_nuevo,
-      # "[Otro]" = NA_character_,
-      # "13" = NA_character_,
-      # "9" = NA_character_,
-      # "Todos Los Barrios" = NA_character_,
-      # "Mall" = NA_character_,
-      # "Medellib" = NA_character_,
-      # "05001" = NA_character_,
-      
-      "Popular 1" = "Popular",
-      "Popular 2" = "Popular",
-      "Vereda El Uvito" = "El Uvito",
-      "Playón De Los Comuneros" = "Playón de Los Comuneros",
-      "Vereda Pedregal" = "Pedregal Alto",
-      "Aguas Frias" = "Aguas Frías",
-      "20 De Julio" = "Veinte de Julio",
-      "Nueva Villa De La Iguaná" = "Nueva Villa de La Iguaná",
-      "Área De Expansión Pajarito" = "Área de Expansión Pajarito",
-      "Vereda La Loma" = "La Loma",
-      "La Loma De Los Bernal" = "La Loma de Los Bernal",
-      "Altos Del Poblado" = "Altos del Poblado",
-      "Picacho" = "El Picacho",
-      "Santa María De Los Ángeles" = "Santa María de Los Ángeles",
-      "El Llano" = "El Llano SE",
-      "Altaviata" = "Altavista",
-      "Corazón De Jesús" = "Corazón de Jesús",
-      "Vereda Yarumalito" = "Yarumalito",
-      "El Vergel" = "Los Cerros El Vergel",
-      "Villa Del Socorro" = "Villa del Socorro"
-      # Aures
-    ))
+gp_ <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+             "gp_gestan", "gp_indigen", "gp_pobicbf", "gp_mad_com", 
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio")
+lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
 ```
 
-
-
-
-```{r}
-# Código del barrio
-data <- data %>%
-  mutate(codigo_barrio_nuevo = coalesce(codigo_barrio, NA)) 
-```
-
-```{r}
-aux_cod_na <- nrow(data %>% filter(is.na(codigo_barrio_nuevo)))
-aux_nogeo <- nrow(data %>% filter(is.na(codigo_barrio_nuevo) & is.na(barrio_nuevo) & is.na(codigo_comuna)))
-```
-
-Existen `r aux_cod_na` registros sin código de barrio. Sin embargo, esta información puede completarse utilizando el nombre del barrio. 
-
-*De esta forma, se recuperan `r aux_cod_na - aux_nogeo` registros, y finalmente quedan `r aux_nogeo` registros sin información de barrio.*
-
-
-```{r}
-data %>%filter(is.na(codigo_barrio_nuevo) & !is.na(barrio_nuevo)) %>% select(codigo_barrio_nuevo, barrio_nuevo, nombre_comuna, codigo_comuna)
-```
-
-
-
-
-
-**hacer desde acá**
-
-si la nueva de codigo es NA entonces coja en codigo que le corresponde 
-
-```{r}
-prueba <- data %>%
-  left_join(
-    barrios %>% 
-      filter(identifica != "Inst_18") %>% 
-      select(nombre, identifica, limitecomu),
-    by = c("barrio_nuevo" = "nombre", "geometry", "identifica")) 
-```
-
-
-
-
-
-
-#### comuna
-
-unir para este barrio traiga cual es su comuna a partir de la base auxiliar de barrios
-
+Por lo tanto, si alguno de los grupos listados es NA y **gp_otros**
+tiene valor igual a 1 (Sí) se cambia ese NA por 2(No). Mientras que sí
+es Na **gp_otros** tiene valor igual a 2(No) se deja igual
 
 ```{r}
 data <- data %>%
-  left_join(
-    barrios %>% filter(!(identifica == "Inst_18")) %>% select(nombre, identifica, limitecomu),
-    by = c("barrio_nuevo" = "nombre", "codigo_comuna" = "limitecomu")
-  ) 
+  mutate(across(all_of(gp_), ~ ifelse(is.na(.x) & gp_otros == 1, 2, .x)))
+
+lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
 ```
-
-
-
 
 #### Variable armas a partir de que\_., cla_gra y ext_que:
 
@@ -3086,30 +3372,162 @@ data %>%
 
 ```
 
-#### Grupos poblacionales
+#### Crear nuevas variables de georeferencia 
 
-Según la ficha de notificación, si la víctima no pertenece a los grupos listados (**gp_discapa, gp_desplaz,etc**) se debe llenar con "Sí" la variable **gp_otros** para indicar que pertenece a otro grupo poblacional. 
+##### Barrio 
+
+Si **nombre_barrio** no es NA, la n ueva variable toma su valor. En
+caso de ser NA, se la asigna a la nueva variable valor de
+**lugar_hecho**:
 
 ```{r}
-gp_ <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
-             "gp_gestan", "gp_indigen", "gp_pobicbf", "gp_mad_com", 
-             "gp_desmovi", "gp_psiquia", "gp_vic_vio")
-lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
+# Nombre del barrio
+
+arr <- data %>% mutate(barrio_nuevo = coalesce(nombre_barrio, lugar_hecho))
+
 ```
 
-Por lo tanto, si alguno de los grupos listados es NA y **gp_otros** tiene valor igual a 1 (Sí) se cambia ese NA por 2(No). Mientras que sí es Na **gp_otros** tiene valor igual a 2(No) se deja igual
+<!-- ```{r} -->
+
+<!-- data <- data %>% -->
+
+<!--   mutate( -->
+
+<!--     barrio_nuevo = recode( -->
+
+<!--       barrio_nuevo, -->
+
+<!--       # "[Otro]" = NA_character_, -->
+
+<!--       # "13" = NA_character_, -->
+
+<!--       # "9" = NA_character_, -->
+
+<!--       # "Todos Los Barrios" = NA_character_, -->
+
+<!--       # "Mall" = NA_character_, -->
+
+<!--       # "Medellib" = NA_character_, -->
+
+<!--       # "05001" = NA_character_, -->
+
+<!--       "Popular 1" = "Popular", -->
+
+<!--       "Popular 2" = "Popular", -->
+
+<!--       "Vereda El Uvito" = "El Uvito", -->
+
+<!--       "Playón De Los Comuneros" = "Playón de Los Comuneros", -->
+
+<!--       "Vereda Pedregal" = "Pedregal Alto", -->
+
+<!--       "Aguas Frias" = "Aguas Frías", -->
+
+<!--       "20 De Julio" = "Veinte de Julio", -->
+
+<!--       "Nueva Villa De La Iguaná" = "Nueva Villa de La Iguaná", -->
+
+<!--       "Área De Expansión Pajarito" = "Área de Expansión Pajarito", -->
+
+<!--       "Vereda La Loma" = "La Loma", -->
+
+<!--       "La Loma De Los Bernal" = "La Loma de Los Bernal", -->
+
+<!--       "Altos Del Poblado" = "Altos del Poblado", -->
+
+<!--       "Picacho" = "El Picacho", -->
+
+<!--       "Santa María De Los Ángeles" = "Santa María de Los Ángeles", -->
+
+<!--       "El Llano" = "El Llano SE", -->
+
+<!--       "Altaviata" = "Altavista", -->
+
+<!--       "Corazón De Jesús" = "Corazón de Jesús", -->
+
+<!--       "Vereda Yarumalito" = "Yarumalito", -->
+
+<!--       "El Vergel" = "Los Cerros El Vergel", -->
+
+<!--       "Villa Del Socorro" = "Villa del Socorro" -->
+
+<!--       # Aures -->
+
+<!--     )) -->
+
+<!-- ``` -->
+
+<!-- ```{r} -->
+
+<!-- # Código del barrio -->
+
+<!-- data <- data %>% -->
+
+<!--   mutate(codigo_barrio_nuevo = coalesce(codigo_barrio, NA))  -->
+
+<!-- ``` -->
+
+<!-- ```{r} -->
+
+<!-- aux_cod_na <- nrow(data %>% filter(is.na(codigo_barrio_nuevo))) -->
+
+<!-- aux_nogeo <- nrow(data %>% filter(is.na(codigo_barrio_nuevo) & is.na(barrio_nuevo) & is.na(codigo_comuna))) -->
+
+<!-- ``` -->
+
+<!-- Existen `r aux_cod_na` registros sin código de barrio. Sin embargo, esta información puede completarse utilizando el nombre del barrio.  -->
+
+<!-- *De esta forma, se recuperan `r aux_cod_na - aux_nogeo` registros, y finalmente quedan `r aux_nogeo` registros sin información de barrio.* -->
+
+<!-- ```{r} -->
+
+<!-- data %>%filter(is.na(codigo_barrio_nuevo) & !is.na(barrio_nuevo)) %>% select(codigo_barrio_nuevo, barrio_nuevo, nombre_comuna, codigo_comuna) -->
+
+<!-- ``` -->
+
+<!-- **hacer desde acá** -->
+
+<!-- si la nueva de codigo es NA entonces coja en codigo que le corresponde  -->
+
+<!-- ```{r} -->
+
+<!-- prueba <- data %>% -->
+
+<!--   left_join( -->
+
+<!--     barrios %>%  -->
+
+<!--       filter(identifica != "Inst_18") %>%  -->
+
+<!--       select(nombre, identifica, limitecomu), -->
+
+<!--     by = c("barrio_nuevo" = "nombre", "geometry", "identifica"))  -->
+
+<!-- ``` -->
+
+<!-- #### comuna -->
+
+<!-- unir para este barrio traiga cual es su comuna a partir de la base auxiliar de barrios -->
+
+<!-- ```{r} -->
+
+<!-- data <- data %>% -->
+
+<!--   left_join( -->
+
+<!--     barrios %>% filter(!(identifica == "Inst_18")) %>% select(nombre, identifica, limitecomu), -->
+
+<!--     by = c("barrio_nuevo" = "nombre", "codigo_comuna" = "limitecomu") -->
+
+<!--   )  -->
+
+<!-- ``` -->
+
+Luego, de completar valores faltantes y crear las nuevas variables, se
+puede observar que disminuyó la cantidad de celdas vacías.
 
 ```{r}
-data <- data %>%
-  mutate(across(all_of(gp_), ~ ifelse(is.na(.x) & gp_otros == 1, 2, .x)))
-
-lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
-```
-
-Luego, de completar valores faltantes, se puede observar que disminuyó la cantidad de celdas vacías.
-
-```{r}
-aux_data <- data %>% select(-all_of(c(ex_columns,"sem_ges_")))
+aux_data <- data %>% select(-all_of(c("sem_ges_")))
 ```
 
 ```{r, echo=FALSE}
@@ -3121,9 +3539,13 @@ na_empty <- data.frame(
   total_empty = sapply(aux_data, function(col)
     sum(col == "", na.rm = TRUE)),
   percent_na = sapply(aux_data, function(col)
-    round(sum(is.na(col)) / nrow(aux_data) * 100,2)),
+    round(sum(is.na(
+      col
+    )) / nrow(aux_data) * 100, 2)),
   percent_empty = sapply(aux_data, function(col)
-    round(sum(col == "", na.rm = TRUE) / nrow(aux_data) * 100,2)),
+    round(
+      sum(col == "", na.rm = TRUE) / nrow(aux_data) * 100, 2
+    )),
   row.names = NULL
 )
 
@@ -3134,15 +3556,16 @@ na_empty
 ```
 
 ```{r, include=FALSE}
-row_na_empty <- data %>% select(-all_of(ex_columns)) %>%
+row_na_empty <- data %>% 
   filter(if_any(everything(), ~ is.na(.)) |
            (gp_gestan == 1 & is.na(sem_ges_)))
 ```
 
-Hecho esto queda un total de `r nrow(row_na_empty)` registros con celdas vacías, lo
-que corresponde al `r round((nrow(row_na_empty)*100)/nrow(data),2)`% de
-la base de datos. Es decir, se pueden utilizar
-`r nrow(data) - nrow(row_na_empty)` registros completos.
+Hecho esto queda un total de `r nrow(row_na_empty)` registros con celdas
+vacías, lo que corresponde al
+`r round((nrow(row_na_empty)*100)/nrow(data),2)`% de la base de datos.
+Es decir, se pueden utilizar `r nrow(data) - nrow(row_na_empty)`
+registros completos.
 
 Ahora, algunas variables tienen más del 50% de los registros con celdas
 vacías, ya sea porque no se registró la información o porque esa
@@ -3165,16 +3588,12 @@ NA_columns
 
 ```{r}
 final_data <- data %>%
-  select(-all_of(c(ex_columns, NA_columns))) %>%
+  select(-all_of(c(NA_columns))) %>%
   filter(!(gp_gestan == 1 & is.na(sem_ges_)))
 ```
 
 Al eliminar estas variables, se obtiene una base de datos con
 **`r nrow(final_data)` registros**.
-
-
-
-
 
 ## Registros duplicados
 
@@ -3206,12 +3625,15 @@ aux_nrow <- final_data %>%
 **Importante 1:** Si se seleccionan las filas con registros totalmente
 completos se tiene una base de datos con **`r aux_nrow` filas**.
 
-**Importante 2:** 
+**Importante 2:**
+
 ```{r}
-summary(as.factor(year(final_data$fec_hecho)))
+summary(as.factor(year(final_data$fec_not)))
 ```
 
-Si se filtran los casos que sucedieron a partir del 2017, quedaría una base con **`r final_data %>% filter(year(fec_hecho) >= 2017) %>% nrow()`**
+Si se filtran los casos que sucedieron a partir del 2017, quedaría una
+base con
+**`r final_data %>% filter(year(fec_not) >= 2017) %>% nrow()`**
 
 ## Conversión a factor
 
@@ -3221,12 +3643,9 @@ hecho, y fechas.
 ```{r}
 final_data <- final_data %>%
   mutate(across(
-    .cols = !all_of(c("edad_", "semana_hecho", "fec_not", "fec_hecho",
-                      "año_hecho")),  
+    .cols = !all_of(c("edad", "fec_not")),  
     .fns = as.factor                     
   ))
-
-
 ```
 
 ## Orden de las columnas
@@ -3238,13 +3657,11 @@ el proceso de análisis.
 final_data <- final_data %>%
   select(
     fec_not,
-    fec_hecho,
-    semana_hecho,
-    mes_hecho,
-    año_hecho,
+    año_not,
     sexo_,
+    ident_gene,
     orient_sex,
-    edad_,
+    edad,
     grupo_edad,
     actividad,
     tip_ss_,
@@ -3265,16 +3682,24 @@ final_data <- final_data %>%
     gp_otros,
     mujer_cabf,
     antec,
+    cod_pais_r,
     npais_resi,
+    cod_dpto_r,
     ndep_resi,
+    cod_mun_r,
     nmun_resi,
+    codigo_barrio,
     nombre_barrio,
+    codigo_comuna,
     nombre_comuna,
     def_naturaleza,
-    area_,
+    cod_pais_o,
     npais_proce,
+    cod_dpto_o,
     ndep_proce,
+    cod_mun_o,
     nmun_proce,
+    area_,
     lugar_hecho,
     consum_spa,
     sust_vict,
@@ -3295,21 +3720,19 @@ final_data <- final_data %>%
     ac_mental,
     remit_prot,
     inf_aut,
-    evi_mlegal,
-    ndep_notif,
-    nmun_notif,
+    evi_mlegal
   )
 ```
 
 # Base de datos depurada
 
-Se guarda como base final la base con todos los registros completos y sin filtrar por año
+Se guarda como base final la base con sin filtrar por año y con los
+valores faltantes para implementar métodos de imputación
 
 ```{r}
-final_data <- final_data %>%
-  filter(if_all(-c(sem_ges_), ~ !is.na(.)))
+# final_data <- final_data %>%
+#   filter(if_all(-c(sem_ges_), ~ !is.na(.)))
 ```
-
 
 ```{r}
 # Guardar base de datos con valores faltantes
@@ -3318,13 +3741,18 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
 
 # Resumen
 
-1.  Analizando la fecha del hecho se observó que la base original tiene registros de casos del 1900 al 2022. Mientras que los años de notificación van desde 2016 hasta 2023. Es decir que el periodo de tiempo que se menciona en la descripción de MEData corresponde es a los años de notificación. Se nombró la base final con 1900_2022 para identificar los casos por el año del hecho
+1.  Analizando la fecha del hecho se observó que la base original tiene
+    registros de casos del 1900 al 2022. Mientras que los años de
+    notificación van desde 2016 hasta 2023. Es decir que el periodo de
+    tiempo que se menciona en la descripción de MEData corresponde es a
+    los años de notificación. Se nombró la base final con 1900_2022 para
+    identificar los casos por el año del hecho
 
-1.  Se filtró la base inicial por personas que se identifican como
-    mujeres o mujer trans y que los casos hayan ocurrido en Medellín,
-    Colombia.
+2.  Se filtró la base inicial por personas que se identifican como
+    mujeres o mujer trans y que los casos hayan sido notificados en
+    Medellín, Colombia.
 
-2.  **Variables que se re-codificaron:**
+3.  **Variables que se re-codificaron:**
 
     -   Lugar de residencia
 
@@ -3342,13 +3770,13 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
 
     -   causa básica de defunción
 
-3.  **Variables que se re-calcularon:**
+4.  **Variables que se re-calcularon:**
 
     -   edad
 
     -   edad agrupada
 
-4.  **Variables que se unificaron:**
+5.  **Variables que se unificaron:**
 
     -   lugar de procedencia con lugar de ocurrencia
 
@@ -3361,17 +3789,17 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
 
     -   parentesco el agresor con la víctima
 
-5.  **Variables con inconsistencias o problemáticas:**
+6.  **Variables con inconsistencias o problemáticas:**
 
-    -   todas las fechas 
+    -   todas las fechas
 
-    -   variables relacionadas con la edad de la víctima 
+    -   variables relacionadas con la edad de la víctima
 
     -   edad del agresor
-    
+
     -   orientación sexual
 
-6.  **Variables que NO están en fichas actuales:**
+7.  **Variables que NO están en fichas actuales:**
 
     -   estrato de la víctima
 
@@ -3379,10 +3807,10 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
 
     -   edad del agresor
 
-7.  **Variables que se eliminaron:** [*inventario
+8.  **Variables que se eliminaron:** [*inventario
     variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing)
 
-8.  **Variables que no se modificaron:**
+9.  **Variables que no se modificaron:**
 
     -   tipo de seguridad social
 
@@ -3400,10 +3828,10 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
 
     -   escenario y ámbito del hecho
 
-9.  La base de datos después de los filtros, tratar las variables,
+10. La base de datos después de los filtros, tratar las variables,
     quitar columnas con 50% o más de valores faltantes y duplicados,
-    quedó compuesta por **`r nrow(final_data)` filas.** Las columnas se especifican en
-    [*inventario
+    quedó compuesta por **`r nrow(final_data)` filas.** Las columnas se
+    especifican en [*inventario
     variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing).
     En esta base están registros con algunos NA correspondientes a las
     columnas con valores faltantes menos del 50% y a la columna de
@@ -3413,10 +3841,14 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
     valores en casos especificos y dado al tipo de dato no es posible
     asignar un valor característico a estos casos.
 
-10. Quitando los registros mencionados en el item anterior, la base
-    final quedaría con las mismas columnas pero **`r aux_nrow` registros completos.**
+11. Quitando los registros mencionados en el item anterior, la base
+    final quedaría con las mismas columnas pero **`r aux_nrow` registros
+    completos.**
 
-    **Nota 1:** Los únicos NA que se encontarían son los presentes en la columna mencionada
-    **Nota 2:** Esta es la base final que se guarda en data/interim
+    **Nota 1:** Los únicos NA que se encontarían son los presentes en la
+    columna mencionada **Nota 2:** Esta es la base final que se guarda
+    en data/interim
 
-11. Si se filtran los casos que sucedieron a partir del 2017, quedaría una base con **`r final_data %>% filter(year(fec_hecho) >= 2017) %>% nrow()`**
+12. Si se filtran los casos que sucedieron a partir del 2017, quedaría
+    una base con
+    **`r final_data %>% filter(year(fec_not) >= 2017) %>% nrow()`**
