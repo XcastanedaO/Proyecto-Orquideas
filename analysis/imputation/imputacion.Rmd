@@ -1,0 +1,196 @@
+---
+title: "Untitled"
+author: "yo"
+date: "2025-03-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Cargar librerías
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(tidyr)
+```
+
+
+## Lectura de los datos
+Se lee la base de datos que ya está depurada.
+
+```{r}
+source("../../utils/load_data.R")
+data_model <- load_data("medata_1900_2022_debugged.csv", type = "interim")
+```
+
+
+## Total NA por variable
+
+```{r}
+na_empty <- data.frame(
+  Column = names(data_model),
+  total_na = sapply(data_model, function(col)
+    sum(is.na(col))),
+  percent_na = sapply(data_model, function(col)
+    round(sum(is.na(col)) / nrow(data_model) * 100,2)),
+  row.names = NULL)
+
+na_empty <- na_empty %>% arrange(desc(percent_na))
+```
+
+De las variables que se van a utilizar en el primer modelo, las que más contiene NA son **sexo_agre** y **parentezco_agresor**. Las otras que se utilizan en el primer modelo, o no tienen NA o tienen menos de 5, por lo que resulta conveniente eliminar estos registros completos.
+
+## # Cambiar categorías
+
+Se puede considerar quitarlo de este código y ponerlo en la depuración
+
+```{r}
+# Pertenencia étnica (no se utiliza en el modelo)
+data_model <- data_model %>% 
+  mutate(per_etn_ = case_when(
+    per_etn_ == 1 ~ 1,
+    per_etn_ == 2 ~ 1,
+    per_etn_ == 3 ~ 1,
+    per_etn_ == 4 ~ 1,
+    per_etn_ == 5 ~ 1,
+    per_etn_ == 6 ~ 2
+  ))
+
+# area_
+data_model <- data_model %>% 
+  mutate(area_ = case_when(
+    area_ == 1 ~ "Cabecera municipal",
+    area_ == 2 ~ "Centro poblado",
+    area_ == 3 ~ "Rural disperso"
+  ))
+
+# naturaleza violencia
+data_model <- data_model %>% 
+  mutate(def_naturaleza = case_when(
+    def_naturaleza == 1 ~ "Violencia física",
+  def_naturaleza == 2 ~ "Violencia psicológica",
+  def_naturaleza == 3 ~ "Negligencia y abandono",
+  def_naturaleza %in% c(4, 5, 6, 7, 10, 12, 14) ~ "Violencia sexual"
+  ))
+
+
+# Escenario
+data_model <- data_model %>% 
+  mutate(escenario = case_when(
+    escenario == 1 ~ "Vía Pública",
+    escenario == 2 ~ "Vivienda",
+    escenario == 3 ~ "Establecimiento educativo",
+    escenario == 4 ~ "Lugar de trabajo",
+    escenario == 5 ~ "Área deportiva y recreativa",
+    escenario == 6 ~ "Área deportiva y recreativa",
+    escenario == 7 ~ "Otro",
+    escenario == 8 ~ "Comercio y áreas de servicios",
+    escenario == 9 ~ "Espacios abiertos",
+    escenario == 10 ~ "Lugares de esparcimiento con expendio de alcohol",
+    escenario == 11 ~ "Institución de salud",
+    escenario == 12 ~ "Área deportiva y recreativa"))
+```
+
+
+
+```{r}
+data_model$sexo_agre <- as.factor(data_model$sexo_agre)
+data_model$parentezco_agresor <- as.factor(data_model$parentezco_agresor)
+```
+
+
+
+## Imputar NAs
+
+- Se aplica el método de imputación MICE únicamente para las variables que se van a incluir en el modelo por ahora, con el método Random Forest.
+
+```{r}
+library(mice)
+# Aplicamos imputación con MICE
+imputed_data <- mice(data_model[, c("edad", "sexo_agre", "parentezco_agresor")], 
+                     method = "rf", m = 5)# solo son las variables que se usan en el modelo
+
+
+# Reemplazamos los valores faltantes con los datos imputados
+Datos_imputados <- complete(imputed_data)
+
+
+# Actualizamos las columnas imputadas sin generar nombres duplicados
+data_model <- data_model %>%
+  mutate(across(c(edad, sexo_agre, parentezco_agresor), 
+                ~ Datos_imputados[[cur_column()]]))
+```
+
+# Reagrupar valores poco frecuentes y eliminar NA
+- Solo fue para motivo en el curso para disminuir categorías que no tuvieran mucha frecuencia, igualmente, se puede considerar quitar la reagrupacion.
+
+```{r}
+data_model <- data_model %>%
+  mutate(across(
+    .cols = !all_of(c("edad")),  
+    .fns = as.factor                     
+  )) %>%
+  
+  # Variable parentezco
+  mutate(parentezco_agresor = case_when(
+    parentezco_agresor %in% c("Compañero(a) de estudio", "Compañero(a) de trabajo",
+                             "Jefe", "Profesor(a)", "Sacerdote/Pastor", "Servidor(a) público") ~ "Otro",
+    parentezco_agresor == "Vecino(a)" ~ "Conocido(a)",
+    TRUE ~ parentezco_agresor
+  )) %>% 
+  
+  drop_na(area_, conv_agre, escenario)
+```
+
+
+
+# Recodificación para las variables del modelo
+
+Considerar cambiar los niveles de referencia.
+
+```{r}
+data_model <- data_model %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c(2, 1)),
+    
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Violencia física", "Violencia psicológica", "Violencia sexual")),
+    
+    area_ = factor(area_, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+    
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+    
+    parentezco_agresor = factor(parentezco_agresor, levels = c("Otro", "Pareja", "Familiar", "Ex_Pareja", "Padre", "Madre", "Conocido(a)", "Amigo(a)", "Desconocido(a)")),
+    
+    escenario = factor(escenario, levels = c("Otro", "Área deportiva y recreativa", "Comercio y áreas de servicios", "Espacios abiertos", "Establecimiento educativo", "Institución de salud", "Lugar de trabajo", "Lugares de esparcimiento con expendio de alcohol", "Vía Pública", "Vivienda")),
+    
+    conv_agre = factor(conv_agre, levels = c(2, 1)),
+    pac_hos_ = factor(pac_hos_, levels = c(2, 1)),
+    inf_aut = factor(inf_aut, levels = c(2, 1))
+  )
+
+# Convertir variable respuesta a binaria
+data_model$ac_mental <- as.integer(as.character(data_model$ac_mental))
+data_model$ac_mental <- ifelse(data_model$ac_mental == 2, 0, 1)
+```
+
+
+
+
+
+```{r}
+# Guardar base de datos 
+save_data(data_model, "data_model", type = "processed", format = "csv")
+```
+
+
+
