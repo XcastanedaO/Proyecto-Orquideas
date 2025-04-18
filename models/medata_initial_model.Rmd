@@ -1,0 +1,188 @@
+---
+title: "Modelo Logístico Bayesiano para Predicción de Atención en Salud Mental"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Cargar librerías necesarias
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(here)
+library(tidyr)
+library(rstan)
+library(bayesplot)
+library(pROC)
+```
+
+
+# Lectura y preparación de la base de datos
+
+```{r}
+source("../utils/load_data.R")
+data_model <- load_data("data_model.csv", type = "processed")
+```
+
+
+
+# Muestreo estratificado (10,000 observaciones)
+
+```{r}
+# Calcular proporciones por categoría de respuesta
+prop_categ <- prop.table(table(data_model$ac_mental))
+tam_categ <- round(10000 * prop_categ)
+
+# Realizar muestreo estratificado según proporciones
+set.seed(123)
+muestra <- data_model %>%
+  split(.$ac_mental) %>%
+  map2_df(tam_categ, sample_n)
+
+# Verificar que las proporciones en la muestra se mantengan
+prop.table(table(muestra$ac_mental))
+```
+
+
+# Construcción de la matriz de diseño
+
+```{r}
+X <- model.matrix(ac_mental ~ 
+                    edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario,
+                  data = muestra)[, -1]
+
+datos_stan <- list(
+  N = nrow(muestra),
+  K = ncol(X),
+  X = X,
+  y = as.integer(muestra$ac_mental)
+)
+```
+
+
+# Ajuste del modelo logístico en Stan
+
+```{r}
+modelo_logistico <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 3
+)
+```
+
+# Resumen y diagnóstico del modelo
+
+```{r}
+print(modelo_logistico, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
+```
+
+```{r}
+# Gráficos de diagnóstico
+
+#traceplot(as.array(modelo_logistico, pars = c("alpha","beta")))
+mcmc_acf(as.matrix(modelo_logistico, pars = c("alpha", "beta")))
+mcmc_intervals(as.matrix(modelo_logistico, pars = "beta"))
+mcmc_hist(as.matrix(modelo_logistico, pars = "beta"))
+mcmc_trace(as.array(modelo_logistico), pars = c("alpha", "beta[1]", "beta[2]"))
+```
+
+
+
+```{r}
+# hacer gráficos de convergencia uno por uno
+mcmc_trace(as.array(modelo_logistico), pars = c("alpha", "beta[1]", "beta[2]"))
+```
+
+
+# Evaluación de ajuste y matriz de confusión
+
+```{r}
+# Extraer coeficientes estimados
+posterior_samples <- extract(modelo_logistico)
+
+# Calcular la media de los coeficientes estimados
+alpha_hat <- mean(posterior_samples$alpha)  
+beta_hat <- colMeans(posterior_samples$beta)  
+
+# Calcular probabilidades predichas
+probs_predichas <- plogis(alpha_hat + X %*% beta_hat)
+
+# Convertir a clases (umbral de 0.5)
+predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
+
+# Matriz de confusión
+confusion_matrix <- table(Real = muestra$ac_mental, Predicho = predicciones_binarias)
+```
+
+
+# Métricas de desempeño y curva ROC
+
+```{r}
+TN <- confusion_matrix[1,1]
+FP <- confusion_matrix[1,2]
+FN <- confusion_matrix[2,1]
+TP <- confusion_matrix[2,2]
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+cat("Accuracy:", accuracy, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall (Sensibilidad):", recall, "\n")
+cat("F1-Score:", f1_score, "\n")
+
+roc_obj <- roc(muestra$ac_mental, as.numeric(probs_predichas))
+auc(roc_obj)
+plot(roc_obj, col = "#377eb8", main = "Curva ROC")
+```
+
+
+
+# Interpretación: Odds Ratios
+
+```{r}
+# Calcular Odds Ratios
+odds_ratios <- exp(beta_hat)
+intercepto_OR <- exp(alpha_hat)
+
+# Crear tabla de resultados
+tabla_resultados <- data.frame(
+  Parametro = paste0("β", 1:length(odds_ratios)),
+  Variable = colnames(X),
+  Odds_Ratio = odds_ratios
+)
+
+# Mostrar tabla
+print(tabla_resultados, row.names = FALSE)
+```
+
+
+
+
+
+
+
+
+
