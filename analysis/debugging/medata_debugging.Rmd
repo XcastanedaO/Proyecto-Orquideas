@@ -2387,10 +2387,16 @@ data <- data %>%
       lugar_hecho %in% c("AURORA","ROBLEDO LA AURORA", "ROBLEDO AURA","LA AURORA-ROBLEDO","ROBLEDO - LA AURORA","LA  AURORA","LA AURORA", "LAURORA- MANRIQUE", "LA AURORAA", "LA AURORA EL TIROL","LAAURORA", "ROBLEDO LAS FLORES","LAS FLOREZ", "LAS FLORES","LA FLORES","ROBLEDO LAS MARGARITAS", "ROBLEDO MARGARITAS", "ROBLEDO LAS MARGARIT", "ROBLEDO LA CASCADA", "ROBLEDO - LA CASCADA", "ROBLEDO - LAS FLORES",  "ROBLEDO CANTARES 4","ROBLEDO - LAS FLORES", "LA CASCADA", "LA CASCAD","ROBLEDO - LA AURORA","ROBLEDO EL TIROL", "ROBLEDO CANTARES 4",  "ROBLEDO EL TIROL 2","EL TIROL 3", "TIROL","TIROL 2","TIROL 3","LAS MAREGARITA", "LAS MARGARITAS", "MARGARITAS", "CANTRES 5","LA CAPILLA",
 "RENACERES") ~ "Santa Margarita",
 
+      lugar_hecho %in% c("No Aplica", "No Desea Reportar", "Medellín sin tugurios") ~ NA_character_,
+
+
+
       TRUE ~ str_to_title(tolower(lugar_hecho))
     )
   )
 ```
+
+
 
 -   Como se vio en secciones anteriores, la mayoría de los casos
     ocurrieron en Medellín entonces se comienza verificando si los
@@ -3375,7 +3381,22 @@ data %>%
 
 #### Crear nuevas variables de georeferencia 
 
+<!-- Primero depuramos unas categorías que no se habían hecho previamente. -->
+
+<!-- ```{r} -->
+<!-- data <- data %>% -->
+<!--   mutate( -->
+<!--     lugar_hecho = case_when( -->
+<!--       lugar_hecho %in% c("No Aplica", "No Desea Reportar", "Medellín sin tugurios") ~ NA_character_, -->
+<!--       TRUE ~ lugar_hecho -->
+<!--     )) -->
+
+<!-- ``` -->
+
+
 ##### Barrio (nombre)
+
+
 
 Si **nombre_barrio** no es NA, la nueva variable toma su valor. En
 caso de ser NA, se la asigna a la nueva variable valor de
@@ -3383,8 +3404,11 @@ caso de ser NA, se la asigna a la nueva variable valor de
 
 ```{r}
 # Nombre del barrio
-data <- data %>% mutate(barrio_nuevo = coalesce(nombre_barrio, lugar_hecho))
+data <- data %>%
+  mutate(barrio_nuevo = coalesce(nombre_barrio, lugar_hecho)  # construir nueva variable
+  )
 ```
+
 
 ```{r}
 # Verificar que los nombres sean correctos
@@ -3411,11 +3435,11 @@ data <- data %>% mutate(
   "Doce De Octunre", "12 De Cotubre", "12 De Ctubre", "12 De Ocyubre", "12-Oct",
   "12 De Ocyubre", "12 De Octubtre", "12 De Ctubre", "12-Oct","Comuna 6") ~ "06",
   
-  str_detect(barrio_nuevo, regex("^(SAN\\s?CRIST[ÓO]B[A-Z]*|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL|Vereda La Palma|Vereda Las Playas|Vereda Pajarito|Vereda Palma Alta|Corr San Cristobal San Cristóbal|Corregimiento San Cristoba|Cristobal)$", ignore_case = TRUE)) ~ "60",
+  str_detect(barrio_nuevo, regex("^(SAN\\s?CRIST[ÓO]B[A-Z]*|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL|Vereda La Palma|Vereda Las Playas|Vereda Pajarito|Vereda Palma Alta|Corr San Cristobal San Cristóbal|Corregimiento San Cristoba|Cristobal|Corregimiento de San Cristóbal)$", ignore_case = TRUE)) ~ "60",
   
   str_detect(barrio_nuevo, regex("\\b(CORREGIMIENTO|CORR)\\sALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\sLOS\\sCHIVOS\\b", ignore_case = TRUE)) ~ "70",
   
-  str_detect(barrio_nuevo, regex("\\bCORREGIMIENTO\\sSAN\\sANTONIO\\b(?!\\sDE\\sPRADO)|\\bCORREGIMIENTO\\sSAN\\sAN\\b(?!\\sDE\\sPRADO|San Antonio De Parado|San Antionio Prado)", ignore_case = TRUE)) ~ "80",
+  str_detect(barrio_nuevo, regex("\\bCORREGIMIENTO\\sSAN\\sANTONIO\\b(?!\\sDE\\sPRADO)|\\bCORREGIMIENTO\\sSAN\\sAN\\b(?!\\sDE\\sPRADO|San Antonio De Parado|San Antionio Prado|Corregimiento de San Antonio de Prado)", ignore_case = TRUE)) ~ "80",
   
   str_detect(barrio_nuevo, regex("^(MANRIQUE|MANRIUE|MANRI|MANRIOQUE|MNRIQUE|Ma(n)?rrique|Comuna 3)$", ignore_case = TRUE)) ~ "03",
   
@@ -3429,7 +3453,20 @@ data <- data %>% mutate(
   TRUE ~ limitecomu
 
 ))
+
 ```
+
+
+```{r}
+data <- data %>%
+  mutate(cod_comuna_nuevo = case_when(
+    barrio_nuevo %in% c("Corregimiento de San Antonio de Prado") ~ "80", 
+    barrio_nuevo %in% c("Corregimiento de San Cristóbal") ~ "60",
+    barrio_nuevo %in% c("Villa Hermosa") ~ "08",
+    TRUE ~ limitecomu
+  ))
+```
+
 
 ```{r}
 data <- data %>% select(-limitecomu,-geometry)
@@ -3446,6 +3483,8 @@ data <- data %>% mutate(
   "Doce De Octunre", "12 De Cotubre", "12 De Ctubre", "12 De Ocyubre", "12-Oct",
   "12 De Ocyubre", "12 De Octubtre", "12 De Ctubre", "12-Oct","Comuna 6","Doce De Octiubre", "Doce  De Octubre","Doce De Oct") ~ NA_character_,
   
+  barrio_nuevo %in% c("No Aplica", "No Desea Reportar", "Medellín sin tugurios") ~ NA_character_,
+ 
     str_detect(barrio_nuevo, regex("^(SAN\\s{1,2}CR(?:I[sz]T(?:[ÓO]B(?:A[L1I]|AL)?|ONAL|OBAL|ONBAL|OB[AI]L|OBL)|SATO?BAL|STOBAL|STOB[AI]L|SRTOBAL|CRSTOBAL)|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL|CORR(?:\\s)?SAN\\sCRIST[ÓO]BAL|CORREGIMIENTO\\sSAN\\sCRISTO?BA[LI]|CRISTOBAL|Cabecera Urbana Corregimiento San Cristóbal|San Crsitobal|San Cristibal|San Critobal|San Cristiobal|San Crisatobal|San Cristbal|San Cristoba|Corr San Cristobal San Cristóbal|San Crostobal|San Cristobla|San Crlstobal|San Critobal)$", ignore_case = TRUE)) ~ NA_character_,
   
   
@@ -3502,7 +3541,128 @@ data <- data %>% mutate(
 ```
 
 
+##### Comuna (nombre)
+
+Teniendo los nuevos códigos de las comunas correctos, se asigna a cada uno de ellos el correspondiente nombre de la comuna de Medellín, en caso de no exisir un registro para el código nuevo de comuna, y el nombre de comuna antiguo sí exista, se asigna ese.
+
+
+```{r}
+# Crear comuna_nuevo desde cod_comuna_nuevo
+data <- data %>%
+  mutate(
+    comuna_nuevo = case_when(
+      cod_comuna_nuevo == "01" ~ "Popular",
+      cod_comuna_nuevo == "02" ~ "Santa Cruz",
+      cod_comuna_nuevo == "03" ~ "Manrique",
+      cod_comuna_nuevo == "04" ~ "Aranjuez",
+      cod_comuna_nuevo == "05" ~ "Castilla",
+      cod_comuna_nuevo == "06" ~ "Doce de Octubre",
+      cod_comuna_nuevo == "07" ~ "Robledo",
+      cod_comuna_nuevo == "08" ~ "Villa Hermosa",
+      cod_comuna_nuevo == "09" ~ "Buenos Aires",
+      cod_comuna_nuevo == "10" ~ "La Candelaria",
+      cod_comuna_nuevo == "11" ~ "Laureles-Estadio",
+      cod_comuna_nuevo == "12" ~ "La América",
+      cod_comuna_nuevo == "13" ~ "San Javier",
+      cod_comuna_nuevo == "14" ~ "El Poblado",
+      cod_comuna_nuevo == "15" ~ "Guayabal",
+      cod_comuna_nuevo == "16" ~ "Belén",
+      cod_comuna_nuevo == "50" ~ "San Sebastián de Palmitas",
+      cod_comuna_nuevo == "60" ~ "San Cristóbal",
+      cod_comuna_nuevo == "70" ~ "Altavista",
+      cod_comuna_nuevo == "80" ~ "San Antonio de Prado",
+      cod_comuna_nuevo == "90" ~ "Corregimiento de Santa Elena",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Completar NA con nombre_comuna si existe
+data <- data %>%
+  mutate(
+    comuna_nuevo = if_else(is.na(comuna_nuevo) & !is.na(nombre_comuna),
+                           nombre_comuna, comuna_nuevo)
+  )
+```
+
+
+```{r}
+# Verificar que los códigos coincidan
+aux <- data %>%
+  filter(!(cod_comuna_nuevo) %in% ((barrios$limitecomu)))  %>% count(nombre_comuna, comuna_nuevo, cod_comuna_nuevo, , name ="Cantidad")
+```
+
+
+```{r}
+data %>% filter(cod_comuna_nuevo == "0") %>% nrow()
+```
+
+```{r}
+data <- data %>%
+  mutate(cod_comuna_nuevo = if_else(cod_comuna_nuevo == "0", NA_character_, cod_comuna_nuevo))
+```
+
+
+Aunque ya había sido creada la variable del código de comuna, podemos completar con los nombres que hay ahora.
+
+```{r}
+data <- data %>%
+  mutate(
+    cod_comuna_nuevo = case_when(
+      comuna_nuevo == "Corregimiento de San Antonio de Prado" ~ "80",
+      comuna_nuevo == "Corregimiento de San Cristóbal" ~ "60",
+      comuna_nuevo == "Villa Hermosa" ~ "08",
+      TRUE ~ cod_comuna_nuevo
+    ))
+```
+
+
+
+
 ##### Código del barrio
+
+
+```{r}
+data <- data %>% 
+  left_join(
+    barrios %>% 
+      filter(identifica != "Inst_18") %>%
+      distinct(nombre, .keep_all = TRUE) %>%
+      select(nombre, identifica),
+    by = c("barrio_nuevo" = "nombre")
+  ) %>%
+  rename(cod_barrio_nuevo = identifica) %>%
+  select(-geometry)
+
+```
+
+
+```{r}
+aux <- data %>%
+  filter(!(cod_barrio_nuevo) %in% ((barrios$identifica)))  %>% count(barrio_nuevo, cod_barrio_nuevo, nombre_comuna, name ="Cantidad")
+```
+
+
+
+
+
+##### Municipio
+
+Se crea la nueva variable de municipio. Esta indica que, si existe algún registro para la comuna o para el barrio, asigne el municipio de Medellín, en caso contrario asigne NA.
+
+
+```{r}
+data <- data %>%
+  mutate(
+    municipio_nuevo = case_when(
+      !is.na(comuna_nuevo) | !is.na(barrio_nuevo) ~ "Medellín",
+      TRUE ~ NA_character_))
+```
+
+
+
+
+
+
 
 <!-- ```{r} -->
 <!-- arr <- arr %>% mutate(codigo_barrio_nuevo = coalesce(codigo_barrio, NA)) -->
@@ -3742,9 +3902,12 @@ final_data <- final_data %>%
     remit_prot,
     inf_aut,
     evi_mlegal,
+    cod_barrio_nuevo,
     barrio_nuevo,
-    cod_comuna_nuevo
-  )
+    cod_comuna_nuevo,
+    comuna_nuevo,
+    municipio_nuevo
+    )
 ```
 
 # Base de datos depurada
