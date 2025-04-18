@@ -1,8 +1,15 @@
 ---
-title: "Untitled"
-author: "yo"
-date: "2025-03-21"
-output: html_document
+title: "Imputación de datos faltantes medata"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
