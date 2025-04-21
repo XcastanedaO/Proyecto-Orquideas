@@ -3894,9 +3894,12 @@ final_data <- final_data %>%
     remit_prot,
     inf_aut,
     evi_mlegal,
+    cod_barrio_nuevo,
     barrio_nuevo,
-    cod_comuna_nuevo
-  )
+    cod_comuna_nuevo,
+    comuna_nuevo,
+    municipio_nuevo
+    )
 ```
 
 # Base de datos depurada
