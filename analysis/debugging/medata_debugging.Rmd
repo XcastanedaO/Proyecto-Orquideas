@@ -3647,61 +3647,59 @@ aux <- data %>%
 
 ##### Municipio
 
-Se crea la nueva variable de municipio. Esta indica que, si existe algún registro para la comuna o para el barrio, asigne el municipio de Medellín, en caso contrario asigne NA.
+Se crea la nueva variable de municipio. Esta indica que, si el barrio corresponde a Medellín, asigne el municipio de Medellín, en caso contrario asigne NA.
 
 
 ```{r}
+# Asignar casos de Medellín
 data <- data %>%
   mutate(
     municipio_nuevo = case_when(
-      !is.na(comuna_nuevo) | !is.na(barrio_nuevo) ~ "Medellín",
+      (str_to_lower(barrio_nuevo) %in% str_to_lower(barrios$nombre)) ~ "Medellín",
       TRUE ~ NA_character_))
+
+
+# Asignar casos de otros municipios
+data <- data %>%
+  mutate(
+    municipio_nuevo = case_when(
+      barrio_nuevo %in% c(
+        "Alcalá",
+        "Altos De Oriente",
+        "Barrio Nuevo",
+        "Cabañas",
+        "Cabañitas",
+        "El Cairo",
+        "El Paraíso",
+        "El Trapiche",
+        "Hatoviejo",
+        "La Gabriela",
+        "La Navarra",
+        "Machado",
+        "Madera",
+        "Manantiales",
+        "Nueva Jerusalén",
+        "Pachelly",
+        "París",
+        "Playa Rica",
+        "Santa Ana",
+        "Santa Rita",
+        "Villa María",
+        "Zamora"
+      ) ~ "Bello",
+      barrio_nuevo %in% c("Aragón", "Mortinal") ~ "Santa Rosa de Osos",
+      barrio_nuevo == "Cañaveralejo" ~ "Sabaneta",
+      barrio_nuevo == "El Concilio" ~ "Salgar",
+      barrio_nuevo == "El Trianon" ~ "Envigado",
+      barrio_nuevo == "Llanos De Cuiva" ~ "Yarumal",
+      barrio_nuevo == "Popalito" ~ "Barbosa",
+      barrio_nuevo == "Los Cerezos" ~ "Caldas",
+      barrio_nuevo == "Yarumito" ~ "Itagüí",
+      str_detect(barrio_nuevo, "^Exterior\\[.*\\]$") ~ barrio_nuevo,
+      TRUE ~ municipio_nuevo
+    )
+  )
 ```
-
-
-
-
-
-
-
-<!-- ```{r} -->
-<!-- arr <- arr %>% mutate(codigo_barrio_nuevo = coalesce(codigo_barrio, NA)) -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- aux_cod_na <- nrow(arr %>% filter(is.na(codigo_barrio_nuevo))) -->
-<!-- aux_nogeo <- nrow(arr %>% filter(is.na(codigo_barrio_nuevo) & is.na(barrio_nuevo) & is.na(codigo_comuna))) -->
-<!-- ``` -->
-
-<!-- Existen `r aux_cod_na` registros sin código de barrio. Sin embargo, esta información puede completarse utilizando el nombre del barrio. *De esta forma, se recuperan `r aux_cod_na - aux_nogeo` registros, y finalmente quedan `r aux_nogeo` registros sin información de barrio.* -->
-<!-- ```{r} -->
-<!--  data %>%filter(is.na(codigo_barrio_nuevo) & !is.na(barrio_nuevo)) %>% select(codigo_barrio_nuevo, barrio_nuevo, nombre_comuna, codigo_comuna)  -->
-
-<!-- ``` -->
-
-
-
-
-
-<!-- **hacer desde acá** -->
-
-<!-- si la nueva de codigo es NA entonces coja en codigo que le corresponde  -->
-
-<!-- ```{r} -->
-
-<!-- prueba <- data %>% -->
-
-<!--   left_join( -->
-
-<!--     barrios %>%  -->
-
-<!--       filter(identifica != "Inst_18") %>%  -->
-
-<!--       select(nombre, identifica, limitecomu), -->
-
-<!--     by = c("barrio_nuevo" = "nombre", "geometry", "identifica"))  -->
-
-<!-- ``` -->
 
 
 Luego, de completar valores faltantes y crear las nuevas variables, se
