@@ -705,75 +705,67 @@ Esta gráfica y los datos sugieren que el tiempo de notificación es generalment
 
 #### Antecedentes
 
-##### Reincidencia según la violencia
+##### Reincidencia según tipo de violencia
 
 ```{r}
 base_datos %>%
-  group_by(def_naturaleza, antec) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(def_naturaleza) %>%  # Agrupar nuevamente por tipo de violencia
-  mutate(proporcion = round(n / sum(n) * 100, 4))
-
-```
-
-
-```{r}
-base_datos %>%
-  filter(!is.na(def_naturaleza)) %>%
+  mutate(
+    antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
+    
+    def_naturaleza = case_when(
+      def_naturaleza == "1" ~ "Física",
+      def_naturaleza == "2" ~ "Psicológica",
+      def_naturaleza == "3" ~ "Negligencia",
+      def_naturaleza == "4" ~ "Abuso Sexual",
+      def_naturaleza == "5" ~ "Acoso Sexual",
+      def_naturaleza == "6" ~ "Acceso carnal",
+      def_naturaleza == "7" ~ "Explotación sexual",
+      def_naturaleza == "10" ~ "Trata de personas",
+      def_naturaleza == "12" ~ "Actos sexuales",
+      def_naturaleza == "14" ~ "Otras violencias sexuales",
+      is.na(def_naturaleza) ~ "Sin información",
+      TRUE ~ def_naturaleza
+    )
+  ) %>%
   group_by(def_naturaleza, antec) %>%
   summarise(n = n(), .groups = "drop") %>%
   ggplot(aes(x = def_naturaleza, y = n, fill = antec)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
-  labs(title = "Proporción de Reincidencia según Tipo de Violencia",
+   scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
+  labs(title = "Proporción de reincidencia según tipo de violencia",
        x = "Tipo de Violencia",
        y = "Proporción",
        fill = "Reincidencia") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
 ```
+El gráfico anterior indica que el acceso carnal tiene la tasa de reincidencia más alta (13.45%), lo que sugiere que quienes han sufrido este tipo de violencia tienen más probabilidad de volver a ser víctimas. La explotación sexual también tiene un porcentaje considerable de reincidencia (13.33%), lo que es preocupante porque sugiere una revictimización frecuente.
+Finalmente, la violencia psicológica y la negligencia tienen muy baja reincidencia, lo que puede deberse a que las víctimas no reportan estos casos o a que los agresores no son recurrentes en estos tipos de violencia.
 
-```{r}
-base_datos %>%
-  filter(!is.na(def_naturaleza)) %>%
-  group_by(def_naturaleza, antec) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  ggplot(aes(x = def_naturaleza, y = n, fill = antec)) +
-  geom_bar(stat = "identity", position = "fill") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  scale_fill_manual(values = c("#c07dca", "#e07a5f")) +  # Mantiene coherencia con la paleta
-  labs(title = "Proporción de Reincidencia según Tipo de Violencia",
-       x = "Tipo de Violencia",
-       y = "Porcentaje de casos (%)",
-       fill = "Reincidencia") +
-  theme_minimal(base_size = 14) +  # Tamaño de fuente más grande
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
-    legend.position = "top"
-  )
-
-```
-
-La violencia física tiene la tasa de reincidencia más alta (10.46%), lo que sugiere que quienes han sufrido este tipo de violencia tienen más probabilidad de volver a ser víctimas.
-La violencia sexual también tiene un porcentaje considerable de reincidencia (6.62%), lo que es preocupante porque sugiere una revictimización frecuente.
-La violencia psicológica y la negligencia tienen muy baja reincidencia, lo que puede deberse a que las víctimas no reportan estos casos o a que los agresores no son recurrentes en estos tipos de violencia.
 
 ##### Reincidencia según área
-La reincidencia es más alta en las zonas rurales (15.14%) que en las cabeceras municipales (6.94%).
-Esto sugiere que en las zonas rurales hay más casos de revictimización, posiblemente por falta de acceso a medidas de protección o por dinámicas familiares y comunitarias donde la violencia es más recurrente.
-En contraste, en las cabeceras municipales la reincidencia es menor, lo que podría indicar una mayor presencia de instituciones de apoyo o mecanismos de protección más efectivos.
+El siguiente gráfico evidencia que la reincidencia es más alta en las cabeceras municipales (7.24%) que en las zonas rurales (0.26%)
 
 ```{r}
 base_datos %>%
-  filter(!is.na(area_)) %>%
+  mutate(
+    antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
+    
+    area_ = case_when(
+      is.na(area_) ~ "Sin información",
+      area_ == "1" ~ "Cabecera municipal",
+      area_ == "2" ~ "Centro poblado",
+      area_ == "3" ~ "Rural disperso",
+    )
+  ) %>%
   group_by(area_, antec) %>%
   summarise(n = n(), .groups = "drop") %>%
   ggplot(aes(x = area_, y = n, fill = antec)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
-  labs(title = "Proporción de Reincidencia según Área",
+ scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
+  labs(title = "Proporción de reincidencia según área",
        x = "Área",
        y = "Proporción",
        fill = "Reincidencia") +
@@ -781,94 +773,33 @@ base_datos %>%
 
 ```
 
-```{r}
-library(ggplot2)
-library(dplyr)
-library(forcats)
-library(scales)
-
-base_datos %>%
-  filter(!is.na(area_)) %>%
-  group_by(area_, antec) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  mutate(area_ = fct_reorder(area_, n, .fun = sum)) %>%  # Reordenar las áreas según la suma de casos
-  ggplot(aes(x = area_, y = n, fill = antec)) +
-  geom_bar(stat = "identity", position = "fill") +
-  scale_y_continuous(labels = percent_format()) +
-  scale_fill_manual(values = c("#c07dca", "#e07a5f")) +  # Aplicando los colores personalizados
-  labs(title = "Proporción de Reincidencia según Área",
-       x = "Área",
-       y = "Proporción",
-       fill = "Reincidencia") +
-  theme_minimal(base_size = 14) +  # Ajuste de tamaño de texto para mejor visualización
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
-    legend.position = "top"
-  )
-
-```
-
-
 #### Convivencia
 
-<!-- ##### Ámbito vs convivencia -->
-
-<!-- ```{r} -->
-<!-- base_datos %>% -->
-<!--   filter(conv_agre != "") %>%  -->
-<!--   group_by(categoria_ambito, conv_agre) %>% -->
-<!--   summarise(n = n(), .groups = "drop") %>% -->
-<!--   group_by(categoria_ambito) %>% -->
-<!--   mutate(proporcion = round(n / sum(n) * 100, 2))  -->
-<!-- ``` -->
-
-
-
-<!-- ```{r} -->
-<!-- base_datos %>% -->
-<!--   filter(conv_agre != "") %>% -->
-<!--   group_by(categoria_ambito, conv_agre) %>% -->
-<!--   summarise(n = n(), .groups = "drop") %>% -->
-<!--   group_by(categoria_ambito) %>% -->
-<!--   mutate(proporcion = round(n / sum(n) * 100, 2)) %>% -->
-<!--   ggplot(aes(x = categoria_ambito, y = proporcion, fill = conv_agre)) + -->
-<!--   geom_bar(stat = "identity", position = "fill") + -->
-<!--   scale_y_continuous(labels = scales::percent_format()) + -->
-<!--   labs(title = "Proporción de Convivencia con el Agresor por Ámbito", -->
-<!--        x = "Ámbito", -->
-<!--        y = "Proporción", -->
-<!--        fill = "Convivencia con el Agresor") + -->
-<!--   theme_minimal() + -->
-<!--   theme(axis.text.x = element_text(angle = 45, hjust = 1)) -->
-
-<!-- ``` -->
-
-
-<!-- El gráfico muestra que la convivencia con el agresor es más frecuente en el hogar (40.69%), lo que resalta la vulnerabilidad de las víctimas dentro del entorno familiar y sugiere un mayor riesgo de revictimización. En instituciones de salud, aunque el número de casos es menor, el 36.36% implica convivencia, posiblemente debido a relaciones de dependencia entre pacientes y cuidadores. En contraste, en espacios públicos (12.90%), laborales (12.98%) y educativos (11.78%), la convivencia con el agresor es baja, lo que indica que la violencia en estos ámbitos suele ser ejercida por personas sin un vínculo cercano con la víctima. Estos hallazgos sugieren la necesidad de fortalecer redes de apoyo en los entornos familiares y garantizar mecanismos de protección accesibles en contextos donde la convivencia con el agresor es frecuente. -->
-
-
-
-
-
-
-
-
-##### tipo violencia
-
-```{r}
-base_datos %>% filter(conv_agre !="") %>% 
-  group_by(def_naturaleza, conv_agre) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(def_naturaleza) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2))
-```
-
-
+##### Relación entre el tipo de violencia y la convivencia
 
 ```{r}
 base_datos %>%
-  filter(conv_agre != "") %>%
+  mutate(conv_agre = case_when(
+    conv_agre == "1" ~ "Sí",
+    conv_agre == "2" ~ "No",
+    is.na(conv_agre) ~ "Sin información",
+    TRUE ~ conv_agre),
+    
+    def_naturaleza = case_when(
+      def_naturaleza == "1" ~ "Física",
+      def_naturaleza == "2" ~ "Psicológica",
+      def_naturaleza == "3" ~ "Negligencia",
+      def_naturaleza == "4" ~ "Abuso Sexual",
+      def_naturaleza == "5" ~ "Acoso Sexual",
+      def_naturaleza == "6" ~ "Acceso carnal",
+      def_naturaleza == "7" ~ "Explotación sexual",
+      def_naturaleza == "10" ~ "Trata de personas",
+      def_naturaleza == "12" ~ "Actos sexuales",
+      def_naturaleza == "14" ~ "Otras violencias sexuales",
+      is.na(def_naturaleza) ~ "Sin información",
+      TRUE ~ def_naturaleza
+    )
+  ) %>%
   group_by(def_naturaleza, conv_agre) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(def_naturaleza) %>%
@@ -876,88 +807,47 @@ base_datos %>%
   ggplot(aes(x = def_naturaleza, y = proporcion, fill = conv_agre)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
-  scale_fill_manual(values = c("#c07dca", "#e07a5f")) + 
-  labs(title = "Proporción de Convivencia con el Agresor por Ámbito",
-       x = "Ámbito",
+ scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
+  labs(title = "Proporción de Convivencia con el agresor por tipo de violencia",
+       x = "Tipo",
        y = "Proporción",
-       fill = "Convivencia con el Agresor") +
+       fill = "Convivencia con el agresor") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
 
-
-
-El análisis muestra que la convivencia con el agresor varía según la naturaleza de la violencia. En casos de negligencia y abandono, la convivencia es la más alta (67.11%), lo que sugiere que este tipo de violencia ocurre principalmente dentro del hogar o en entornos donde la víctima depende del agresor. La violencia física (44.49%) y la violencia psicológica (36.18%) también presentan una proporción considerable de convivencia, lo que puede estar relacionado con dinámicas de control y abuso continuado dentro de relaciones cercanas. En contraste, la violencia sexual tiene la menor tasa de convivencia con el agresor (15.57%), lo que indica que una gran parte de estos casos ocurre con agresores externos al entorno habitual de la víctima. Estos datos destacan la importancia de intervenciones diferenciadas según el tipo de violencia, especialmente en contextos donde la convivencia con el agresor es alta, para prevenir la revictimización y mejorar las estrategias de protección.
-
-
-
+Son solo tres casos en que no se conoce si la víctima convivía con el agresor, por ello, no se alcanzan a visualizar en el gráfico. Este análisis muestra que la convivencia con el agresor varía según la naturaleza de la violencia. En casos de negligencia y abandono, la convivencia es la más alta (>60%), lo que sugiere que este tipo de violencia ocurre principalmente dentro del hogar o en entornos donde la víctima interactúa frecuentemente con el agresor. La violencia física y la violencia psicológica (<50%) también presentan una proporción considerable de convivencia. En contraste, la explotación sexual y la trata de personas tienen la menor tasa de convivencia con el agresor. 
 
 
 ##### Relación entre el parentesco y la convivencia
 
-
-```{r}
-base_datos %>% filter(conv_agre !="") %>% 
-  group_by(parentezco_agresor, conv_agre) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(parentezco_agresor) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2))
-```
-
-
-
 ```{r}
 base_datos %>%
-  filter(conv_agre != "") %>%
-  group_by(parentezco_agresor, conv_agre) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(parentezco_agresor) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2)) %>%
-  ggplot(aes(x = parentezco_agresor, y = proporcion, fill = conv_agre)) +
+  mutate(
+    parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)),
+    conv_agre = ifelse(is.na(conv_agre), "Sin información", as.character(conv_agre))
+  ) %>%
+  mutate(conv_agre = case_when(
+    conv_agre == "1" ~ "Sí",
+    conv_agre == "2" ~ "No",
+    conv_agre == "Sin información" ~ "Sin información",
+    TRUE ~ conv_agre
+  )) %>%
+  count(parentezco_agresor, conv_agre) %>%
+  ggplot(aes(x = parentezco_agresor, y = n, fill = conv_agre)) +
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
-  labs(title = "Proporción de Convivencia con el Agresor por Ámbito",
-       x = "Ámbito",
-       y = "Proporción",
-       fill = "Convivencia con el Agresor") +
+   scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
+  labs(
+    title = "Proporción de convivencia con el agresor por parentesco",
+    x = "Parentesco",
+    y = "Proporción",
+    fill = "Convivencia con el agresor"
+  ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-
-```{r}
-# Definir la nueva paleta con más contraste
-# colores_contraste <- c("Violencia física" = "#c07dca", 
-#                        "Violencia psicológica" = "#f5a25d", 
-#                        "Negligencia y abandono" = "#5e35b1", 
-#                        "Violencia sexual" = "#e07a5f")
-# 
-# # Crear gráfico mejorado
-# ggplot(violencia_por_año, aes(x = factor(año_hecho), y = n, fill = def_naturaleza)) +
-#   geom_bar(stat = "identity", position = position_dodge(width = 0.9), color = "black") +  
-#   labs(title = "Casos por año y tipo de violencia",
-#        x = "Año",
-#        y = "Número de casos",
-#        fill = "Tipo de violencia") +
-#   theme_minimal(base_size = 14) +
-#   scale_fill_manual(values = colores_contraste) +  # Aplicar la nueva paleta
-#   theme(
-#     axis.text.x = element_text(angle = 45, hjust = 1),  
-#     legend.position = "right",
-#     legend.text = element_text(size = 12),  
-#     legend.title = element_text(size = 14, face = "bold") 
-#   )
 
 ```
-
-
-La gráfica muestra que la violencia física y psicológica son las más reportadas a lo largo de los años, con picos notables en 2019 y 2022. Se observa una posible disminución en 2020, probablemente debido a las restricciones de movilidad por la pandemia. La violencia sexual y la negligencia, aunque menos frecuentes, presentan una tendencia constante. Además, en los últimos años, los casos de violencia psicológica parecen haber aumentado, lo que podría indicar una mayor visibilización del problema. Estos patrones sugieren la necesidad de analizar factores contextuales y evaluar medidas de prevención y atención.
-
-
-
-
-
-
-
+Son solos tres los casos en que no se conoce el parentesco y tampoco si la victima convive con el agresor, por ello, no se evidencian en el gráfico. Ahora bien, se observa que la convivencia con el agresor varía según el parentesco con el agresor, por ejemplo, cuando el agresor fue la madre, más del 80% de las victimas convivían con el agresor o cuando fue padre y pareja también los casos fueron superiores al 60%. Mientras que cuando la relación con el agresor es externa, las proporciones no alcanzan el 50%. Lo anterior da indicios que el entorno doméstico y familiar puede ser un entorno de alto riesgo.
 
