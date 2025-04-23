@@ -71,7 +71,7 @@ Se evidencia que las fechas de notificación van desde julio de 2016 hasta abril
 
 ### Frecuencia de casos por año
 
-```{r}
+```{r,fig.align = "center", fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(año_not = ifelse(is.na(año_not), "Desconocido", as.character(año_not))) %>%  
   count(año_not) %>%
@@ -99,7 +99,7 @@ base_datos <- base_datos %>%
 
 Luego de filtrar los casos notificados desde 2017 en adelante, se obtiene una base de datos con `r nrow(base_datos)` registros.
 
-```{r}
+```{r,fig.align = "center", fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(mes_not = as.factor(month(base_datos$fec_not))) %>%
   count(mes_not) %>%
@@ -113,7 +113,7 @@ base_datos %>%
 Aunque podría considerarse una distribución de casos por mes muy uniforme, se ve que, en los meses de mayo, septiembre y julio son los meses en que más casos se han notificado.
 
 
-```{r}
+```{r,fig.align = "center", fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(semana_not = as.factor(week(base_datos$fec_not))) %>%
   count(semana_not) %>%
@@ -131,7 +131,7 @@ Se observa que las semanas con mayor número de casos notificados son 19,21,37 y
 
 #### Distribución por edad
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 ggplot(base_datos, aes(x = edad)) +
   geom_bar(aes(y = after_stat(count)), fill = "#4B0082", alpha = 0.6, color = "white") +
   geom_density(aes(y = after_stat(count)), color = "#c09dca", fill = "#c09dca", alpha = 0.3, linewidth = 1.1) +
@@ -147,7 +147,7 @@ El gráfico muestra que la violencia afecta principalmente a personas jóvenes, 
 
 ##### Edades por intervalos
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 ggplot(base_datos, aes(x = grupo_edad)) +
   geom_bar(fill = "#c07dca", alpha = 0.8) +
   labs(title = "Distribución de edad de las víctimas (por grupos)", 
@@ -162,7 +162,7 @@ El análisis de la variable edad muestra que la violencia afecta a mujeres de to
 
 ### Ocupación de las víctimas
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(
     actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
@@ -183,7 +183,7 @@ Con respecto a la ocupación de las víctimas, se observa que las categorías m�
 
 
 
-```{r}
+```{r,fig.align = "center", fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(
     actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
@@ -359,7 +359,7 @@ El escenario señala el lugar físico específico donde se produjo el hecho, y d
 
 #### Distribución por sexo
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 base_datos <- base_datos %>%
   mutate(sexo_agre = str_trim(sexo_agre)) # Elimina espacios en blanco
 
@@ -393,7 +393,7 @@ La violencia ejercida por mujeres hacia otras mujeres puede manifestarse en dive
 
 #### Relación víctima-agresor
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(
     parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor))) %>% 
@@ -424,7 +424,7 @@ base_datos <- base_datos %>%
   ))
 ```
 
-```{r}
+```{r,fig.align = "center", fig.width = 5, fig.height = 5}
 # base_datos %>% filter(conv_agre !="") %>% count(conv_agre) %>%
 #   arrange(desc(n)) %>%
 #   mutate(proporcion = round( n / sum(n) * 100, 2)) 
@@ -455,7 +455,7 @@ Los resultados muestran que en el 62.5% de los casos reportados, las víctimas n
 
 #### Tipos de violencia reportados
 
-```{r}
+```{r, fig.align = "center"}
 base_datos %>% 
   mutate(def_naturaleza = case_when(
     def_naturaleza == 1 ~ "Violencia física",
@@ -550,10 +550,7 @@ base_datos %>%
 ```
 
 
-```{r}
-library(ggplot2)
-library(dplyr)
-
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 # Crear el gráfico
 base_datos %>%
   group_by(def_naturaleza) %>%
@@ -603,9 +600,10 @@ tabla_salud <- base_datos %>%
 ```
 
 ```{r}
-tabla_salud %>%
-  kable(format = "html", caption = "Atenciones en salud según tipo de violencia") %>%
-  kable_styling("striped", full_width = F)
+tabla_salud 
+# %>%
+#   kable(format = "html", caption = "Atenciones en salud según tipo de violencia") %>%
+#   kable_styling("striped", full_width = F)
 ```
 
 Los servicios de atención en salud presentan diferencias significativas según el tipo de violencia sufrida.
@@ -623,7 +621,7 @@ Por último, el informe a autoridades (inf_aut) destaca en los casos de violenci
 
 ##### Reincidencia según tipo de violencia
 
-```{r}
+```{r,fig.align = "center", fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(
     antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
@@ -663,7 +661,7 @@ Finalmente, la violencia psicológica y la negligencia tienen muy baja reinciden
 ##### Reincidencia según área
 El siguiente gráfico evidencia que la reincidencia es más alta en las cabeceras municipales (7.24%) que en las zonas rurales (0.26%)
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(
     antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
@@ -693,7 +691,7 @@ base_datos %>%
 
 ##### Relación entre el tipo de violencia y la convivencia
 
-```{r}
+```{r,fig.align = "center", fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(conv_agre = case_when(
     conv_agre == "1" ~ "Sí",
@@ -724,7 +722,7 @@ base_datos %>%
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
  scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
-  labs(title = "Proporción de Convivencia con el agresor por tipo de violencia",
+  labs(title = "Proporción de Convivencia con el \n agresor por tipo de violencia",
        x = "Tipo",
        y = "Proporción",
        fill = "Convivencia con el agresor") +
@@ -738,7 +736,7 @@ Son solo tres casos en que no se conoce si la víctima convivía con el agresor,
 
 ##### Relación entre el parentesco y la convivencia
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 5}
 base_datos %>%
   mutate(
     parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)),
@@ -756,7 +754,7 @@ base_datos %>%
   scale_y_continuous(labels = scales::percent_format()) +
    scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(
-    title = "Proporción de convivencia con el agresor por parentesco",
+    title = "Proporción de convivencia \n con el agresor por parentesco",
     x = "Parentesco",
     y = "Proporción",
     fill = "Convivencia con el agresor"
