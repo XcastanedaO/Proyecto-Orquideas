@@ -212,27 +212,7 @@ Este resultado, permite ver un primer acercamiento al análisis y sugiere que la
 Finalmente, se observa que existe en esta variable un alto nivel de desagregación ya que muchas categrías contienen pocos casos y esto limita de alguna manera la posibilidad de tener conclusiones significativas.
 
 
-#### Antecedentes
 
-```{r}
-base_datos <- base_datos %>% 
-  mutate(antec = case_when(
-    antec == "1" ~ "Sí",
-    antec == "2" ~ "No"
-  ))
-```
-
-
-```{r}
-base_datos %>%
-  count(antec) %>%
-  arrange(desc(n)) %>%
-  mutate(proporcion = round( n / sum(n) * 100, 2)) 
-```
-
-La variable antecedentes permite identificar si la víctima había sufrido previamente algún tipo de violencia, lo que resulta clave para evaluar la reincidencia y profundizar en el análisis de factores asociados a la revictimización.
-
-El 92.5% de las víctimas reportaron no haber tenido antecedentes de violencia, mientras que el 7.5% sí indicó antecedentes previos. Claramente, la proporción de mujeres con antecedentes es muy baja en comparación a quienes no los tienen, sin embargo, este grupo pequeño, representa una población vulnerable, que puede requerir atención detallada y seguimiento.
 
 
 #### Ámbito de la violencia según lugar de ocurrencia
@@ -402,7 +382,7 @@ base_datos %>%
   count(parentezco_agresor) %>%
   top_n(10, n) %>%
   ggplot(aes(x = reorder(parentezco_agresor, n), y = n)) +
-  geom_col(fill = "#c07dca") +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
   coord_flip() +
   labs( x = "Parentesco", y = "Casos") + #title = "Relación víctima-agresor"
   theme_minimal()
@@ -435,7 +415,7 @@ base_datos %>% filter(conv_agre !="") %>%
   count(conv_agre) %>%
   mutate(proporcion = n / sum(n) * 100) %>%  # Calculamos el porcentaje
   ggplot(aes(x = reorder(conv_agre, n), y = n)) +
-  geom_col(fill = "#c07dca") +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             hjust = 0.9999, 
             color = "#4B0082",  # Morado oscuro
@@ -471,7 +451,7 @@ base_datos %>%
   count(def_naturaleza) %>%
   mutate(proporcion = n / sum(n) * 100) %>%  # Calculamos el porcentaje
   ggplot(aes(x = reorder(def_naturaleza, n), y = n)) +
-  geom_col(fill = "#c07dca") +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
    geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             hjust = 0.9999, 
             color = "#4B0082",  # Morado oscuro
@@ -544,7 +524,7 @@ base_datos %>%
   count(pac_hos_) %>%
   mutate(proporcion = round((n / sum(n))*100, 3)) %>%
   ggplot(aes(x = def_naturaleza, y = proporcion, fill = pac_hos_)) +
-  geom_bar(stat = "identity", position = "fill", alpha=0.9) +  # "fill" normaliza a 100%
+  geom_bar(stat = "identity", position = "fill", alpha=0.85) +  # "fill" normaliza a 100%
   scale_fill_manual(values = c("#e07a5f", "#c07dca")) +  # Paleta personalizada
   labs(
        x = "Tipo de violencia",
@@ -605,6 +585,28 @@ Por último, el informe a autoridades (inf_aut) destaca en los casos de violenci
 
 #### Antecedentes
 
+```{r}
+base_datos <- base_datos %>% 
+  mutate(antec = case_when(
+    antec == "1" ~ "Sí",
+    antec == "2" ~ "No"
+  ))
+```
+
+
+```{r}
+base_datos %>%
+  count(antec) %>%
+  arrange(desc(n)) %>%
+  mutate(proporcion = round( n / sum(n) * 100, 2)) 
+```
+
+La variable antecedentes permite identificar si la víctima había sufrido previamente algún tipo de violencia, lo que resulta clave para evaluar la reincidencia y profundizar en el análisis de factores asociados a la revictimización.
+
+El 92.5% de las víctimas reportaron no haber tenido antecedentes de violencia, mientras que el 7.5% sí indicó antecedentes previos. Claramente, la proporción de mujeres con antecedentes es muy baja en comparación a quienes no los tienen, sin embargo, este grupo pequeño, representa una población vulnerable, que puede requerir atención detallada y seguimiento.
+
+
+
 ##### Reincidencia según tipo de violencia
 
 ```{r,fig.align = "center", fig.width = 5, fig.height = 3}
@@ -630,7 +632,7 @@ base_datos %>%
   group_by(def_naturaleza, antec) %>%
   summarise(n = n(), .groups = "drop") %>%
   ggplot(aes(x = def_naturaleza, y = n, fill = antec)) +
-  geom_bar(stat = "identity", position = "fill") +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
    scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(#title = "Proporción de reincidencia según tipo de violencia",
@@ -649,26 +651,35 @@ Finalmente, la violencia psicológica y la negligencia tienen muy baja reinciden
 ```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
-    antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
-    
+    antec = case_when(
+      antec == "1" ~ "Sí",
+      antec == "2" ~ "No",
+      is.na(antec) ~ "Sin información",
+      TRUE ~ antec
+    ),
     area_ = case_when(
       is.na(area_) ~ "Sin información",
       area_ == "1" ~ "Cabecera municipal",
       area_ == "2" ~ "Centro poblado",
       area_ == "3" ~ "Rural disperso",
+      TRUE ~ area_
     )
   ) %>%
   group_by(area_, antec) %>%
   summarise(n = n(), .groups = "drop") %>%
   ggplot(aes(x = area_, y = n, fill = antec)) +
-  geom_bar(stat = "identity", position = "fill") +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
- scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
-  labs(#title = "Proporción de reincidencia según área",
-       x = "Área",
-       y = "Proporción",
-       fill = "Reincidencia") +
-  theme_minimal()
+  scale_fill_manual(values = c("No" = "#e07a5f", "Sí" = "#c07dca", "Sin información" = "#9b9b9b")) +
+  labs(
+    x = "Área",
+    y = "Proporción",
+    fill = "Reincidencia"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1, size = 10)  # Mejora visibilidad del eje x
+  )
 
 ```
 
@@ -706,7 +717,7 @@ base_datos %>%
   group_by(def_naturaleza) %>%
   mutate(proporcion = round(n / sum(n) * 100, 2)) %>%
   ggplot(aes(x = def_naturaleza, y = proporcion, fill = conv_agre)) +
-  geom_bar(stat = "identity", position = "fill") +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
  scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(#title = "Proporción de Convivencia con el \n agresor por tipo de violencia",
@@ -737,7 +748,7 @@ base_datos %>%
   )) %>%
   count(parentezco_agresor, conv_agre) %>%
   ggplot(aes(x = parentezco_agresor, y = n, fill = conv_agre)) +
-  geom_bar(stat = "identity", position = "fill") +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
    scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(
