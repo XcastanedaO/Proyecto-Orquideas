@@ -1,11 +1,13 @@
 ---
-title: "Untitled"
-output: html_document
+title: "Análisis Descriptivo Datos INMLCF"
+output:
+  pdf_document: default
+  html_document: default
 date: "2025-03-19"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r}
@@ -21,12 +23,13 @@ library(stringr)
 library(tidyr)
 library(stringi)
 ```
+# Lectura de la base de datos
 
-
-```{r}
+```{r, , echo=TRUE}
 data <- load_data("INMLCF_debugged_2015_2024_.csv", type = "interim")
 ```
 
+Se cuenta inicialmente con un total de 755.874 registros y 32 variables, correspondientes a los casos de violencia de género de lesiones fatales y no fatales de medicina legal desde el año 2015 hasta el 2024.
 
 ```{r}
 replace_info <- function(df) {
@@ -45,97 +48,62 @@ data <- replace_info(data)
 ```
 
 ## Valores faltantes 
+
+# ```{r}
+# data |> is.na() |> sum()
+# ```
 ```{r}
-data |> is.na() |> sum()
+
+data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
 ```
-```{r}
-data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame()
-```
-### Dendograma
+Las variables tipo_de_discapacidad y sexo_del_presunto_agresor presentan valores faltantes específicamente en los registros correspondientes a lesiones fatales, debido a que estas variables solo estaban disponibles en los datos de lesiones no fatales. Por esta razón, se optará por excluir inicialmente estas variables del análisis.
 
-```{r}
-library(ggraph)
-library(igraph)
-library(tidyverse)
-library(RColorBrewer) 
-```
-```{r}
-temp <-data %>%
-  distinct(def_naturaleza, circunstancia_del_hecho, razon_del_suicidio)
-save_data(temp, "temp", type = "interim",format = "xlsx" )
-```
-```{r}
-table <- 
-  data %>%
-  mutate(pathString = paste("Root", def_naturaleza, circunstancia_del_hecho, sep = "/"))
-```
+Por otro lado, las variables codigo_dane_municipio y codigo_dane_departamento tienen pocos valores faltantes, por lo cual se decidió eliminar los registros incompletos correspondientes.
 
-```{r}
-tree <- as.Node(table)
-
-# Print the tree
-print(tree, "name")
-
-```
-
-```{r}
-edges1 <- data %>%
-  distinct(def_naturaleza) %>%
-  mutate(from = "root", to = def_naturaleza) %>%
-  select(from, to)
-
-edges2 <- data %>%
-  distinct(def_naturaleza, circunstancia_del_hecho) %>%
-  rename(from = def_naturaleza, to = circunstancia_del_hecho)
-
-edges_all <- bind_rows(edges1, edges2)
-
-# Create graph
-graph <- graph_from_data_frame(edges_all)
-
-# Plot circular dendrogram
-ggraph(graph, layout = 'dendrogram', circular = TRUE) +
-  geom_edge_diagonal() +
-  geom_node_point(color = "tomato", size = 3) +
-  geom_node_text(aes(label = name), repel = TRUE, size = 3, angle = 90, hjust = 1) +
-  theme_void()
-```
-
-```{r}
-mygraph <- graph_from_data_frame( edges )
- 
-# Basic tree
-ggraph(mygraph, layout = 'dendrogram', circular = FALSE) + 
-  geom_edge_diagonal() +
-  geom_node_point() +
-  theme_void()
-```
-```{r}
-
-```
-
-
-
-```{r}
-data %>% explore()
-```
-###
-```{r}
+```{r, echo=TRUE}
 data <- data %>% select(-c(tipo_de_discapacidad, sexo_del_presunto_agresor)) # Variables no presentes en casos Fatales
 ```
 
-```{r}
+```{r, echo=TRUE}
 data %>% filter(is.na(codigo_dane_municipio)) %>% group_by(tipo_lesion) %>% summarise(n=n())
 ```
 
-```{r}
-# data %>% filter(is.na(codigo_dane_municipio))
+```{r, echo=TRUE}
+data <- data %>% filter(!is.na(codigo_dane_municipio))
 ```
 
-```{r}
-data <- data[!apply(is.na(data), 1, any), ]
-# save_data(data, "INMLCF_2015_2024",type = "processed", format = "csv")
 
+```{r}
+# save_data(data, "INMLCF_debugged_2015_2024", type = "processed",format = "csv" )
+```
+
+<!-- ### Dendograma -->
+
+<!-- ```{r} -->
+<!-- library(ggraph) -->
+<!-- library(igraph) -->
+<!-- library(tidyverse) -->
+<!-- library(RColorBrewer)  -->
+<!-- ``` -->
+<!-- ```{r} -->
+<!-- temp <- data %>% group_by(def_naturaleza, circunstancia_del_hecho, razon_del_suicidio,tipo_lesion) %>% summarise(n=n()) -->
+<!-- save_data(temp, "temp", type = "interim",format = "xlsx" ) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data %>% group_by(def_naturaleza, circunstancia_del_hecho, razon_del_suicidio, .groups = "drop") %>% summarise(n=n()) -->
+<!-- ``` -->
+
+
+
+
+<!-- ```{r} -->
+<!-- data %>% explore() -->
+<!-- ``` -->
+
+```{r}
+# data[!apply(is.na(data), 1, any), ]
+# save_data(data, "INMLCF_2015_2024",type = "processed", format = "csv")
 
 ```
 
@@ -147,11 +115,13 @@ data <- data[!apply(is.na(data), 1, any), ]
 #   output_dir = "descriptive_analysis",
 #   output_file = "notebook-explore.Rmd")
 ```
-# Explore variables
+# Exploración de variables
 
 ## Temporales
 
-```{r}
+A continuación se muestra, la proporción de casos por año.
+
+```{r, echo=TRUE}
 data$ano_del_hecho <- data$ano_del_hecho %>% as.factor()
 ```
 
@@ -170,11 +140,20 @@ data %>%
   theme_minimal()
 ```
 
+Se observa una tendencia proporcionalmente constante entre los años 2015 y 2019. Sin embargo, en 2020 y 2021 se evidencia una disminución en el número de casos, lo cual podría estar relacionado con los efectos de la pandemia y el posible subregistro o falta de reporte durante ese período.
+
+```{r}
+ unique(data$mes_del_hecho)
+```
+```{r}
+data %>% filter(mes_del_hecho == "Sin información")
+```
+
 ```{r}
 meses_orden <- c("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
                  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
-
 data %>%
+  filter(mes_del_hecho != "Sin información") %>% 
   count(mes_del_hecho) %>%
   mutate(
     mes_del_hecho = factor(mes_del_hecho, levels = meses_orden),
@@ -191,9 +170,12 @@ data %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-```{r}
 
+Los casos reportados mensualmente tienden a mantenerse constantes a lo largo del año, con una disminución en los meses de noviembre y diciembre.
+
+```{r}
 data %>%
+  filter(dia_del_hecho != "Sin información") %>% 
   count(dia_del_hecho) %>%
   mutate(dia_del_hecho = factor(dia_del_hecho, levels = c("Lunes", "Martes", "Miércoles", "Jueves", 
                 "Viernes", "Sábado", "Domingo")),
@@ -208,6 +190,10 @@ data %>%
   labs(title = "Casos de violencia por día", x = "Día", y = "Frecuencia") +
   theme_minimal()
 ```
+
+A nivel semanal, la mayor ocurrencia de casos de violencia se concentra en domingo (19%), seguido por el lunes (15%).
+Esta distribución sugiere que los fines de semana, y particularmente el domingo, son momentos críticos, posiblemente debido a la mayor permanencia en el hogar y el tiempo compartido con el presunto agresor.
+
 
 ```{r}
 data %>%
@@ -224,6 +210,11 @@ data %>%
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  
 ```
+
+Aunque la mayor proporción de registros (18.8%) corresponde a casos sin información sobre la hora de ocurrencia, los datos disponibles muestran que la mayoría de los casos reportados se concentran en el periodo de la tarde-noche, especialmente entre las 18:00 y 20:59 (16.2%) y las 21:00 a 23:59 (13.5%).
+Esta concentración podría estar relacionada con la presencia simultánea de víctimas y agresores en el hogar o lugares de ocurrencia del hecho después de la jornada laboral o escolar, lo que puede estar asociado a incrementar las situaciones de conflicto.
+
+
 ## Caracterización 
 
 ```{r}
@@ -420,9 +411,7 @@ data %>%
   group_by(def_naturaleza) %>%  # Agrupar nuevamente por tipo de violencia
   mutate(proporcion = round(n / sum(n) * 100))
 ```
-```{r}
-data %>% explore()
-```
+
 
 
 
