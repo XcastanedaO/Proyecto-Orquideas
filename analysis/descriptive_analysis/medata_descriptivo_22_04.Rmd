@@ -11,6 +11,7 @@ knitr:
 editor_options:
   markdown:
     wrap: 72
+always_allow_html: true
 ---
 
 ```{r, include=FALSE}
@@ -26,6 +27,7 @@ library(stringr)
 library(tidyr)
 library(stringi)
 library(knitr)
+library(readr)
 library(kableExtra)
 ```
 
@@ -93,7 +95,7 @@ base_datos <- base_datos %>%
   filter(as.numeric(as.character(año_not)) >= 2017)  
 ```
 
-### Frecuencia Casos por mes
+### Frecuencia de casos por mes
 
 Luego de filtrar los casos notificados desde 2017 en adelante, se obtiene una base de datos con `r nrow(base_datos)` registros.
 
@@ -615,92 +617,6 @@ La atención en salud mental es también mucho más común en víctimas de viole
 En cuanto a las remisiones a protección, estas son más frecuentes en los casos de negligencia y abandono (58%) y violencia psicológica (69.5%), lo que puede estar relacionado con la necesidad de apartar a las víctimas de entornos peligrosos o de abandono.
 
 Por último, el informe a autoridades (inf_aut) destaca en los casos de violencia sexual (84.6%), mientras que en otros tipos de violencia es menor. En violencia psicológica, por ejemplo, solo llega al 3.9%, lo que sugiere que muchos de estos casos no se judicializan o formalizan ante las instituciones.
-
-
-##### antecedentes
-
-```{r}
-#### Combinación de variables
-ggplot(base_datos, aes(x = antec, y = tiempo_not)) +
-  geom_boxplot(fill = "#c07dca", alpha = 0.7) +
-  labs(title = "Tiempo de Notificación por Grupo de Edad",
-       x = "Grupo de Edad",
-       y = "Días entre el Hecho y la Notificación") +
-  theme_minimal()
-```
-
-##### def_naturaleza
-
-```{r}
-#### Combinación de variables
-ggplot(base_datos, aes(x = def_naturaleza, y = tiempo_not)) +
-  geom_boxplot(fill = "#c07dca", alpha = 0.7) +
-  labs(title = "Tiempo de Notificación por Grupo de Edad",
-       x = "Naturaleza de violancia",
-       y = "Días entre el Hecho y la Notificación") +
-  theme_minimal()
-```
-
-
-```{r}
-# Calcular estadísticas descriptivas por tipo de violencia
-desc_tiempo_not <- base_datos %>%
-  group_by(def_naturaleza) %>%
-  summarise(
-    media = mean(tiempo_not, na.rm = TRUE),
-    sd = sd(tiempo_not, na.rm = TRUE),
-    mediana = median(tiempo_not, na.rm = TRUE),
-    IQR = IQR(tiempo_not, na.rm = TRUE)
-  ) %>%
-  arrange(desc(mediana))
-
-# Ver resultados
-print(desc_tiempo_not)
-
-```
-
-
-El tiempo de notificación varía según el tipo de violencia. La violencia sexual tiene la mediana más alta (14 días) y mayor dispersión, lo que indica retrasos significativos en la denuncia. En contraste, la violencia psicológica y física se notifican con mayor rapidez (medianas de 2 y 1 día, respectivamente), mientras que la negligencia y abandono casi no presentan tiempos de espera. Estos datos reflejan posibles barreras en la denuncia de violencia sexual y la necesidad de estrategias para facilitarla.
-
-
-
-
-
-
-##### área
-
-```{r}
-base_datos %>%
-  filter(!is.na(area_)) %>%
-  ggplot(aes(x = area_, y = tiempo_not)) +  # Se elimina el segundo base_datos
-  geom_boxplot(fill = "#c07dca", alpha = 0.7) +
-  labs(title = "Tiempo de Notificación por Área",
-       x = "Área",
-       y = "Días entre el Hecho y la Notificación") +
-  theme_minimal()
-```
-
-
-```{r}
-desc_tiempo_not <- base_datos %>%
-  group_by(area_) %>%
-  summarise(
-    n = n(),
-    media = mean(tiempo_not, na.rm = TRUE),
-    sd = sd(tiempo_not, na.rm = TRUE),
-    mediana = median(tiempo_not, na.rm = TRUE),
-    IQR = IQR(tiempo_not, na.rm = TRUE)
-  ) %>%
-  arrange(desc(mediana))
-
-# Ver resultados
-print(desc_tiempo_not)
-```
-
-
-Esta gráfica y los datos sugieren que el tiempo de notificación es generalmente bajo en ambas áreas, pero con una mayor dispersión en cabeceras municipales. Aunque la mediana en zonas rurales es más alta (4 días vs. 2 días), la diferencia es pequeña. Sin embargo, el IQR más amplio en zonas rurales (29 vs. 10 días) indica que algunos casos tardan mucho más en ser denunciados.
-
-
 
 
 #### Antecedentes
