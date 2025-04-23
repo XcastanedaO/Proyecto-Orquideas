@@ -71,7 +71,7 @@ Se evidencia que las fechas de notificación van desde julio de 2016 hasta abril
 
 ### Frecuencia de casos por año
 
-```{r,fig.align = "center", fig.width = 5, fig.height = 5}
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
 base_datos %>%
   mutate(año_not = ifelse(is.na(año_not), "Desconocido", as.character(año_not))) %>%  
   count(año_not) %>%
@@ -82,8 +82,8 @@ base_datos %>%
             vjust = -0.2, 
             color = "#4B0082",  
             fontface = "bold",
-            size = 3.4) + 
-  labs(title = "Casos de violencia por año", x = "Año", y = "Frecuencia") +
+            size = 2) + 
+  labs(x = "Año", y = "Frecuencia") + #title = "Casos de violencia por año"
   theme_minimal()
 
 ```
@@ -99,28 +99,29 @@ base_datos <- base_datos %>%
 
 Luego de filtrar los casos notificados desde 2017 en adelante, se obtiene una base de datos con `r nrow(base_datos)` registros.
 
-```{r,fig.align = "center", fig.width = 5, fig.height = 5}
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
 base_datos %>%
   mutate(mes_not = as.factor(month(base_datos$fec_not))) %>%
   count(mes_not) %>%
   ggplot(aes(x = mes_not, y = n)) +
   geom_col(fill = "#c07dca",  alpha = 0.8) +
-  labs(title = "Casos de violencia por mes", x = "Mes", y = "Casos") +
+  labs(x = "Mes", y = "Casos") + #title = "Casos de violencia por mes", 
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 Aunque podría considerarse una distribución de casos por mes muy uniforme, se ve que, en los meses de mayo, septiembre y julio son los meses en que más casos se han notificado.
 
+### Frecuencia de casos por semana
 
-```{r,fig.align = "center", fig.width = 5, fig.height = 5}
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
 base_datos %>%
   mutate(semana_not = as.factor(week(base_datos$fec_not))) %>%
   count(semana_not) %>%
   slice_max(order_by = n, n = 10) %>%
   ggplot(aes(x = semana_not, y = n)) +
   geom_col(fill = "#c07dca",  alpha = 0.8) +
-  labs(title = "Casos de violencia por Semana", x = "Semana", y = "Casos") +
+  labs(x = "Semana", y = "Casos") + #title = "Casos de violencia por semana", 
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
@@ -129,29 +130,27 @@ Se observa que las semanas con mayor número de casos notificados son 19,21,37 y
 
 ## Caracterización de las víctimas
 
-#### Distribución por edad
+#### Distribución por edad de las víctimas
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
 ggplot(base_datos, aes(x = edad)) +
   geom_bar(aes(y = after_stat(count)), fill = "#4B0082", alpha = 0.6, color = "white") +
   geom_density(aes(y = after_stat(count)), color = "#c09dca", fill = "#c09dca", alpha = 0.3, linewidth = 1.1) +
-  labs(title = "Distribución de edad de las víctimas", 
-       x = "Edad", y = "Frecuencia") +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        plot.title = element_text(face = "bold", size = 16),
-        plot.subtitle = element_text(size = 12, color = "gray40"))
+  labs(x = "Edad", y = "Frecuencia") + #title = "Distribución de edad de las víctimas",
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        # plot.title = element_text(face = "bold", size = 16),
+        # plot.subtitle = element_text(size = 12, color = "gray40"))
 ```
 El gráfico muestra que la violencia afecta principalmente a personas jóvenes, con un pico en adultos de 20-30 años y un menor pero notable impacto en la infancia y adolescencia. Esto podría estar relacionado con factores como la violencia intrafamiliar, de pareja o la vulnerabilidad social en estos grupos etarios.
 
 
-##### Edades por intervalos
+##### Distribución por edad agrupada de las víctimas
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
 ggplot(base_datos, aes(x = grupo_edad)) +
   geom_bar(fill = "#c07dca", alpha = 0.8) +
-  labs(title = "Distribución de edad de las víctimas (por grupos)", 
-       x = "Grupo de edad", y = "Frecuencia") +
+  labs(x = "Grupo de edad", y = "Frecuencia") + #title = "Distribución de edad agrupada",
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar etiquetas
 
@@ -160,21 +159,20 @@ ggplot(base_datos, aes(x = grupo_edad)) +
 El análisis de la variable edad muestra que la violencia afecta a mujeres de todas las edades, pero con patrones específicos según el grupo etario. La mayoría de las víctimas son niñas de 10-14 años (7760 casos), seguidas por adolescentes de 25-29 años (6279 casos) y  20-24 años (6018 casos). Además, genera un alarma frente al número de víctimas menores a 10 años (8318)
 
 
-### Ocupación de las víctimas
+### Princioales ocupaciones de las víctimas
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
     actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
 ) %>% 
 
- 
-  count(actividad) %>%
+   count(actividad) %>%
   top_n(5, n) %>%
   ggplot(aes(x = reorder(actividad, n), y = n)) +
   geom_col(fill = "#c07dca", alpha = 0.8) +
   coord_flip() +
-  labs(title = "Principales ocupaciones de las víctimas", x = "Ocupación", y = "Frecuencia") +
+  labs( x = "Ocupación", y = "Frecuencia") + #title = "Principales ocupaciones de las víctimas",
   theme_minimal()
 ```
 
@@ -182,8 +180,7 @@ Con respecto a la ocupación de las víctimas, se observa que las categorías m�
 
 
 
-
-```{r,fig.align = "center", fig.width = 5, fig.height = 5}
+```{r,fig.align = "center", fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
     actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
@@ -197,7 +194,7 @@ filter(actividad != "Ninguna" & actividad !="Otro") %>%
   ggplot(aes(x = reorder(actividad, n), y = n)) +
   geom_col(fill = "#c07dca", alpha = 0.8) +
   coord_flip() +
-  labs(title = "Principales ocupaciones de las víctimas", x = "Ocupación", y = "Frecuencia") +
+  labs(x = "Ocupación", y = "Frecuencia") + #title = "Principales ocupaciones ", 
   theme_minimal()
 ```
 
@@ -357,9 +354,9 @@ El escenario señala el lugar físico específico donde se produjo el hecho, y d
 
 ## Caracterización de los agresores
 
-#### Distribución por sexo
+#### Distribución por sexo de los agresores
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
 base_datos <- base_datos %>%
   mutate(sexo_agre = str_trim(sexo_agre)) # Elimina espacios en blanco
 
@@ -377,8 +374,8 @@ base_datos %>%
             vjust = -0.2, 
             color = "#4B0082",  
             fontface = "bold",
-            size = 3.4) +
-  labs(title = "Sexo de los agresores", x = "Sexo", y = "Casos") +
+            size = 2) +
+  labs( x = "Sexo", y = "Casos") + #title = "Sexo de los agresores",
   theme_minimal() +
   scale_fill_manual(values = c("F" = "#a55dbb", "M" = "#a55dbb", "I" = "#a55dbb"))+
   theme(legend.position = "none") 
@@ -393,7 +390,7 @@ La violencia ejercida por mujeres hacia otras mujeres puede manifestarse en dive
 
 #### Relación víctima-agresor
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
 base_datos %>%
   mutate(
     parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor))) %>% 
@@ -403,7 +400,7 @@ base_datos %>%
   ggplot(aes(x = reorder(parentezco_agresor, n), y = n)) +
   geom_col(fill = "#c07dca") +
   coord_flip() +
-  labs(title = "Relación víctima-agresor", x = "Parentesco", y = "Casos") +
+  labs( x = "Parentesco", y = "Casos") + #title = "Relación víctima-agresor"
   theme_minimal()
 
 
@@ -424,7 +421,7 @@ base_datos <- base_datos %>%
   ))
 ```
 
-```{r,fig.align = "center", fig.width = 5, fig.height = 5}
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
 # base_datos %>% filter(conv_agre !="") %>% count(conv_agre) %>%
 #   arrange(desc(n)) %>%
 #   mutate(proporcion = round( n / sum(n) * 100, 2)) 
@@ -439,9 +436,9 @@ base_datos %>% filter(conv_agre !="") %>%
             hjust = 0.9999, 
             color = "#4B0082",  # Morado oscuro
             fontface = "bold",
-            size = 3.4) +
+            size = 2) +
   coord_flip() +
-  labs(title = "Convivencia con el agresor", 
+  labs(#title = "Convivencia con el agresor", 
        x = "Convive con el gresor", 
        y = "Casos") +
   theme_minimal()
@@ -455,7 +452,7 @@ Los resultados muestran que en el 62.5% de los casos reportados, las víctimas n
 
 #### Tipos de violencia reportados
 
-```{r, fig.align = "center"}
+```{r, fig.align = "center", fig.width = 4, fig.height = 3}
 base_datos %>% 
   mutate(def_naturaleza = case_when(
     def_naturaleza == 1 ~ "Violencia física",
@@ -475,9 +472,9 @@ base_datos %>%
             hjust = 0.9999, 
             color = "#4B0082",  # Morado oscuro
             fontface = "bold",
-            size = 3.4)  +
+            size = 2)  +
   coord_flip() +
-  labs(title = "Tipos de violencia reportados", 
+  labs(#title = "Tipos de violencia reportados", 
        x = "Tipo de violencia", 
        y = "Casos") +
   theme_minimal()
@@ -559,12 +556,13 @@ base_datos %>%
   ggplot(aes(x = def_naturaleza, y = proporcion, fill = pac_hos_)) +
   geom_bar(stat = "identity", position = "fill") +  # "fill" normaliza a 100%
   scale_fill_manual(values = c("#6495ED", "#c07dca")) +  # Paleta personalizada
-  labs(title = "Proporción de hospitalización según tipo de violencia",
+  labs(title = "Proporción de hospitalización \n según tipo de violencia",
        x = "Tipo de violencia",
        y = "Proporción",
        fill = "Hospitalización") +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar etiquetas
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 10))  # Rotar etiquetas
 
 
 ```
@@ -621,7 +619,7 @@ Por último, el informe a autoridades (inf_aut) destaca en los casos de violenci
 
 ##### Reincidencia según tipo de violencia
 
-```{r,fig.align = "center", fig.width = 5, fig.height = 5}
+```{r,fig.align = "center", fig.width = 4, fig.height = 4}
 base_datos %>%
   mutate(
     antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
@@ -647,7 +645,7 @@ base_datos %>%
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
    scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
-  labs(title = "Proporción de reincidencia según tipo de violencia",
+  labs(#title = "Proporción de reincidencia según tipo de violencia",
        x = "Tipo de Violencia",
        y = "Proporción",
        fill = "Reincidencia") +
@@ -661,7 +659,7 @@ Finalmente, la violencia psicológica y la negligencia tienen muy baja reinciden
 ##### Reincidencia según área
 El siguiente gráfico evidencia que la reincidencia es más alta en las cabeceras municipales (7.24%) que en las zonas rurales (0.26%)
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 4, fig.height = 4}
 base_datos %>%
   mutate(
     antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
@@ -691,7 +689,7 @@ base_datos %>%
 
 ##### Relación entre el tipo de violencia y la convivencia
 
-```{r,fig.align = "center", fig.width = 5, fig.height = 5}
+```{r,fig.align = "center", fig.width = 4, fig.height = 4}
 base_datos %>%
   mutate(conv_agre = case_when(
     conv_agre == "1" ~ "Sí",
@@ -736,7 +734,7 @@ Son solo tres casos en que no se conoce si la víctima convivía con el agresor,
 
 ##### Relación entre el parentesco y la convivencia
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 4, fig.height = 4}
 base_datos %>%
   mutate(
     parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)),
