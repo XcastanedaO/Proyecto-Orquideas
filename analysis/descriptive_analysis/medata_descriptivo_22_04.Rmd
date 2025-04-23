@@ -212,9 +212,6 @@ Este resultado, permite ver un primer acercamiento al análisis y sugiere que la
 Finalmente, se observa que existe en esta variable un alto nivel de desagregación ya que muchas categrías contienen pocos casos y esto limita de alguna manera la posibilidad de tener conclusiones significativas.
 
 
-
-
-
 #### Ámbito de la violencia según lugar de ocurrencia
 
 
