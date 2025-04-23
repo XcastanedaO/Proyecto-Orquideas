@@ -452,7 +452,7 @@ Los resultados muestran que en el 62.5% de los casos reportados, las víctimas n
 
 #### Tipos de violencia reportados
 
-```{r, fig.align = "center", fig.width = 4, fig.height = 3}
+```{r, fig.align = "center", fig.width = 4.5, fig.height = 3}
 base_datos %>% 
   mutate(def_naturaleza = case_when(
     def_naturaleza == 1 ~ "Violencia física",
@@ -547,7 +547,7 @@ base_datos %>%
 ```
 
 
-```{r, fig.align = "center",fig.width = 5, fig.height = 5}
+```{r, fig.align = "center",fig.width = 6, fig.height = 4}
 # Crear el gráfico
 base_datos %>%
   group_by(def_naturaleza) %>%
@@ -556,7 +556,7 @@ base_datos %>%
   ggplot(aes(x = def_naturaleza, y = proporcion, fill = pac_hos_)) +
   geom_bar(stat = "identity", position = "fill") +  # "fill" normaliza a 100%
   scale_fill_manual(values = c("#6495ED", "#c07dca")) +  # Paleta personalizada
-  labs(title = "Proporción de hospitalización \n según tipo de violencia",
+  labs(title = "Proporción de hospitalización según tipo de violencia",
        x = "Tipo de violencia",
        y = "Proporción",
        fill = "Hospitalización") +
@@ -619,7 +619,7 @@ Por último, el informe a autoridades (inf_aut) destaca en los casos de violenci
 
 ##### Reincidencia según tipo de violencia
 
-```{r,fig.align = "center", fig.width = 4, fig.height = 4}
+```{r,fig.align = "center", fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
     antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
@@ -657,9 +657,8 @@ Finalmente, la violencia psicológica y la negligencia tienen muy baja reinciden
 
 
 ##### Reincidencia según área
-El siguiente gráfico evidencia que la reincidencia es más alta en las cabeceras municipales (7.24%) que en las zonas rurales (0.26%)
 
-```{r, fig.align = "center",fig.width = 4, fig.height = 4}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
     antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
@@ -677,7 +676,7 @@ base_datos %>%
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
  scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
-  labs(title = "Proporción de reincidencia según área",
+  labs(#title = "Proporción de reincidencia según área",
        x = "Área",
        y = "Proporción",
        fill = "Reincidencia") +
@@ -685,11 +684,13 @@ base_datos %>%
 
 ```
 
+El siguiente gráfico evidencia que la reincidencia es más alta en las cabeceras municipales (7.24%) que en las zonas rurales (0.26%)
+
 #### Convivencia
 
 ##### Relación entre el tipo de violencia y la convivencia
 
-```{r,fig.align = "center", fig.width = 4, fig.height = 4}
+```{r,fig.align = "center", fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(conv_agre = case_when(
     conv_agre == "1" ~ "Sí",
@@ -720,7 +721,7 @@ base_datos %>%
   geom_bar(stat = "identity", position = "fill") +
   scale_y_continuous(labels = scales::percent_format()) +
  scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
-  labs(title = "Proporción de Convivencia con el \n agresor por tipo de violencia",
+  labs(#title = "Proporción de Convivencia con el \n agresor por tipo de violencia",
        x = "Tipo",
        y = "Proporción",
        fill = "Convivencia con el agresor") +
@@ -734,7 +735,7 @@ Son solo tres casos en que no se conoce si la víctima convivía con el agresor,
 
 ##### Relación entre el parentesco y la convivencia
 
-```{r, fig.align = "center",fig.width = 4, fig.height = 4}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
     parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)),
@@ -752,7 +753,7 @@ base_datos %>%
   scale_y_continuous(labels = scales::percent_format()) +
    scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(
-    title = "Proporción de convivencia \n con el agresor por parentesco",
+    #title = "Proporción de convivencia \n con el agresor por parentesco",
     x = "Parentesco",
     y = "Proporción",
     fill = "Convivencia con el agresor"
