@@ -63,7 +63,7 @@ Para conocer más sobre las variables se cuenta con un diccionario que aparece e
 
 ## Análisis temporal
 
-```{r}
+```{r,fig.align = "center"}
 summary(base_datos$fec_not)
 ```
 Se evidencia que las fechas de notificación van desde julio de 2016 hasta abril de 2023, lo que indica un período de observación de casi 7 años, donde la mayor parte de los casos notificados se concentran entre 2019 y 2021.
@@ -185,14 +185,20 @@ base_datos %>%
   mutate(
     actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
 ) %>% 
+  
 
 
 filter(actividad != "Ninguna" & actividad !="Otro") %>% 
 
   count(actividad) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
   top_n(5, n) %>%
   ggplot(aes(x = reorder(actividad, n), y = n)) +
   geom_col(fill = "#c07dca", alpha = 0.8) +
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            color = "#4B0082",  
+            fontface = "bold",
+            size = 2) + 
   coord_flip() +
   labs(x = "Ocupación", y = "Frecuencia") + #title = "Principales ocupaciones ", 
   theme_minimal()
@@ -207,9 +213,6 @@ Finalmente, se observa que existe en esta variable un alto nivel de desagregaci�
 
 
 #### Antecedentes
-
-La variable antecedentes permite identificar si la víctima había sufrido previamente algún tipo de violencia, lo que resulta clave para evaluar la reincidencia y profundizar en el análisis de factores asociados a la revictimización.
-
 
 ```{r}
 base_datos <- base_datos %>% 
@@ -227,13 +230,13 @@ base_datos %>%
   mutate(proporcion = round( n / sum(n) * 100, 2)) 
 ```
 
+La variable antecedentes permite identificar si la víctima había sufrido previamente algún tipo de violencia, lo que resulta clave para evaluar la reincidencia y profundizar en el análisis de factores asociados a la revictimización.
 
 El 92.5% de las víctimas reportaron no haber tenido antecedentes de violencia, mientras que el 7.5% sí indicó antecedentes previos. Claramente, la proporción de mujeres con antecedentes es muy baja en comparación a quienes no los tienen, sin embargo, este grupo pequeño, representa una población vulnerable, que puede requerir atención detallada y seguimiento.
 
 
 #### Ámbito de la violencia según lugar de ocurrencia
 
-La variable ámbito describe el tipo de relación social o espacio donde se inscribe la violencia (por ejemplo, familiar, comunitario o institucional).
 
 ```{r}
 base_datos <- base_datos %>% 
@@ -255,6 +258,7 @@ base_datos %>%
   mutate(proporcion = round( n / sum(n) * 100, 2)) 
 ```
 
+La variable ámbito describe el tipo de relación social o espacio donde se inscribe la violencia (por ejemplo, familiar, comunitario o institucional).
 
 Los datos muestran que el hogar es el principal ámbito de violencia, con un 63.2% de los casos, lo que refuerza la idea de que la violencia basada en género ocurre mayormente en entornos íntimos o privados. Le siguen los ámbitos "Otros" (29.1%) y el comunitario (4.0%).
 
@@ -531,21 +535,7 @@ Evaluar de forma individual esta variable podría no ser tan relevante pues, en 
 
 ##### Hospitalización vs def_naturaleza
 
-```{r}
-base_datos %>% 
-  mutate(def_naturaleza = case_when(
-    def_naturaleza == 1 ~ "Violencia física",
-  def_naturaleza == 2 ~ "Violencia psicológica",
-  def_naturaleza == 3 ~ "Negligencia y abandono",
-  def_naturaleza %in% c(4, 5, 6, 7, 10, 12, 14) ~ "Violencia sexual"
-  )) %>%
-
-  group_by(def_naturaleza) %>%
-  count(pac_hos_) %>%
-  mutate(proporcion = round((n / sum(n))*100, 3))
-
-```
-
+Se presenta a continuación la proporción de víctimas hospitalizadas según el tipo de violencia:
 
 ```{r, fig.align = "center",fig.width = 6, fig.height = 4}
 # Crear el gráfico
@@ -554,17 +544,15 @@ base_datos %>%
   count(pac_hos_) %>%
   mutate(proporcion = round((n / sum(n))*100, 3)) %>%
   ggplot(aes(x = def_naturaleza, y = proporcion, fill = pac_hos_)) +
-  geom_bar(stat = "identity", position = "fill") +  # "fill" normaliza a 100%
-  scale_fill_manual(values = c("#6495ED", "#c07dca")) +  # Paleta personalizada
-  labs(title = "Proporción de hospitalización según tipo de violencia",
+  geom_bar(stat = "identity", position = "fill", alpha=0.9) +  # "fill" normaliza a 100%
+  scale_fill_manual(values = c("#e07a5f", "#c07dca")) +  # Paleta personalizada
+  labs(
        x = "Tipo de violencia",
        y = "Proporción",
        fill = "Hospitalización") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         plot.title = element_text(size = 10))  # Rotar etiquetas
-
-
 ```
 
 La violencia sexual es la que presenta la mayor proporción de hospitalizaciones (más del 24%), lo que refleja la gravedad física y emocional que puede implicar este tipo de agresión, así como la necesidad de atención médica especializada.
