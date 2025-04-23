@@ -514,7 +514,7 @@ Evaluar de forma individual esta variable podría no ser tan relevante pues, en 
 
 Se presenta a continuación la proporción de víctimas hospitalizadas según el tipo de violencia:
 
-```{r, fig.align = "center",fig.width = 6, fig.height = 4}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 # Crear el gráfico
 base_datos %>%
   group_by(def_naturaleza) %>%
