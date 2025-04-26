@@ -29,6 +29,7 @@ library(rstan)
 library(bayesplot)
 library(pROC)
 library(explore)
+library(readr)
 ```
 
 
@@ -133,24 +134,24 @@ test_model <- readRDS("model_all_data.rds")
 ```
 
 ```{r}
-print(modelo_logistico, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
+print(test_model, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
 ```
 
 ```{r}
 # Gráficos de diagnóstico
 
 #traceplot(as.array(modelo_logistico, pars = c("alpha","beta")))
-mcmc_acf(as.matrix(modelo_logistico, pars = c("alpha", "beta")))
-mcmc_intervals(as.matrix(modelo_logistico, pars = "beta"))
-mcmc_hist(as.matrix(modelo_logistico, pars = "beta"))
-mcmc_trace(as.array(modelo_logistico), pars = c("alpha", "beta[1]", "beta[2]"))
+mcmc_acf(as.matrix(test_model, pars = c("alpha", "beta")))
+mcmc_intervals(as.matrix(test_model, pars = "beta"))
+mcmc_hist(as.matrix(test_model, pars = "beta"))
+mcmc_trace(as.array(test_model), pars = c("alpha", "beta[1]", "beta[2]"))
 ```
 
 
 
 ```{r}
 # hacer gráficos de convergencia uno por uno
-mcmc_trace(as.array(modelo_logistico), pars = c("alpha", "beta[1]", "beta[2]"))
+mcmc_trace(as.array(test_model), pars = c("alpha", "beta[1]", "beta[2]"))
 ```
 
 
@@ -158,7 +159,7 @@ mcmc_trace(as.array(modelo_logistico), pars = c("alpha", "beta[1]", "beta[2]"))
 
 ```{r}
 # Extraer coeficientes estimados
-posterior_samples <- extract(modelo_logistico)
+posterior_samples <- extract(test_model)
 
 # Calcular la media de los coeficientes estimados
 alpha_hat <- mean(posterior_samples$alpha)  
