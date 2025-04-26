@@ -1,0 +1,278 @@
+---
+title: "Modelo Logístico Bayesiano para Predicción de Atención en Salud Mental"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Cargar librerías necesarias
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(here)
+library(tidyr)
+library(rstan)
+library(bayesplot)
+library(pROC)
+library(explore)
+```
+
+
+# Lectura y preparación de la base de datos
+
+```{r}
+source("../utils/load_data.R")
+data_model <- load_data("data_model.csv", type = "processed")
+
+unique(data_model$ac_mental)
+```
+
+
+
+# Construcción de la matriz de diseño
+```{r}
+data_model |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
+```
+
+```{r}
+data <- data_model %>% select(c("ac_mental",
+                    "edad", "mujer_cabf","def_naturaleza",
+                    "area_", "sexo_agre", "parentezco_agresor", 
+                    "conv_agre", "pac_hos_" , "escenario", 
+                    "grupo_edad", "comuna_nuevo", "actividad", 
+                    "año_not", "tip_ss_"))
+
+data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
+```
+
+```{r}
+data %>% explore()
+```
+
+```{r}
+data %>% group_by(ac_mental) %>% summarise(n=n()) %>%
+  mutate(proportion = n / sum(n))
+```
+
+# Remover NA en las variables a utilizar
+
+```{r}
+## Remove missing values
+data <-data[!apply(is.na(data), 1, any), ]
+```
+
+
+
+
+```{r}
+data %>% group_by(ac_mental) %>% summarise(n=n()) %>%
+  mutate(proportion = n / sum(n))
+```
+
+
+# Muestreo estratificado (10,000 observaciones)
+
+```{r}
+# Calcular proporciones por categoría de respuesta
+prop_categ <- prop.table(table(data$ac_mental))
+tam_categ <- round(10000 * prop_categ)
+
+# Realizar muestreo estratificado según proporciones
+set.seed(123)
+muestra <- data %>%
+  split(.$ac_mental) %>%
+  map2_df(tam_categ, sample_n)
+
+# Verificar que las proporciones en la muestra se mantengan
+prop.table(table(muestra$ac_mental))
+```
+
+**Si se eliminan los NA de esas variables, cambia mucho las proporciones de la variable respuesta en la variable respuesta
+
+
+
+## Modelo Logístico Bayesiano para Predicción de Atención en Salud Mental:
+
+- Muestreo estratificado de 10.000 observaciones
+
+- **Respuesta**: Recibió o no atención en salud mental (ac_mental)
+
+### Modelo 1:
+
+- **Predictoras**: edad víctima (edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_) y escenario donde ocurrió el hecho(escenario)
+
+
+
+```{r}
+# Matriz de diseño
+X_1 <- model.matrix(ac_mental ~ 
+                    edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario,
+                  data = muestra)[, -1]
+
+
+# Preparar datos para stan
+datos_stan_1 <- list(
+  N = nrow(muestra),
+  K = ncol(X_1), ## Efectos fijos
+  X = X_1,
+  y = as.integer(muestra$ac_mental)
+)
+```
+
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+
+modelo_logistico_1 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_1,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 3
+)
+```
+
+```{r}
+print(modelo_logistico_1, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
+```
+
+
+
+### Modelo 2:
+
+- **Predictoras**: edad víctima (edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_), escenario donde ocurrió el hecho(escenario), ocupación de la víctima(actividad), año de notificación del hecho(año_not), tipo de seguridad social(tip_ss_)
+
+```{r}
+# Matriz de diseño
+X_2 <- model.matrix(ac_mental ~ 
+                    edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario + actividad +
+                    año_not + tip_ss_,
+                  data = muestra)[, -1]
+
+
+# Preparar datos para stan
+datos_stan_2 <- list(
+  N = nrow(muestra),
+  K = ncol(X_2), ## Efectos fijos
+  X = X_2,
+  y = as.integer(muestra$ac_mental)
+)
+```
+
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+modelo_logistico_2 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_2,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 3
+)
+```
+
+
+
+### Modelo 3:
+
+- **Predictoras**: grupo edad víctima (grupo_edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_), escenario donde ocurrió el hecho(escenario), ocupación de la víctima(actividad), año de notificación del hecho(año_not), tipo de seguridad social(tip_ss_)
+
+```{r}
+# Matriz de diseño
+X_3 <- model.matrix(ac_mental ~ 
+                    grupo_edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario + actividad +
+                    año_not + tip_ss,
+                  data = muestra)[, -1]
+
+
+# Preparar datos para Stan
+datos_stan_3 <- list(
+  N = nrow(muestra),
+  K = ncol(X_3), ## Efectos fijos
+  X = X_3,
+  y = as.integer(muestra$ac_mental)
+)
+```
+
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+modelo_logistico_3 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_3,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 3
+)
+```
+
+
+
+
+### Modelo 4:
+
+- **Predictoras**: grupo edad víctima (grupo_edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_), escenario donde ocurrió el hecho(escenario), ocupación de la víctima(actividad), año de notificación del hecho(año_not), tipo de seguridad social(tip_ss_) y comuna de la víctima(comuna_nuevo)
+
+```{r}
+# Matriz de diseño
+X_4 <- model.matrix(ac_mental ~ 
+                    grupo_edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario + actividad +
+                    año_not + tip_ss + comuna_nuevo,
+                  data = muestra)[, -1]
+
+
+# Preparar datos para Stan
+datos_stan_4 <- list(
+  N = nrow(muestra),
+  K = ncol(X_4), ## Efectos fijos
+  X = X_4,
+  y = as.integer(muestra$ac_mental)
+)
+```
+
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+modelo_logistico_4 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_4,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 3
+)
+```
+

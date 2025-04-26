@@ -29,6 +29,7 @@ library(lubridate)
 library(stringr)
 library(stringi)
 library(tidyr)
+library(readr)
 ```
 
 
@@ -108,6 +109,9 @@ data_model <- data_model %>%
     escenario == 12 ~ "Área deportiva y recreativa"))
 ```
 
+```{r}
+unique(data_model$def_naturaleza)
+```
 
 
 ```{r}
