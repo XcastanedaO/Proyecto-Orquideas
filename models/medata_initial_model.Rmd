@@ -41,6 +41,8 @@ data_model <- load_data("data_model.csv", type = "processed")
 
 unique(data_model$ac_mental)
 ```
+
+
 # Muestreo estratificado (10,000 observaciones)
 
 ```{r}
@@ -73,6 +75,39 @@ data <- data_model %>% select(c("ac_mental",
 data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
 ```
 ```{r}
+str(data)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c(2, 1)),
+    
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Violencia física", "Violencia psicológica", "Violencia sexual")),
+    
+    area_ = factor(area_, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+    
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+    
+    parentezco_agresor = factor(parentezco_agresor, levels = c("Otro", "Pareja", "Familiar", "Ex_Pareja", "Padre", "Madre", "Conocido(a)", "Amigo(a)", "Desconocido(a)")),
+    
+    escenario = factor(escenario, levels = c("Otro", "Área deportiva y recreativa", "Comercio y áreas de servicios", "Espacios abiertos", "Establecimiento educativo", "Institución de salud", "Lugar de trabajo", "Lugares de esparcimiento con expendio de alcohol", "Vía Pública", "Vivienda")),
+    
+    conv_agre = factor(conv_agre, levels = c(2, 1)),
+    pac_hos_ = factor(pac_hos_, levels = c(2, 1))
+  )
+
+str(data)
+```
+```{r}
+as.factor(data_model$año_not)
+```
+```{r}
+levels(as.factor(data_model$actividad))
+```
+
+
+```{r}
 data %>% explore()
 ```
 
@@ -82,7 +117,7 @@ data %>% group_by(ac_mental) %>% summarise(n=n()) %>%
 ```
 ```{r}
 ## Remove missing values
-data <-data[!apply(is.na(data), 1, any), ]
+data <- data[!apply(is.na(data), 1, any), ]
 ```
 
 ```{r}
@@ -114,9 +149,9 @@ datos_stan <- list(
 modelo_logistico <- stan(
   file = "logistic_model.stan",
   data = datos_stan,
-  iter = 3000,
+  iter = 10,
   chains = 3,
-  warmup = 750,
+  warmup = 2,
   cores = 3
 )
 ```
@@ -147,8 +182,6 @@ mcmc_hist(as.matrix(test_model, pars = "beta"))
 mcmc_trace(as.array(test_model), pars = c("alpha", "beta[1]", "beta[2]"))
 ```
 
-
-
 ```{r}
 # hacer gráficos de convergencia uno por uno
 mcmc_trace(as.array(test_model), pars = c("alpha", "beta[1]", "beta[2]"))
@@ -172,7 +205,7 @@ probs_predichas <- plogis(alpha_hat + X %*% beta_hat)
 predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
 
 # Matriz de confusión
-confusion_matrix <- table(Real = muestra$ac_mental, Predicho = predicciones_binarias)
+confusion_matrix <- table(Real = data$ac_mental, Predicho = predicciones_binarias)
 ```
 
 
@@ -194,7 +227,7 @@ cat("Precision:", precision, "\n")
 cat("Recall (Sensibilidad):", recall, "\n")
 cat("F1-Score:", f1_score, "\n")
 
-roc_obj <- roc(muestra$ac_mental, as.numeric(probs_predichas))
+roc_obj <- roc(data$ac_mental, as.numeric(probs_predichas))
 auc(roc_obj)
 plot(roc_obj, col = "#377eb8", main = "Curva ROC")
 ```

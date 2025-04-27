@@ -53,7 +53,7 @@ data <- data_model %>% select(c("ac_mental",
                     "edad", "mujer_cabf","def_naturaleza",
                     "area_", "sexo_agre", "parentezco_agresor", 
                     "conv_agre", "pac_hos_" , "escenario", 
-                    "grupo_edad", "comuna_nuevo", "actividad", 
+                    "grupo_edad","actividad", 
                     "año_not", "tip_ss_"))
 
 data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
@@ -116,6 +116,49 @@ prop.table(table(muestra$ac_mental))
 - **Predictoras**: edad víctima (edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_) y escenario donde ocurrió el hecho(escenario)
 
 
+
+```{r}
+str(data)
+```
+```{r}
+data <- data %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c(2, 1)),
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Violencia física", "Violencia psicológica", "Violencia sexual")),
+    
+    area_ = factor(area_, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+    
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+    
+    parentezco_agresor = factor(parentezco_agresor, levels = c("Otro", "Pareja", "Familiar", "Ex_Pareja", "Padre", "Madre", "Conocido(a)", "Amigo(a)", "Desconocido(a)")),
+    
+    escenario = factor(escenario, levels = c("Otro", "Área deportiva y recreativa", "Comercio y áreas de servicios", "Espacios abiertos", "Establecimiento educativo", "Institución de salud", "Lugar de trabajo", "Lugares de esparcimiento con expendio de alcohol", "Vía Pública", "Vivienda")),
+    tip_ss_ =factor(tip_ss_, levels = c("I","C","E", "N", "P", "S")),
+    año_not = factor(año_not, levels = c("2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")), 
+      actividad = factor(actividad, levels=c("Otro", "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros"
+   ,"Directores y gerentes"                                                       
+   ,"Estudiante"                                                                  
+   ,"Habitante de Calle"                                                          
+   ,"Líderes(as) cívicos"                                                         
+   ,"Ninguna"                                                                     
+   ,"Ocupaciones elementales"                                                     
+   ,"Oficiales, operarios, artesanos y oficios relacionados"                      
+   ,"Operadores de instalaciones y máquinas y emsambladores"                      
+   ,"Persona dedicada al cuidado del hogar"                                       
+   ,"Persona en situación de prostitución"                                        
+   ,"Persona que cuida a otras"                                                   
+   ,"Personal de apoyo administrativo"                                            
+   ,"Profesionales, científicos e intelectuales"                                  
+   ,"Técnicos y profesionales del nivel medio"                                    
+   ,"Trabajadores de los servicios y vendedores de comercios y mercados" )),
+    conv_agre = factor(conv_agre, levels = c(2, 1)),
+    pac_hos_ = factor(pac_hos_, levels = c(2, 1)), 
+  )
+str(data)
+```
+
+
+
 # Models
 
 ### model 1
@@ -173,7 +216,6 @@ X_2 <- model.matrix(ac_mental ~
                     año_not + tip_ss_,
                   data = data)[, -1]
 
-
 # Preparar datos para stan
 datos_stan_2 <- list(
   N = nrow(data),
@@ -181,10 +223,6 @@ datos_stan_2 <- list(
   X = X_2,
   y = as.integer(data$ac_mental)
 )
-```
-
-```{r}
-parallel::detectCores()
 ```
 
 
@@ -263,8 +301,6 @@ modelo_logistico_3 <- stan(
   cores = 3
 )
 ```
-
-
 
 
 ### Modelo 4:
