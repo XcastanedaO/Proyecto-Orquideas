@@ -116,7 +116,9 @@ prop.table(table(muestra$ac_mental))
 - **Predictoras**: edad víctima (edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_) y escenario donde ocurrió el hecho(escenario)
 
 
+# Models
 
+### model 1
 ```{r}
 # Matriz de diseño
 X_1 <- model.matrix(ac_mental ~ 
@@ -164,23 +166,26 @@ print(modelo_logistico_1, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
 ```{r}
 # Matriz de diseño
 X_2 <- model.matrix(ac_mental ~ 
-                    edad + mujer_cabf + def_naturaleza +
+                    grupo_edad + mujer_cabf + def_naturaleza +
                     area_ + sexo_agre + 
                     parentezco_agresor + conv_agre  + 
                     pac_hos_ + escenario + actividad +
                     año_not + tip_ss_,
-                  data = muestra)[, -1]
+                  data = data)[, -1]
 
 
 # Preparar datos para stan
 datos_stan_2 <- list(
-  N = nrow(muestra),
+  N = nrow(data),
   K = ncol(X_2), ## Efectos fijos
   X = X_2,
-  y = as.integer(muestra$ac_mental)
+  y = as.integer(data$ac_mental)
 )
 ```
 
+```{r}
+parallel::detectCores()
+```
 
 
 ```{r}
@@ -191,10 +196,34 @@ modelo_logistico_2 <- stan(
   iter = 3000,
   chains = 3,
   warmup = 750,
-  cores = 3
+  cores = 6
 )
 ```
 
+```{r}
+modelo_logistico_2@stanmodel@dso <- new("cxxdso")
+
+saveRDS(modelo_logistico_2, file = "model_all_data_all_var.rds")
+```
+
+```{r}
+model <- readRDS("model_all_data_all_var.rds")
+```
+
+```{r}
+print(model, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
+```
+```{r}
+# Gráficos de diagnóstico
+
+#traceplot(as.array(modelo_logistico, pars = c("alpha","beta")))
+mcmc_acf(as.matrix(modelo_logistico_2, pars = c("alpha", "beta")))
+
+mcmc_intervals(as.matrix(modelo_logistico_2, pars = "beta"))
+
+mcmc_hist(as.matrix(modelo_logistico_2, pars = "beta"))
+mcmc_trace(as.array(modelo_logistico_2), pars = c("alpha", "beta[1]", "beta[2]"))
+```
 
 
 ### Modelo 3:
