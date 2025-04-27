@@ -1050,6 +1050,15 @@ data %>%
 
 No hay inconsistencias entre el código y el nombre.
 
+```{r}
+data <- data %>% 
+  mutate(nombre_comuna = case_when(
+    nombre_comuna == "Doce De Octubre" ~ "Doce de Octubre",
+    TRUE ~ nombre_comuna
+  ))
+```
+
+
 ### Barrio de residencia
 
 En la ficha de notificación no se encuentra campo para ingresar comuna y
@@ -1461,13 +1470,13 @@ data <- data %>%
       nombre_barrio %in% c("La Isla", "La Rosa", "Playón de Los Comuneros", "Villa del Socorro") ~ "Santa Cruz",
       nombre_barrio %in% c("La Cruz", "La Salle", "María Cano-Carambolas", "Oriente") ~ "Manrique",
       nombre_barrio %in% c("Berlín", "Campo Valdés No.1", "San Isidro") ~ "Aranjuez",
-      nombre_barrio %in% c("Picachito", "Picacho", "San José de La Montaña") ~ "Doce de Octubre",
+      nombre_barrio %in% c("Picachito", "Picacho") ~ "Doce de Octubre",
       nombre_barrio %in% c("Aures No.2", "Bosques de San Pablo", "López de Mesa", "Nueva Villa de La Iguaná", "Olaya Herrera") ~ "Robledo",
       nombre_barrio %in% c("Batallón Girardot", "La Mansión", "La Ladera", "Llanaditas", "Trece de Noviembre") ~ "Villa Hermosa",
       nombre_barrio %in% c("Corazón de Jesús", "Prado") ~ "La Candelaria",
       nombre_barrio %in% c("Calasanz", "Calasanz Parte Alta", "Ferrini", "Santa Lucía", "Santa Teresita") ~ "La América",
       nombre_barrio %in% c("Antonio Nariño", "El Pesebre", "Juan XXIII La Quiebra") ~ "San Javier",
-      nombre_barrio %in% c("Barrio Colombia", "Castropol", "El Tesoro", "San Lucas") ~ "El Poblado",
+      nombre_barrio %in% c("Barrio Colombia", "Castropol", "El Tesoro", "San Lucas","Altos del Poblado") ~ "El Poblado",
       nombre_barrio %in% c("El Rodeo", "Guayabal") ~ "Guayabal",
       nombre_barrio %in% c("Altavista", "El Rincón", "La Hondonada", "La Loma de Los Bernal", "La Mota", "Las Mercedes", "Las Violetas") ~ "Belén",
       nombre_barrio %in% c("Cabecera Urbana Corregimiento San Cristóbal", "El Llano", "El Picacho", "La Loma", "Área de Expansión Pajarito", "San José de La Montaña") ~ "Corregimiento de San Cristóbal",
