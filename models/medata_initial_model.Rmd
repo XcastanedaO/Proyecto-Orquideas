@@ -166,6 +166,7 @@ saveRDS(modelo_logistico, file = "model_all_data.rds")
 ### Línea para leer el modelo
 test_model <- readRDS("model_all_data.rds")
 
+test_model <- readRDS(file.choose())
 ```
 
 ```{r}

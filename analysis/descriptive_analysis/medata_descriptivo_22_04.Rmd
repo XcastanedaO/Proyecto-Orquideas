@@ -29,6 +29,8 @@ library(stringi)
 library(knitr)
 library(readr)
 library(sf)
+library(gmodels)   
+library(DescTools)
 library(kableExtra)
 ```
 
@@ -76,7 +78,7 @@ Se evidencia que las fechas de notificación van desde julio de 2016 hasta abril
 
 ```{r,fig.align = "center", fig.width = 4, fig.height = 3}
 base_datos %>%
-  mutate(año_not = ifelse(is.na(año_not), "Sin información", as.character(año_not))) %>%  
+  mutate(año_not = ifelse(is.na(año_not), "Sin información", as.character(año_not))%>% factor()) %>%  
   count(año_not) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = año_not, y = n)) +
@@ -86,7 +88,7 @@ base_datos %>%
             color = "#4B0082",  
             fontface = "bold",
             size = 2) + 
-  labs(x = "Año", y = "Frecuencia") + #title = "Casos de violencia por año"
+  labs(x = "Año", y = "Frecuencia") + #title = "Casos de violencia por año" +
   theme_minimal()
 
 ```
@@ -167,9 +169,7 @@ El análisis de la variable edad muestra que la violencia afecta a mujeres de to
 ```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
-    actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
-) %>% 
-
+    actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad)) %>% factor()) %>% 
    count(actividad) %>%
   top_n(5, n) %>%
   ggplot(aes(x = reorder(actividad, n), y = n)) +
@@ -186,14 +186,7 @@ Con respecto a la ocupación de las víctimas, se observa que las categorías m�
 ```{r,fig.align = "center", fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
-    actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
-) %>% 
-  
-
-
-filter(actividad != "Ninguna" & actividad !="Otro") %>% 
-
-  count(actividad) %>%
+    actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))  %>% factor()) %>% filter(actividad != "Ninguna" & actividad !="Otro") %>%  count(actividad) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   top_n(5, n) %>%
   ggplot(aes(x = reorder(actividad, n), y = n)) +
@@ -226,7 +219,7 @@ base_datos <- base_datos %>% mutate(tip_ss_ = case_when(
   tip_ss_ == "P" ~ "Excepción",
   tip_ss_ == "E" ~ "Especial",
   TRUE ~ tip_ss_
-))
+) %>% factor())
 
 
 base_datos %>%
@@ -244,33 +237,6 @@ base_datos %>%
 ```
 
 
-### Atención en salud mental
-
-```{r}
-base_datos <- base_datos %>% mutate(ac_mental = case_when(
-  is.na(ac_mental) ~ "Sin información", 
-  ac_mental == "1" ~ "Sí",
-  ac_mental == "2" ~ "No",
-  TRUE ~ ac_mental
-))
-
-
-base_datos %>%
-  count(ac_mental) %>%
-  mutate(proporcion = n / sum(n) * 100) %>%
-  ggplot(aes(x = ac_mental, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
-  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
-            vjust = -0.2, 
-            color = "#4B0082",  
-            fontface = "bold",
-            size = 2) + 
-  labs(x = "Atención en salud mental", y = "Frecuencia") + 
-  theme_minimal()
-```
-
-
-
 ### Mujer cabeza de familia
 
 ```{r}
@@ -279,7 +245,7 @@ base_datos <- base_datos %>% mutate(mujer_cabf = case_when(
   mujer_cabf == "1" ~ "Sí",
   mujer_cabf == "2" ~ "No",
   TRUE ~ mujer_cabf
-))
+) %>% factor())
 
 
 base_datos %>%
@@ -294,6 +260,12 @@ base_datos %>%
             size = 2) + 
   labs(x = "Atención en salud mental", y = "Frecuencia") + 
   theme_minimal()
+```
+
+### Departamento y municipio de residencia
+
+```{r}
+base_datos %>% count(cod_dpto_r,ndep_resi,cod_mun_r,nmun_resi, name ="Cantidad" )
 ```
 
 ### Comuna de residencia
@@ -328,7 +300,25 @@ ggplot(aux_data) +
 ```{r}
 n_comuna_r
 ```
-Son casos `r base_datos %>% filter(codigo_comuna == "0" | is.na(codigo_comuna)) %>% nrow()` que no se grafican en el mapa porque corresponden a residencia fuera del exterior o no se conoce la comuna donde habitan
+Son `r base_datos %>% filter(codigo_comuna == "0" | is.na(codigo_comuna)) %>% nrow()` casos que no se grafican en el mapa porque corresponden a residencia fuera del exterior o no se conoce la comuna donde habitan
+
+#### Grupo poblacional al que pertenece la víctima
+
+```{r}
+# Variables de interés
+var <- c("gp_discapa","gp_desplaz","gp_migrant","gp_carcela","gp_gestan","gp_indigen","gp_pobicbf","gp_mad_com","gp_desmovi","gp_psiquia","gp_vic_vio","gp_otros")
+
+base_datos %>%
+  mutate(across(
+    c(gp_discapa,gp_desplaz,gp_migrant,gp_carcela,gp_gestan,gp_indigen,gp_pobicbf,gp_mad_com,gp_desmovi,gp_psiquia,gp_vic_vio,gp_otros),
+    ~ .x %>%
+      fct_recode("Sí" = "1", "No" = "2") %>%
+      fct_explicit_na(na_level = "Sin información")
+  )) %>%
+  select(all_of(var)) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "valor") %>%  count(variable, valor, .drop = FALSE) %>% 
+  pivot_wider(names_from = valor, values_from = n, values_fill = 0)
+```
 
 
 ## Caracterización de los agresores
@@ -337,7 +327,7 @@ Son casos `r base_datos %>% filter(codigo_comuna == "0" | is.na(codigo_comuna)) 
 
 ```{r, fig.align = "center",fig.width = 4, fig.height = 3}
 base_datos <- base_datos %>%
-  mutate(sexo_agre = str_trim(sexo_agre)) # Elimina espacios en blanco
+  mutate(sexo_agre = str_trim(sexo_agre) %>% factor()) # Elimina espacios en blanco
 
 base_datos %>%
   mutate(
@@ -367,12 +357,12 @@ La gran mayoría de los casos de violencia reportados fueron perpetrados por hom
 La violencia ejercida por mujeres hacia otras mujeres puede manifestarse en diversos contextos. En el ámbito familiar, pueden presentarse casos de violencia intrafamiliar ejercida por madres, abuelas u otras figuras femeninas. También pueden darse en espacios laborales y educativos, es posible encontrar situaciones de acoso, discriminación o abuso de poder entre mujeres. Además, en contextos de trata de personas o explotación sexual, algunas mujeres pueden actuar como intermediarias dentro de estructuras más amplias de violencia. Incluso en relaciones de pareja entre mujeres, pueden surgir dinámicas violentas similares a las observadas en relaciones heterosexuales.
 
 
-#### Relación víctima-agresor
+#### Relación víctima-agresor (Parentesco)
 
 ```{r, fig.align = "center",fig.width = 4, fig.height = 3}
 base_datos %>%
   mutate(
-    parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor))) %>% 
+    parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)) %>% factor()) %>% 
   count(parentezco_agresor) %>%
   top_n(10, n) %>%
   ggplot(aes(x = reorder(parentezco_agresor, n), y = n)) +
@@ -396,7 +386,7 @@ base_datos <- base_datos %>%
   mutate(conv_agre = case_when(
     conv_agre == 1 ~ "Sí",
     conv_agre == 2 ~ "No"
-  ))
+  ) %>% factor())
 ```
 
 ```{r,fig.align = "center", fig.width = 4, fig.height = 3}
@@ -428,6 +418,12 @@ Los resultados muestran que en el 62.5% de los casos reportados, las víctimas n
 
 ## Caracterización del hecho
 
+### Departamento y municipio de ocurrencia
+
+```{r}
+base_datos %>% count(cod_dpto_o,ndep_proce,cod_mun_o,nmun_proce, name ="Cantidad" )
+```
+
 #### Tipos de violencia reportados
 
 ```{r, fig.align = "center", fig.width = 4.5, fig.height = 3}
@@ -436,12 +432,9 @@ base_datos %>%
     def_naturaleza == 1 ~ "Violencia física",
   def_naturaleza == 2 ~ "Violencia psicológica",
   def_naturaleza == 3 ~ "Negligencia y abandono",
-  def_naturaleza %in% c(4, 5, 6, 7, 10, 12, 14) ~ "Violencia sexual"
-  )) %>% 
-  
-    mutate(
-    def_naturaleza = ifelse(is.na(def_naturaleza), "Sin información", as.character(def_naturaleza))) %>%
-
+  def_naturaleza %in% c(4, 5, 6, 7, 10, 12, 14) ~ "Violencia sexual",
+  is.na(def_naturaleza) ~ "Sin información"
+  ) %>% factor()) %>% 
   count(def_naturaleza) %>%
   mutate(proporcion = n / sum(n) * 100) %>%  # Calculamos el porcentaje
   ggplot(aes(x = reorder(def_naturaleza, n), y = n)) +
@@ -469,9 +462,10 @@ base_datos <- base_datos %>%
   mutate(area_ = case_when(
     area_ == "1" ~ "Cabecera municipal",
     area_ == "2" ~ "Centro poblado",
-    area_ == "3" ~ "Rural disperso"
-  ))
-base_datos %>% filter(!is.na(area_)) %>% count(area_)
+    area_ == "3" ~ "Rural disperso",
+    is.na(area_) ~ "Sin información"
+  ) %>% factor())
+base_datos %>% count(area_)
 ```
 
 
@@ -486,7 +480,7 @@ base_datos <- base_datos %>%
   mutate(antec = case_when(
     antec == "1" ~ "Sí",
     antec == "2" ~ "No"
-  ))
+  ) %>% factor())
 ```
 
 
@@ -514,7 +508,7 @@ base_datos <- base_datos %>%
     ambito_lug == "5" ~ "Comunitario",
     ambito_lug == "6" ~ "Hogar",
     ambito_lug == "7" ~ "Otros"
-  ))
+  ) %>% factor())
 ```
 
 ```{r}
@@ -539,15 +533,15 @@ base_datos <- base_datos %>%
     escenario == "2" ~ "Vivienda",
     escenario == "3" ~ "Establecimiento educativo",
     escenario == "4" ~ "Lugar de trabajo",
-    
     escenario == "7" ~ "Otro",
     escenario == "8" ~ "Comercio",
     escenario == "9" ~ " Otros espacios abiertos",
     escenario == "10" ~ "Bares",
     escenario == "11" ~ "Institución de la salud",  
-    escenario == "12" ~ "Área deportiva"
+    escenario == "12" ~ "Área deportiva",
+    is.na(escenario) ~ "Sin información"
 
-  ))
+  ) %>% factor())
 ```
 
 ```{r}
@@ -561,14 +555,40 @@ El escenario señala el lugar físico específico donde se produjo el hecho, y d
 
 ## Atención en salud
 
-#### Hospitalización
+### Atención en salud mental
+
+```{r}
+base_datos <- base_datos %>% mutate(ac_mental = case_when(
+  is.na(ac_mental) ~ "Sin información", 
+  ac_mental == "1" ~ "Sí",
+  ac_mental == "2" ~ "No",
+  TRUE ~ ac_mental
+) %>% factor())
+
+
+base_datos %>%
+  count(ac_mental) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = ac_mental, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  
+            fontface = "bold",
+            size = 2) + 
+  labs(x = "Atención en salud mental", y = "Frecuencia") + 
+  theme_minimal()
+```
+
+
+### Hospitalización
 
 ```{r}
 base_datos <- base_datos %>% 
   mutate(pac_hos_ = case_when(
     pac_hos_ == 1 ~ "Sí",
     pac_hos_ == 2 ~ "No"
-  ))
+  ) %>% factor())
 
 ```
 
@@ -588,6 +608,282 @@ Evaluar de forma individual esta variable podría no ser tan relevante pues, en 
 
 ## Análisis multivariado
 
+##### Pruebas de asociación
+
+Se realizan pruebas estadísticas para evaluar si hay una asociación significativa entre la variable de respuesta de interés, **atención en salud mental (ac_mental)**, y las demás variables cualitativas. 
+
+La prueba a realizar se determina así:
+
+-   Si todos los valores esperados de celda $\geq$ 5, usar Chi-cuadrado normal.
+
+-   Si hay valores esperados $<$ 5 pero tabla $2\times2$, usar Fisher.
+
+-   Si hay valores esperados $<$ 5 y la tabla es mayor que $2\times2$, usar Chi-cuadrado con simulación de Monte Carlo.
+​
+
+```{r}
+# Eliminar valores faltantes
+aux_data <- base_datos %>%
+  filter(if_all(-c(sem_ges_), ~ !is.na(.)))
+
+# Seleccionar variables de interés. Las últimas variables tienen un solo nivel, por ende, no tiene sentido hacer la prueba
+aux_data <- aux_data %>% select(-all_of(c("fec_not","npais_resi", "edad",          "ndep_resi","nmun_resi","nombre_barrio","nombre_comuna","npais_proce","ndep_proce","nmun_proce","barrio_nuevo","comuna_nuevo","municipio_nuevo", "nom_grupo_", "cod_pais_o"))) 
+
+# Crear dataframe vacío para guardar resultados
+results <- data.frame(
+  predictor = character(),
+  response = character(),
+  test = character(),
+  statistic = numeric(),
+  p_value = numeric(),
+  decision = character(),
+  v_cramer = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Bucle para analizar cada variable
+for (var in colnames(aux_data)) {
+
+  # Crear tabla de contingencia
+  table_ <- table(droplevels(aux_data[[var]]), aux_data$ac_mental)
+
+  # Cálculo manual de valores esperados
+  total_general <- sum(table_)
+  total_rows <- rowSums(table_)
+  total_columns <- colSums(table_)
+  
+  exp_values <- matrix(0, 
+                      nrow = nrow(table_), 
+                      ncol = ncol(table_),
+                      dimnames = dimnames(table_))
+  
+  for (i in 1:nrow(table_)) {
+    for (j in 1:ncol(table_)) {
+      exp_values[i, j] <- (total_rows[i] * total_columns[j]) / total_general
+    }
+  }
+
+  # Variables para guardar resultados
+  test <- NA
+  statistic <- NA
+  p_value <- NA
+  decision <- NA
+  
+  # prueba estadística adecuada
+  if (all(exp_values >= 5)) {
+    chi_test <- chisq.test(table_)
+
+    test <- "Chi-cuadrado"
+    statistic <- chi_test$statistic
+    p_value <- chi_test$p.value
+    decision <- ifelse(p_value < 0.05, "Rechazo", "No rechazo")
+    
+  } else {
+    
+    # Verificar si es tabla 2x2
+    if (nrow(table_) == 2 && ncol(table_) == 2) {
+      fisher_test <- fisher.test(table_)
+
+      test <- "Fisher exacta"
+      statistic <- NA  # Fisher no devuelve un estadístico
+      p_value <- fisher_test$p.value
+      decision <- ifelse(p_value < 0.05, "Rechazo", "No rechazo")
+      
+    } else {
+      chi_test_mc <- chisq.test(table_, simulate.p.value = TRUE)
+
+      test <- "Chi-cuadrado (Monte Carlo)"
+      statistic <- chi_test_mc$statistic
+      p_value <- chi_test_mc$p.value
+      decision <- ifelse(p_value < 0.05, "Rechazo", "No rechazo")
+    }
+  }
+  
+  # Cálculo de fuerza de asociación: V de Cramer
+  v_cramer <- DescTools::CramerV(table_)
+  
+  # Guardar los resultados en el dataframe
+  results <- rbind(results, data.frame(
+    predictor = var,
+    response = "ac_mental",
+    test = test,
+    statistic = as.numeric(statistic),
+    p_value = as.numeric(p_value),
+    decision = decision,
+    v_cramer = round(v_cramer, 3),
+    stringsAsFactors = FALSE
+  ))
+}
+results
+```
+
+Los resultados indican que en la mayoría de pruebas realizadas se rechaza la hipotésis nula, lo que quiere decir que la mayoría de variables consideradas presentan un nivel de asociación con la variable **atención en salud mental (ac_mental)**. Las variables que no son:
+
+```{r}
+results %>% filter(decision == "No rechazo") %>% select(predictor,p_value,test)
+```
+Ahora bien, las variables con asociación más fuerte son: 
+
+```{r}
+results %>% select(predictor,v_cramer) %>% 
+  arrange(desc(v_cramer)) %>%
+  slice_head(n = 14) 
+```
+Los casos donde el coeficiente de correlación de Cramér es inf son casos donde la tabla de contingencia tiene una fila o columna en cero debido a falta de información de alguna combinación. 
+
+##### Edad según atención en salud mental
+
+```{r}
+ggplot(base_datos, aes(x = ac_mental, y = edad)) +
+  geom_violin(trim = FALSE, fill = "#c07dca") +
+  geom_boxplot(width = 0.1) +
+  labs(title = "Distribución edad de la víctima según atención mental", x = "Atención mental", y = "Edad")  +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  )
+```
+Para verificar la relación, se realiza una prueba **Mann-Whitney**:
+
+```{r}
+wilcox.test(edad ~ ac_mental, data = base_datos, exact = FALSE)
+```
+
+Dado que se rechaza la hipotésis nula, se concluye que la distribución de la edad difiere en en si se recibió o no atención en salud mental.
+
+##### Atención en salud según grupo de edad
+
+```{r, warning=FALSE, message=FALSE}
+edad_mental <- base_datos %>%
+  group_by(grupo_edad, ac_mental) %>%
+  summarise(total = n()) %>%
+  ungroup()
+
+edad_mental <- edad_mental %>%
+  group_by(grupo_edad) %>%
+  mutate(porcentaje = total / sum(total) * 100) %>%
+  ungroup()
+
+edad_mental <- edad_mental %>%
+  mutate(total_plot = ifelse(ac_mental == "Sí", -total, total))
+
+edad_mental$grupo_edad <- factor(edad_mental$grupo_edad,
+                                levels = c("0-4", "5-9", "10-14", "15-17", "18-19", "20-24",
+                                           "25-29", "30-34", "35-39", "40-44", "45-49",
+                                           "50-54", "55-59", "60-64", "65-69", "70-74",
+                                           "75-79", "80 y más"))
+
+ggplot(edad_mental, aes(x = grupo_edad, y = total_plot, fill = ac_mental)) +
+  geom_bar(stat = "identity", width = 0.8) +
+  geom_text(aes(
+    label = paste0(round(porcentaje, 1), "%"),
+    y = ifelse(total_plot < 0, total_plot - 300, total_plot + 300) # ajusta posición al final de la barra
+  ),
+  size = 3, color = "black") +
+  coord_flip() +
+  scale_y_continuous(labels = abs) +
+  labs(
+    # title = "Atención en salud mental según grupo de edad",
+    x = "Grupo de edad",
+    y = "Cantidad",
+    fill = "Atención en salud mental"
+  ) +
+  theme_minimal() +
+  scale_fill_manual(values = c("No" = "#e07a5f", "Sí" = "#c07dca")) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.text.x = element_text(size = 10),
+    axis.text.y = element_text(size = 10)
+  )
+```
+
+##### Atención en salud mental según ocupación de la víctima
+
+```{r}
+as.data.frame.matrix(round(prop.table(table(base_datos$actividad, base_datos$ac_mental), margin =1)*100,3)) %>% arrange(desc(Sí))
+```
+
+##### Atención en salud mental según hospitalización
+
+```{r}
+# Crear el gráfico
+base_datos %>%
+  group_by(ac_mental, pac_hos_) %>%
+  ggplot(aes(x = ac_mental, fill = pac_hos_)) +
+  geom_bar(position = "fill", alpha = 0.85) +
+  scale_fill_manual(values = c("#e07a5f", "#c07dca")) +
+  labs(
+    x = "Atención en salud mental",
+    y = "Proporción (%)",
+    fill = "Hospitalización") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1),
+        plot.title = element_text(size = 10))
+```
+
+
+##### Atención en salud mental según reincidencia
+
+```{r}
+base_datos %>%
+  group_by(ac_mental, antec) %>%
+  ggplot(aes(x = ac_mental, fill = pac_hos_)) +
+  geom_bar(position = "fill", alpha = 0.85) +
+  scale_fill_manual(values = c("#e07a5f", "#c07dca")) +
+  labs(
+    x = "Atención en salud mental",
+    y = "Proporción (%)",
+    fill = "Hospitalización") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(hjust = 1),
+        plot.title = element_text(size = 10))
+```
+
+##### Atención en salud según tipo de seguridad social de la víctima
+
+```{r}
+base_datos %>%
+  count(ac_mental, tip_ss_) %>%
+  group_by(ac_mental) %>%
+  mutate(proporcion = round((n / sum(n)) * 100, 3)) %>%
+  ggplot(aes(x = ac_mental, y = proporcion, fill = tip_ss_)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.85) +
+  labs(
+    x = "Atención en salud mental",
+    y = "Proporción (%)",
+    fill = "Reincidencia"
+  ) +
+  scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b","#0DB6BC","#5FB767","#97C7BB")) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::label_number(suffix = "%")) +
+  theme(axis.text.x = element_text(hjust = 1))
+
+```
+
+##### Atención en salud mental según departamento de ocurrencia
+
+```{r}
+aux_data <- base_datos %>% mutate(ac_mental = case_when(
+  is.na(ac_mental) ~ "Sin información", 
+  ac_mental == "1" ~ "Sí",
+  ac_mental == "2" ~ "No",
+  TRUE ~ ac_mental
+) %>% factor())
+
+
+table(aux_data$ndep_proce,aux_data$ac_mental)
+```
+
+##### Atención en salud mental según departamento de residencia
+
+```{r}
+table(aux_data$ndep_resi,aux_data$ac_mental)
+```
+
 ##### Tipo de violencia según hospitalización
 
 Se presenta a continuación la proporción de víctimas hospitalizadas según el tipo de violencia:
@@ -595,15 +891,13 @@ Se presenta a continuación la proporción de víctimas hospitalizadas según el
 ```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 # Crear el gráfico
 base_datos %>%
-  group_by(def_naturaleza) %>%
-  count(pac_hos_) %>%
-  mutate(proporcion = round((n / sum(n))*100, 3)) %>%
-  ggplot(aes(x = def_naturaleza, y = proporcion, fill = pac_hos_)) +
-  geom_bar(stat = "identity", position = "fill", alpha=0.85) +  # "fill" normaliza a 100%
+  group_by(def_naturaleza, pac_hos_) %>%
+    ggplot(aes(x = def_naturaleza,fill = pac_hos_)) +
+  geom_bar(position = "fill", alpha=0.85) +  # "fill" normaliza a 100%
   scale_fill_manual(values = c("#e07a5f", "#c07dca")) +  # Paleta personalizada
   labs(
        x = "Tipo de violencia",
-       y = "Proporción",
+       y = "Proporción (%)",
        fill = "Hospitalización") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
@@ -622,7 +916,7 @@ base_datos %>%
     conv_agre == "1" ~ "Sí",
     conv_agre == "2" ~ "No",
     is.na(conv_agre) ~ "Sin información",
-    TRUE ~ conv_agre),
+    TRUE ~ conv_agre) %>% factor(),
     
     def_naturaleza = case_when(
       def_naturaleza == "1" ~ "Física",
@@ -637,19 +931,18 @@ base_datos %>%
       def_naturaleza == "14" ~ "Otras violencias sexuales",
       is.na(def_naturaleza) ~ "Sin información",
       TRUE ~ def_naturaleza
-    )
-  ) %>%
+    ) %>% factor()
+  )%>%
   group_by(def_naturaleza, conv_agre) %>%
   summarise(n = n(), .groups = "drop") %>%
   group_by(def_naturaleza) %>%
-  mutate(proporcion = round(n / sum(n) * 100, 2)) %>%
-  ggplot(aes(x = def_naturaleza, y = proporcion, fill = conv_agre)) +
-  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  ggplot(aes(x = def_naturaleza,  fill = conv_agre)) +
+  geom_bar(position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
  scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(#title = "Proporción de Convivencia con el \n agresor por tipo de violencia",
        x = "Tipo",
-       y = "Proporción",
+       y = "Proporción (%)",
        fill = "Convivencia con el agresor") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -672,7 +965,7 @@ tabla_salud <- base_datos %>%
   def_naturaleza == 2 ~ "Violencia psicológica",
   def_naturaleza == 3 ~ "Negligencia y abandono",
   def_naturaleza %in% c(4, 5, 6, 7, 10, 12, 14) ~ "Violencia sexual"
-  )) %>%
+  ) %>% factor()) %>%
   
   pivot_longer(cols = all_of(atenciones), names_to = "atencion", values_to = "presente") %>%
   group_by(def_naturaleza, atencion) %>%
@@ -705,7 +998,7 @@ Por último, el informe a autoridades (inf_aut) destaca en los casos de violenci
 ```{r,fig.align = "center", fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
-    antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
+    antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec) %>% factor(),
     
     def_naturaleza = case_when(
       def_naturaleza == "1" ~ "Física",
@@ -720,17 +1013,16 @@ base_datos %>%
       def_naturaleza == "14" ~ "Otras violencias sexuales",
       is.na(def_naturaleza) ~ "Sin información",
       TRUE ~ def_naturaleza
-    )
+    )  %>% factor()
   ) %>%
   group_by(def_naturaleza, antec) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  ggplot(aes(x = def_naturaleza, y = n, fill = antec)) +
-  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  ggplot(aes(x = def_naturaleza, fill = antec)) +
+  geom_bar(position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
    scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(#title = "Proporción de reincidencia según tipo de violencia",
        x = "Tipo de Violencia",
-       y = "Proporción",
+       y = "Proporción (%)",
        fill = "Reincidencia") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -749,7 +1041,7 @@ base_datos %>%
       antec == "2" ~ "No",
       is.na(antec) ~ "Sin información",
       TRUE ~ antec
-    ),
+    ) %>% factor(),
     area_ = case_when(
       is.na(area_) ~ "Sin información",
       area_ == "1" ~ "Cabecera municipal",
@@ -759,14 +1051,13 @@ base_datos %>%
     )
   ) %>%
   group_by(area_, antec) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  ggplot(aes(x = area_, y = n, fill = antec)) +
-  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  ggplot(aes(x = area_, fill = antec)) +
+  geom_bar(position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
   scale_fill_manual(values = c("No" = "#e07a5f", "Sí" = "#c07dca", "Sin información" = "#9b9b9b")) +
   labs(
     x = "Área",
-    y = "Proporción",
+    y = "Proporción (%)",
     fill = "Reincidencia"
   ) +
   theme_minimal() +
@@ -783,29 +1074,28 @@ El siguiente gráfico evidencia que la reincidencia es más alta en las cabecera
 ```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   mutate(
-    parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)),
-    conv_agre = ifelse(is.na(conv_agre), "Sin información", as.character(conv_agre))
+    parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)) %>% factor(),
+    conv_agre = ifelse(is.na(conv_agre), "Sin información", as.character(conv_agre)) %>% factor()
   ) %>%
   mutate(conv_agre = case_when(
     conv_agre == "1" ~ "Sí",
     conv_agre == "2" ~ "No",
-    conv_agre == "Sin información" ~ "Sin información",
     TRUE ~ conv_agre
-  )) %>%
+  ) %>% factor()) %>%
   count(parentezco_agresor, conv_agre) %>%
-  ggplot(aes(x = parentezco_agresor, y = n, fill = conv_agre)) +
-  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  ggplot(aes(x = parentezco_agresor,fill = conv_agre)) +
+  geom_bar(position = "fill", alpha = 0.85) +
   scale_y_continuous(labels = scales::percent_format()) +
    scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
   labs(
     #title = "Proporción de convivencia \n con el agresor por parentesco",
     x = "Parentesco",
-    y = "Proporción",
+    y = "Proporción (%)",
     fill = "Convivencia con el agresor"
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
-Son solos tres los casos en que no se conoce el parentesco y tampoco si la victima convive con el agresor, por ello, no se evidencian en el gráfico. Ahora bien, se observa que la convivencia con el agresor varía según el parentesco con el agresor, por ejemplo, cuando el agresor fue la madre, más del 80% de las victimas convivían con el agresor o cuando fue padre y pareja también los casos fueron superiores al 60%. Mientras que cuando la relación con el agresor es externa, las proporciones no alcanzan el 50%. Lo anterior da indicios que el entorno doméstico y familiar puede ser un entorno de alto riesgo.
+Son solos tres los casos en que no se conoce el parentesco y tampoco si la víctima convive con el agresor, por ello, no se evidencian en el gráfico. Ahora bien, se observa que la convivencia con el agresor varía según el parentesco con el agresor, por ejemplo, cuando el agresor fue la madre, más del 80% de las víctimas convivían con el agresor o cuando fue padre y pareja también los casos fueron superiores al 60%. Mientras que cuando la relación con el agresor es externa, las proporciones no alcanzan el 50%. Lo anterior da indicios que el entorno doméstico y familiar puede ser un entorno de alto riesgo.
 

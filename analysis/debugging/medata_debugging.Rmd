@@ -1714,7 +1714,7 @@ data <- data %>% filter(( sem_ges_ >= 1 &
 
 ## Información del hecho
 
-### Lugar de procendencia/ocurrencia del hecho
+### Lugar de procedencia/ocurrencia del hecho
 
 Se refiere al lugar donde posiblemente el paciente adquirió o al cual se
 atribuye la exposición al agente o factor de riesgo que ocasionó el
@@ -1903,6 +1903,17 @@ No hay discordancias.
 ```{r, include=FALSE}
 unique(data$nmun_proce)
 ```
+
+```{r}
+data <- data %>% mutate(
+  nmun_proce = case_when(
+    nmun_proce == "Santa Rosa De Osos" ~ "Santa Rosa de Osos",
+    nmun_proce == "San Juan De Urabá" ~ "San Juan de Urabá",
+    TRUE ~ nmun_proce
+  )
+)
+```
+
 
 #### Área y barrio:
 
@@ -2437,7 +2448,7 @@ data <- data %>%
     nmun_proce = case_when(
       str_detect(lugar_hecho, "^(7 De Agosto|Álamos|Bogotá|Bogota|Bogotá, D.C.)$") ~ "Bogotá, D.C.",
       str_detect(lugar_hecho, "^(Belllo|Bello|Bello La Gabriela|La Orquídea|(?i)Hato(\\s)?[Vv]iejo|Madera|Machado|Obra 2000|París|[ZS]amora|Aclala|Alcala|Altos De Oriente|Araucarias 2|Barrio Nuevo|Bello Antioquia|(La\\s)?Cabaña(s)?|Cabañita(s)?|Bello Niqu[ií]a|Niqu[ií]a|Niquia Camacol|Nuev[ao] Je[rs]usalen|Jerusalen Invasion|(La\\s)?Nueva\\sJerusalem|Nueva Herusalen|Pachelly|El Cairo|El Paraiso|La Camila|La Cumbr[ae]|Vereda La Cumbre|Las Vegas|Los Bucaros|Manantiales De Paz|Mamantiales|Manantial(\\sSector\\s5)?|Manantalies|(Los\\s)?Manantiales|Invasion Manantiales|Manatiales|Molinares|Mánchester|Machado|(La\\s)?Navarra|Playa Rica|San Felix Antioquia|San Felix Nazared Be|(Sanata|Santa)\\sRita(s)?|Santa Ana|Trapiche|Villa Linda|Villa Mar(ia)?|Bello O|Bello Oriente Medellin|Bello Horiente|Obrero|SAMORA)$") ~ "Bello",
-      str_detect(lugar_hecho, "^(San Juan De Uraba|Vereda Sinai)$") ~ "San Juan De Urabá",
+      str_detect(lugar_hecho, "^(San Juan De Uraba|Vereda Sinai)$") ~ "San Juan de Urabá",
       str_detect(lugar_hecho, "^(Bolombolo|Venecia)$") ~ "Venecia",
       str_detect(lugar_hecho, "^(Barbosa|Parque De Barbosa|Barboza|Popalito)$") ~ "Barbosa",
       str_detect(lugar_hecho, "^El Retiro$") ~ "Retiro",
@@ -2493,7 +2504,7 @@ data <- data %>%
     cod_mun_o = case_when(
       str_detect(lugar_hecho, "^(7 De Agosto|Álamos|Bogotá|Bogota|Bogotá, D.C.)$") ~ "11001",
       str_detect(lugar_hecho, "^(Belllo|Bello|Bello La Gabriela|La Orquídea|(?i)Hato(\\s)?[Vv]iejo|Madera|Machado|Obra 2000|París|[ZS]amora|Aclala|Alcala|Altos De Oriente|Araucarias 2|Barrio Nuevo|Bello Antioquia|(La\\s)?Cabaña(s)?|Cabañita(s)?|Bello Niqu[ií]a|Niqu[ií]a|Niquia Camacol|Nuev[ao] Je[rs]usalen|Jerusalen Invasion|(La\\s)?Nueva\\sJerusalem|Nueva Herusalen|Pachelly|El Cairo|El Paraiso|La Camila|La Cumbr[ae]|Vereda La Cumbre|Las Vegas|Los Bucaros|Manantiales De Paz|Mamantiales|Manantial(\\sSector\\s5)?|Manantalies|(Los\\s)?Manantiales|Invasion Manantiales|Manatiales|Molinares|Mánchester|Machado|(La\\s)?Navarra|Playa Rica|San Felix Antioquia|San Felix Nazared Be|(Sanata|Santa)\\sRita(s)?|Santa Ana|Trapiche|Villa Linda|Villa Mar(ia)?|Bello O|Bello Oriente Medellin|Bello Horiente|Obrero|SAMORA)$") ~ "05088",
-      str_detect(lugar_hecho, "^(San Juan De Uraba|Vereda Sinai)$") ~ "05659",
+      str_detect(lugar_hecho, "^(San Juan De Uraba|Vereda Sinai|San Juan de Urabá)$") ~ "05659",
       str_detect(lugar_hecho, "^(Bolombolo|Venecia)$") ~ "05861",
       str_detect(lugar_hecho, "^(Barbosa|Parque De Barbosa|Barboza|Popalito)$") ~ "05079",
       str_detect(lugar_hecho, "^El Bagre$") ~ "05250",
