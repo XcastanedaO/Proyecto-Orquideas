@@ -183,7 +183,7 @@ Con respecto a la ocupación de las víctimas, se observa que las categorías m�
 
 
 
-```{r,fig.align = "center", fig.width = 5, fig.height = 3}
+```{r,fig.align = "center", fig.width = 8, fig.height = 3}
 base_datos %>%
   mutate(
     actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))  %>% factor()) %>% filter(actividad != "Ninguna" & actividad !="Otro") %>%  count(actividad) %>%
@@ -209,7 +209,7 @@ Finalmente, se observa que existe en esta variable un alto nivel de desagregaci�
 
 ### Tipo de seguridad social
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos <- base_datos %>% mutate(tip_ss_ = case_when(
   is.na(tip_ss_) ~ "Sin información", 
   tip_ss_ == "S" ~ "Subsidiado",
@@ -239,7 +239,7 @@ base_datos %>%
 
 ### Mujer cabeza de familia
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos <- base_datos %>% mutate(mujer_cabf = case_when(
   is.na(mujer_cabf) ~ "Sin información", 
   mujer_cabf == "1" ~ "Sí",
@@ -275,7 +275,7 @@ n_comuna_r <- base_datos %>%
   group_by(codigo_comuna) %>% 
   summarise(cantidad = n())
 
-comunas <- st_read(file.path(here(), "data/auxiliary/comunas_corregimientos_Medellin"))
+comunas <- suppressWarnings(st_read(file.path(here(), "data/auxiliary/comunas_corregimientos_Medellin")))
 
 aux_data <- comunas %>%
   left_join(n_comuna_r, by = c("codigo" = "codigo_comuna"))
@@ -304,7 +304,7 @@ Son `r base_datos %>% filter(codigo_comuna == "0" | is.na(codigo_comuna)) %>% nr
 
 #### Grupo poblacional al que pertenece la víctima
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Variables de interés
 var <- c("gp_discapa","gp_desplaz","gp_migrant","gp_carcela","gp_gestan","gp_indigen","gp_pobicbf","gp_mad_com","gp_desmovi","gp_psiquia","gp_vic_vio","gp_otros")
 
@@ -557,7 +557,7 @@ El escenario señala el lugar físico específico donde se produjo el hecho, y d
 
 ### Atención en salud mental
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos <- base_datos %>% mutate(ac_mental = case_when(
   is.na(ac_mental) ~ "Sin información", 
   ac_mental == "1" ~ "Sí",
@@ -714,7 +714,7 @@ for (var in colnames(aux_data)) {
     stringsAsFactors = FALSE
   ))
 }
-results
+results %>% select(predictor, test, statistic, p_value,decision,v_cramer)
 ```
 
 Los resultados indican que en la mayoría de pruebas realizadas se rechaza la hipotésis nula, lo que quiere decir que la mayoría de variables consideradas presentan un nivel de asociación con la variable **atención en salud mental (ac_mental)**. Las variables que no son:
@@ -733,7 +733,7 @@ Los casos donde el coeficiente de correlación de Cramér es inf son casos donde
 
 ##### Edad según atención en salud mental
 
-```{r}
+```{r, fig.align = "center",fig.width = 6, fig.height = 4}
 ggplot(base_datos, aes(x = ac_mental, y = edad)) +
   geom_violin(trim = FALSE, fill = "#c07dca") +
   geom_boxplot(width = 0.1) +
@@ -753,9 +753,11 @@ wilcox.test(edad ~ ac_mental, data = base_datos, exact = FALSE)
 
 Dado que se rechaza la hipotésis nula, se concluye que la distribución de la edad difiere en en si se recibió o no atención en salud mental.
 
-##### Atención en salud según grupo de edad
+##### Atención en salud mental:
 
-```{r, warning=FALSE, message=FALSE}
+###### según grupo de edad
+
+```{r, warning=FALSE, message=FALSE, fig.align = "center",fig.width = 8, fig.height = 5}
 edad_mental <- base_datos %>%
   group_by(grupo_edad, ac_mental) %>%
   summarise(total = n()) %>%
@@ -779,7 +781,7 @@ ggplot(edad_mental, aes(x = grupo_edad, y = total_plot, fill = ac_mental)) +
   geom_bar(stat = "identity", width = 0.8) +
   geom_text(aes(
     label = paste0(round(porcentaje, 1), "%"),
-    y = ifelse(total_plot < 0, total_plot - 300, total_plot + 300) # ajusta posición al final de la barra
+    y = ifelse(total_plot < 0, total_plot - 310, total_plot + 310) # ajusta posición al final de la barra
   ),
   size = 3, color = "black") +
   coord_flip() +
@@ -799,15 +801,15 @@ ggplot(edad_mental, aes(x = grupo_edad, y = total_plot, fill = ac_mental)) +
   )
 ```
 
-##### Atención en salud mental según ocupación de la víctima
+###### según ocupación de la víctima
 
 ```{r}
 as.data.frame.matrix(round(prop.table(table(base_datos$actividad, base_datos$ac_mental), margin =1)*100,3)) %>% arrange(desc(Sí))
 ```
 
-##### Atención en salud mental según hospitalización
+###### según hospitalización
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 # Crear el gráfico
 base_datos %>%
   group_by(ac_mental, pac_hos_) %>%
@@ -825,9 +827,9 @@ base_datos %>%
 ```
 
 
-##### Atención en salud mental según reincidencia
+###### según reincidencia
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   group_by(ac_mental, antec) %>%
   ggplot(aes(x = ac_mental, fill = pac_hos_)) +
@@ -843,9 +845,9 @@ base_datos %>%
         plot.title = element_text(size = 10))
 ```
 
-##### Atención en salud según tipo de seguridad social de la víctima
+###### según tipo de seguridad social de la víctima
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 base_datos %>%
   count(ac_mental, tip_ss_) %>%
   group_by(ac_mental) %>%
@@ -864,9 +866,9 @@ base_datos %>%
 
 ```
 
-##### Atención en salud mental según departamento de ocurrencia
+###### según departamento de ocurrencia
 
-```{r}
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
 aux_data <- base_datos %>% mutate(ac_mental = case_when(
   is.na(ac_mental) ~ "Sin información", 
   ac_mental == "1" ~ "Sí",
@@ -878,11 +880,31 @@ aux_data <- base_datos %>% mutate(ac_mental = case_when(
 table(aux_data$ndep_proce,aux_data$ac_mental)
 ```
 
-##### Atención en salud mental según departamento de residencia
+###### según departamento de residencia
 
 ```{r}
 table(aux_data$ndep_resi,aux_data$ac_mental)
 ```
+###### según grupos poblaciones al que pertenece la víctima
+
+```{r, fig.align = "center",fig.width = 10, fig.height = 5}
+aux_data <- base_datos %>%  
+  mutate(across(c(gp_discapa,gp_desplaz,gp_migrant,gp_carcela,gp_gestan,gp_indigen,gp_pobicbf,gp_mad_com,gp_desmovi,gp_psiquia,gp_vic_vio,gp_otros), ~case_when(
+    . == 1 ~ "Sí",
+    . == 2 ~ "No",
+    is.na(.) ~ "Sin información"
+  ))) %>% 
+  pivot_longer(cols = starts_with("gp_"), names_to = "variable", values_to = "respuesta") 
+
+ggplot(aux_data, aes(x = respuesta, fill = ac_mental)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ variable, labeller = as_labeller(c(gp_discapa = "En situación de discapacidad",gp_desplaz= "Desplazada",gp_migrant= "Migrante",gp_carcela= "Privada de la libertad",gp_gestan= "Gestante",gp_indigen= "Habitante de calle",gp_pobicbf= "Infante a cargo del ICBF",gp_mad_com= "Madre comunitaria",gp_desmovi= "Desmovilizada",gp_psiquia= "En centro psiquiátrico",gp_vic_vio= "Víctima de violencia armada",gp_otros = "Otros"))) +
+  labs(x = "Respuesta", y = "Proporción (%)", fill = "Atención en salud mental") +
+  theme_minimal() +
+  scale_fill_manual(values = c("No" = "#e07a5f", "Sí" = "#c07dca")) +
+  scale_y_continuous(labels = scales::percent_format())
+```
+
 
 ##### Tipo de violencia según hospitalización
 
