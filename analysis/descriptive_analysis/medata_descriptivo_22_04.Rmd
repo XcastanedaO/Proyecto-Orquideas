@@ -857,7 +857,7 @@ base_datos %>%
   labs(
     x = "Atención en salud mental",
     y = "Proporción (%)",
-    fill = "Reincidencia"
+    fill = "Tipo de seguridad"
   ) +
   scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b","#0DB6BC","#5FB767","#97C7BB")) +
   theme_minimal() +
