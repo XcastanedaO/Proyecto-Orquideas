@@ -441,6 +441,7 @@ confusion_matrix
 #### Métricas de desempeño y curva ROC
 
 ```{r}
+# library(ROCR)
 TN <- confusion_matrix[1,1]
 FP <- confusion_matrix[1,2]
 FN <- confusion_matrix[2,1]
@@ -455,11 +456,30 @@ cat("Accuracy:", accuracy, "\n")
 cat("Precision:", precision, "\n")
 cat("Recall (Sensibilidad):", recall, "\n")
 cat("F1-Score:", f1_score, "\n")
-
+par(mfrow = c(1, 1))  
 roc_obj <- roc(data$ac_mental, as.numeric(probs_predichas))
 auc(roc_obj)
-plot(roc_obj, col = "#377eb8", main = "Curva ROC")
+plot(roc_obj, col = "#377eb8", main = "Curva ROC", legacy.axes = TRUE, xlim = c(0, 1))
+
+# perfc<- performance(probs_predichas,"tpr","fpr %>% ")
+pdf("roc_curve.pdf", width =6, height = 5) 
+coords <- coords(roc_obj, "all", ret = c("fpr", "tpr"), transpose = FALSE)
+
+# Plot manually with desired limits
+plot(coords$fpr, coords$tpr,
+     type = "l",
+     col = "#c07dca",
+     lwd=2,
+     xlim = c(0, 1),
+     ylim = c(0, 1),
+     xlab = "1 - Specificity",
+     ylab = "Sensitivity",
+     main = "Curva ROC")
+abline(a = 0, b = 1, lty = 2, col = "gray")  
+dev.off()
 ```
+
+
 #### Interpretación: Odds Ratios
 
 ```{r}
