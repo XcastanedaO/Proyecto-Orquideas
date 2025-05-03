@@ -181,7 +181,7 @@ edad_ <- ggplot(edad_mental, aes(x = edad_g, y = total_plot, fill = ac_mental)) 
     label = paste0(round(porcentaje, 1), "%"),
     y = ifelse(total_plot < 0, total_plot - 320, total_plot + 320) # ajusta posición al final de la barra
   ),
-  size = 2.3, color ="#4B0082",) +
+  size = 2.3, color ="#4B0082") +
   coord_flip() +
   scale_y_continuous(labels = abs) +
   labs(
