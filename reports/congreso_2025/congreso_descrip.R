@@ -148,18 +148,23 @@ as.data.frame.matrix(round(prop.table(table(base_datos$edad_g, base_datos$ac_men
 ########## GRÁFICOS CONJUNTOS ########
 ##### Tipo de seguridad ####
 tip_ss <- base_datos %>%
-  group_by(ac_mental,tip_ss_) %>%
-  ggplot(aes(x = tip_ss_,fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
+  group_by(tip_ss_, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(tip_ss_) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = tip_ss_, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
   labs(
     x = "Tipo de seguridad social",
     y = "Proporción (%)",
     fill = "Atención en salud mental"
   ) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  scale_fill_manual(values = c("#90A9C3", "#AE86D3")) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format()) +
-  theme(legend.position = "top")
+  theme(legend.position = "none")
 
 ##### Edad ####
 edad_mental <- base_datos %>%
@@ -191,15 +196,20 @@ edad_ <- ggplot(edad_mental, aes(x = edad_g, y = total_plot, fill = ac_mental)) 
     fill = "Atención en salud mental"
   ) +
   theme_minimal() +
-  scale_fill_manual(values = c("No" = "#e07a5f", "Sí" = "#c07dca")) +
+  scale_fill_manual(values = c("No" = "#90A9C3", "Sí" = "#AE86D3")) +
   theme(legend.position = "top")
 
 #### sexo agresor ####
 sexo <- base_datos %>%
-  group_by(ac_mental, sexo_agre) %>%
-  ggplot(aes(x = sexo_agre, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  group_by(sexo_agre, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(sexo_agre) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = sexo_agre, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
     x = "Sexo del agresor",
     y = "Proporción (%)",
@@ -210,52 +220,73 @@ sexo <- base_datos %>%
 
 #### tipo de violencia ####
 tip_v <- base_datos %>%
-  group_by(ac_mental, def_naturaleza) %>%
-  ggplot(aes(x = def_naturaleza, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  group_by(def_naturaleza, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(def_naturaleza) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = def_naturaleza, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
   labs(
     x = "Tipo de violencia",
     y = "Proporción (%)",
+    fill = "Atención en salud mental"
+  ) +
+  scale_fill_manual(values = c("#90A9C3", "#AE86D3")) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(legend.position = "top")
+
+#### paciente hospitalizado ####
+hosp <- base_datos %>%
+  group_by(pac_hos_, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(pac_hos_) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = pac_hos_, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
+  labs(
+    x = "Hospitalización",
+    y = NULL,
     fill = "Atención en salud mental") +
   scale_y_continuous(labels = scales::percent_format()) +
   theme_minimal() +
   theme(legend.position = "none")
 
-#### paciente hospitalizado ####
-hosp <- base_datos %>%
-  group_by(ac_mental, pac_hos_) %>%
-  ggplot(aes(x = pac_hos_, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
-  labs(
-    x = "Hospitalización",
-    y = "Proporción (%)",
-    fill = "Atención en salud mental") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  theme_minimal() +
-  theme(legend.position = "top")
-
 #### parentesco ####
 parent <- base_datos %>%
-  group_by(ac_mental, parentezco_agresor) %>%
-  ggplot(aes(x = parentezco_agresor, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  group_by(parentezco_agresor, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(parentezco_agresor) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = parentezco_agresor, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
     x = "Parentesco con agresor",
     y = "Proporción (%)",
     fill = "Atención en salud mental") +
   scale_y_continuous(labels = scales::percent_format()) +
   theme_minimal() +
-  theme(legend.position = "none")
+  theme(legend.position = "bottom")
 
 #### convivencia con agresor ####
 conv_ag <- base_datos %>%
-  group_by(ac_mental, conv_agre) %>%
-  ggplot(aes(x = conv_agre, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  group_by(conv_agre, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(conv_agre) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = conv_agre, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
     x = "Convivencia con agresor",
     y = "Proporción (%)",
@@ -266,10 +297,15 @@ conv_ag <- base_datos %>%
 
 #### escenario ####
 escenario <- base_datos %>%
-  group_by(ac_mental, escenario) %>%
-  ggplot(aes(x = escenario, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  group_by(escenario, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(escenario) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = escenario, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
     x = "Escenario del hecho",
     y = "Proporción (%)",
@@ -280,10 +316,15 @@ escenario <- base_datos %>%
 
 #### mujer cabeza de familia ####
 cabf <- base_datos %>%
-  group_by(ac_mental, mujer_cabf) %>%
-  ggplot(aes(x = mujer_cabf, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  group_by(mujer_cabf, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(mujer_cabf) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = mujer_cabf, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
     x = "Mujer cabeza de familia",
     y = "Proporción (%)",
@@ -294,23 +335,22 @@ cabf <- base_datos %>%
 
 #### Área de ocurrencia ####
 area <- base_datos %>%
-  group_by(ac_mental, area_) %>%
-  ggplot(aes(x = area_, fill = ac_mental)) +
-  geom_bar(position = "fill", alpha = 0.85) +
-  scale_fill_manual(values = c("#e07a5f","#c07dca")) +
+  group_by(area_, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(area_) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = area_, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
     x = "Área de ocurrencia",
-    y = "Proporción (%)",
+    y = NULL,
     fill = "Atención en salud mental") +
   scale_y_continuous(labels = scales::percent_format()) +
   theme_minimal() +
-  theme(legend.position = "top")
-
-##### unión ####
-(edad_ | tip_ss)
-((tip_v | sexo )  + plot_layout(widths = c(2, 1))) / ((parent | hosp) + plot_layout(widths = c(2, 1)))
-escenario / (area | cabf | conv_ag) 
-
+  theme(legend.position = "none")
 
 ########## GRÁFICOS INDIVIDUALES ########
 ##### Tipo de seguridad ####
@@ -318,7 +358,7 @@ tip_ss_ <- base_datos %>%
   count(tip_ss_) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = tip_ss_, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -332,7 +372,7 @@ edad_i <-  base_datos %>%
   count(edad_g) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = edad_g, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -346,7 +386,7 @@ sexo_ <- base_datos %>%
   count(sexo_agre) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = sexo_agre, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -360,7 +400,7 @@ tip_v_ <- base_datos %>%
   count(def_naturaleza) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = def_naturaleza, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -374,7 +414,7 @@ hosp_ <- base_datos %>%
   count(pac_hos_) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = pac_hos_, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -388,7 +428,7 @@ parent_ <- base_datos %>%
   count(parentezco_agresor) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = parentezco_agresor, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -402,7 +442,7 @@ conv_ag_ <- base_datos %>%
   count(conv_agre) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = conv_agre, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -416,7 +456,7 @@ escenario_ <- base_datos %>%
   count(escenario) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = escenario, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -430,7 +470,7 @@ cabf_ <- base_datos %>%
   count(mujer_cabf) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = mujer_cabf, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -444,7 +484,7 @@ area_ <- base_datos %>%
   count(area_) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = area_, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -457,7 +497,7 @@ ac_mental_ <- base_datos %>%
   count(ac_mental) %>%
   mutate(proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = ac_mental, y = n)) +
-  geom_col(fill = "#c07dca", alpha = 0.85) +  
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
             vjust = -0.2, 
             color = "#4B0082", 
@@ -475,6 +515,5 @@ parent_ / parent
 escenario_ / escenario
 
 ##### unión 2 ####
-(edad_ | tip_ss)
-((tip_v | sexo )  + plot_layout(widths = c(2, 1))) / ((parent | hosp) + plot_layout(widths = c(2, 1)))
-escenario / (area | cabf | conv_ag) 
+edad_i / parent
+(tip_v | hosp ) / (tip_ss | area)
