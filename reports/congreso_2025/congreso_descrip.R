@@ -255,7 +255,7 @@ hosp <- base_datos %>%
     fill = "Atención en salud mental") +
   scale_y_continuous(labels = scales::percent_format()) +
   theme_minimal() +
-  theme(legend.position = "none")
+  theme(legend.position = "top")
 
 #### parentesco ####
 parent <- base_datos %>%
@@ -331,7 +331,7 @@ cabf <- base_datos %>%
     fill = "Atención en salud mental") +
   scale_y_continuous(labels = scales::percent_format()) +
   theme_minimal() +
-  theme(legend.position = "none")
+  theme(legend.position = "top")
 
 #### Área de ocurrencia ####
 area <- base_datos %>%
@@ -516,4 +516,4 @@ escenario_ / escenario
 
 ##### unión 2 ####
 edad_i / parent
-(tip_v | hosp ) / (tip_ss | area)
+(tip_v | cabf ) / (tip_ss | area)
