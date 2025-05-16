@@ -10,43 +10,43 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Modelo de regresión logístico bayesiano
 
-## Base de datos
+## Base de datos: Ximena
 
 El conjunto de datos Vigilancia Integrada de la Violencia de Género [(Ver)](https://medata.gov.co/dataset/1-026-22-000170) recopila información sobre casos sospechosos de violencia de género en Antioquia reportados al Sistema Nacional de Vigilancia en Salud Pública (SIVIGILA). Esta base de datos está disponible en el portal de datos abiertos MEData, perteneciente a la ciudad de Medellín.
 
 -   **Última actualización:** 20 de septiembre de 2023. **VERIFICAR**
 
-La base contiene 118 variables provenientes del formulario de notificación del SIVIGILA. **Mencionar cantidad de datos inicial?**
+La base contiene 118 variables provenientes del formulario de notificación del SIVIGILA. **Mencionar cantidad de datos inicial**
 
-Estas variables cubren información sobre el reporte, características de la víctima y del agresor, circunstancias del hecho y atenciones en salud. **Mencionarlas todas excepto las que son como de protocolo?**
+Estas variables cubren información sobre el reporte, características de la víctima y del agresor, circunstancias del hecho y atenciones en salud.
 
-## Análisis descriptivo
+## Análisis descriptivo: Ximena
 
 Luego del proceso de depuración y limpieza, la base final quedó conformada por 46.373 registros.
 
--   **Mencionar cuál es la variable de respuesta y que hace parte de un grupo de laboratorios que se le hace a la mujer?**
+-   **Mencionar cuál es la variable de respuesta y que hace parte de un grupo de laboratorios que se le hace a la mujer**
 
-se seleccionó un conjunto de variables relevantes. **Basados en qué? poner pruebas no parametricas?**
+se seleccionó un conjunto de variables relevantes. **Basados en qué poner pruebas no parametricas**
 
--   **dar una pequeña definición de las predictoras? poner todos los gráficos de las predictoras o solo las importantes y hacer parrafito sobre el comportamiento de los otros?**
+-   **dar una pequeña definición de las predictoras. poner todos los gráficos de las predictoras o solo las importantes y hacer parrafito sobre el comportamiento de los otros**
 
--   **No olvidar poder resumen de edad o gráfico de relación con la variable de respuesta? prueba?**
+-   **Poner gráfico de relación con la variable de respuesta**
 
-## Análisis inferencial
+## Análisis inferencial: Mariana
 
-**Explicar un poco sobre el enfoque bayesiano y el objetivo de un modelo de regresión logístico?**
+**Objetivo de un modelo de regresión logístico**
 
 modelo orientado a identificar los factores que influyen en la probabilidad de recibir atención en salud mental tras un evento de violencia de género.
 
 **Definir modelo**
 
-**Indicar programas/herramientas utilizados?**
+**Indicar programas/herramientas utilizados**
 
 Dado que la posterior no tiene forma cerrada, se usaron algoritmos de \textbf{MCMC (Markov Chain Monte Carlo)} para aproximar la distribución posterior. Se utilizó el lenguaje de modelado \textit{Stan}, a través de la librería \texttt{rstan} en \textit{RStudio}.
 
-**Razón de odds: explicar un poco qué permite analizar los odds y no poner tabla sino interpretaciones directamente?**
+**Razón de odds: explicación de qué es, tabla con parametros + columna de si aumenta o no la probabilidad, parrafo de conclusión**
 
-**AUC: explicar un poco qué permite ver, la interpretación, poner gráfico y concluir sobre nuestro caso?**
+**AUC: explicar para qué sirve, cómo se concluye, gráfica y resultado**
 
 ## Conclusiones sobre resultados
 
