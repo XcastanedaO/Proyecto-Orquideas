@@ -20,19 +20,17 @@ La base contiene 118 variables provenientes del formulario de notificación del 
 
 Estas variables cubren información sobre el reporte, características de la víctima y del agresor, circunstancias del hecho y atenciones en salud. **Mencionarlas todas excepto las que son como de protocolo?**
 
-**Hacer como un resumen o composición de todas las variables?**
-
 ## Análisis descriptivo
 
 Luego del proceso de depuración y limpieza, la base final quedó conformada por 46.373 registros.
 
-se seleccionó un conjunto de variables relevantes
+-   **Mencionar cuál es la variable de respuesta y que hace parte de un grupo de laboratorios que se le hace a la mujer?**
+
+se seleccionó un conjunto de variables relevantes. **Basados en qué? poner pruebas no parametricas?**
 
 -   **dar una pequeña definición de las predictoras? poner todos los gráficos de las predictoras o solo las importantes y hacer parrafito sobre el comportamiento de los otros?**
 
--   **No olvidar poder gráfico o resumen de edad**
-
--   **Mencionar cuál es la variable de respuesta y que hace parte de un grupo de laboratorios que se le hace a la mujer?**
+-   **No olvidar poder resumen de edad o gráfico de relación con la variable de respuesta? prueba?**
 
 ## Análisis inferencial
 

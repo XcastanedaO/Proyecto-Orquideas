@@ -796,7 +796,7 @@ Para verificar la relación, se realiza una prueba **Mann-Whitney**:
 wilcox.test(edad ~ ac_mental, data = base_datos, exact = FALSE)
 ```
 
-Dado que se rechaza la hipotésis nula, se concluye que la distribución de la edad difiere en en si se recibió o no atención en salud mental.
+Dado que se rechaza la hipotésis nula, se concluye que la distribución de la edad difiere si se recibió o no atención en salud mental.
 
 ##### Atención en salud mental:
 
