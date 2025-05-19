@@ -457,8 +457,6 @@ Lo anterior es útil para evaluar de qué forma es la influencia de cada caracte
 
 A continuación se presentan las razones de odds estimadas para las variables más relevantes del modelo.
 
-**\*\* FALTA TABLA Y RESULTADOS\*\***
-
 ```{r, echo=FALSE, warning=FALSE, message= FALSE}
 data_model <- load_data("data_model.csv", type = "processed")
 data <- data_model %>% select(c("ac_mental",
@@ -530,8 +528,6 @@ Sin embargo, el factor que más efecto tiene en la probabilidad, es la afiliaci�
 
 ### Medidas de desempeño: AUC y curva ROC
 
-**AUC: explicar para qué sirve, cómo se concluye, gráfica y resultado**
-
 Una vez ajustado el modelo de regresión logística, es fundamental evaluar su capacidad para distinguir entre las mujeres que recibieron atención en salud mental y aquellas que no la recibieron.
 
 Para ello, se utiliza una herramienta llamada **curva ROC** (*Receiver Operating Characteristic*) y un valor asociado a ella conocido como **AUC** (*Área Bajo la Curva*).
@@ -554,9 +550,9 @@ Por tanto, el AUC actúa como un resumen numérico de la capacidad del modelo pa
 
 En este análisis, el modelo obtuvo un **AUC de 0.9088**, lo que refleja una muy alta capacidad predictiva. Es decir, el modelo identifica correctamente, en la gran mayoría de los casos, si una víctima de violencia de género recibió atención psicológica a partir de las características observadas.
 
-La siguiente figura presenta la curva ROC del modelo, que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia su buen desempeño.
+En Figura 3 se presenta la curva ROC del modelo, que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia su buen desempeño.
 
-**\*\* FALTA TABLA Y RESULTADOS\*\***
+
 
 # Conclusiones sobre resultados
 

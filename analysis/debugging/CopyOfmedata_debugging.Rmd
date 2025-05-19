@@ -1254,7 +1254,6 @@ data <- data %>% mutate(
     nombre_barrio == "El Rodeo" ~ "Inst_20",
     nombre_barrio == "Parque Juan Pablo II" ~ "Inst_19",
     nombre_barrio == "Plaza de Ferias" ~ "Inst_1",
-    nombre_barrio == "Los Cerros El Vergel" ~ "0904",
     
     # Códigos diferentes (no encontrados en la codificación de Geoportal)
     codigo_barrio == "6087" & nombre_barrio == "Travesías" ~ "6016",
@@ -1500,18 +1499,6 @@ data <- data %>% mutate(
 
 data <- data %>% select(-identifica,-geometry)
 ```
-
-```{r}
-# Caso especial 
-data <- data %>% mutate(
-  codigo_barrio = ifelse(nombre_barrio == "Los Cerros El Vergel","0904",codigo_barrio),
-  codigo_comuna = ifelse(nombre_barrio == "Los Cerros El Vergel","09",codigo_comuna),
-  nombre_comuna = ifelse(nombre_barrio == "Los Cerros El Vergel","Buenos Aires",nombre_comuna),
-  cod_dpto_r = ifelse(nombre_barrio == "La Libertad","05",cod_dpto_r),
-  ndep_resi = ifelse(nombre_barrio == "La Libertad","Antioquia",ndep_resi)
-)
-```
-
 
 ### Estrato (estrato\_)
 
@@ -2431,41 +2418,6 @@ data <- data %>%
   )
 ```
 
-```{r}
-# Limpiar casos donde el valor se refiere a una comuna y no a un barrio
-data <- data %>% mutate(
-  lugar_hecho = case_when(
-    
-    lugar_hecho %in% c("Doce Octubre", "Dpce De Octubre", "Doce De Octubre Comuna 6", "Doce De Octubre",
-  "Doce De Cotubre", "12 Octubre", "12 De Octubre", "12  De Octubre", "12 De Octubtre",
-  "Doce De Octunre", "12 De Cotubre", "12 De Ctubre", "12 De Ocyubre", "12-Oct",
-  "12 De Ocyubre", "12 De Octubtre", "12 De Ctubre", "12-Oct","Comuna 6","Doce De Octiubre", "Doce  De Octubre","Doce De Oct") ~ NA_character_,
-  
-    str_detect(lugar_hecho, regex("^(SAN\\s{1,2}CR(?:I[sz]T(?:[ÓO]B(?:A[L1I]|AL)?|ONAL|OBAL|ONBAL|OB[AI]L|OBL)|SATO?BAL|STOBAL|STOB[AI]L|SRTOBAL|CRSTOBAL)|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL|CORR(?:\\s)?SAN\\sCRIST[ÓO]BAL|CORREGIMIENTO\\sSAN\\sCRISTO?BA[LI]|CRISTOBAL|San Crsitobal|San Cristibal|San Critobal|San Cristiobal|San Crisatobal|San Cristbal|San Cristoba|Corr San Cristobal San Cristóbal|San Crostobal|San Cristobla|San Crlstobal|San Critobal)$", ignore_case = TRUE)) ~ NA_character_,
-  
-  
-   str_detect(lugar_hecho, regex("^(Vereda La Palma|Vereda Las Playas|Vereda Pajarito|Vereda Palma Alta|Vereda Palma|Vereda Palma Baja)$", ignore_case = TRUE)) ~ NA_character_,
-  
-  lugar_hecho == "Área De Expansión Eduardo Santos" ~ "Eduardo Santos",
-  
-    str_detect(lugar_hecho, regex("\\b#?\\s*COMUNA\\s*#?\\s*([1-9]|1[0-9]|20)\\b", ignore_case = TRUE)) ~ NA_character_,
- 
-    str_detect(lugar_hecho, regex("\\b(CORREGIMIENTO|CORR)\\sALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\sLOS\\sCHIVOS\\b", ignore_case = TRUE)) ~ NA_character_,
-  
-    str_detect(lugar_hecho, regex("^((CORREGIMIENTO\\s)?SAN\\sANT(?:I[O0]N(?:I[O0]|IO)?|T[O0]VIO|TONIO|ANTIONIO)?\\sD?E?\\s?(PRADO|PARADO|PRAD[OA0I]|PRADP|PRADE|DEPRADO|RPADO|ARADO|APDO|PRADI|DEL\\sPRAD[OI])\\s*|Corregimiento San Antonio|Corregimiento San An|Corregimiento San Antonio De Prado Baric|Corregimiento San Antonio De Prado La Ro|San Antonio E Prado|San Antonio  De Prad|San Antonio De Pradp|San Antonio Deprado|San Antonio D Prado|San Antonio D Erpado|San Antonio De  Prad|San Antonio De Parado|San Antonio Del Prad|San Antonio De Pradi|Corregimiento San An|San Antonio Prado|San Antonio De Rpado|San Antonio E Prado|San Antonio  De Prad|San Antonio De Pradp|San Antonio Deprado|San Antonio D Erpado|San Antonio De  Prad|San Antovio Prado|Corregimiento San Antonio De Prado)$", ignore_case = TRUE)) ~ NA_character_,
-  
-   str_detect(lugar_hecho, regex("^(MANR(?:I(?:QU(?:E|I[AE]?|4E|W|EM)?|AQUE|IAQUE|IQUE|IAK)?|R(?:IQUE|IQUEZ)|NRIQUE|RIQUE|INQUE|IQ|RINQUE|RIOQUE)|MANRUQUE|MANIRIQUE|MARNRIQUE|MNRIQUE|MANRQUE|MARIQUE|MANRIQ|MANRIQU|Manrioque|Manriue|La Manrique|Manrioque|Marrique|Manriquez|Manrique Centarl||M Central)$", ignore_case = TRUE)) ~ NA_character_,
-  
-   str_detect(lugar_hecho, regex("^(S{0,2}A?N\\s?J(?:A[V]?I{1,2}E{1,2}R?|AIE?R|EVIER|JVA[IE]R|JAVI[AE]R|JAVEIR|JAVIAER|JAVI?IER|AJVIER|JAVIERQ)|San Jvaier|San Javierq|Sa Javier|San Javiaer|San Javeir|San  Javier|San Javer|San Ajvier)\\s*$", ignore_case = TRUE)) ~ NA_character_,
-  
-   str_detect(lugar_hecho, regex("^(SS?ANTA\\s(EL[ÉE]NA|HELENA|ELENEA)(?!\\sEL\\sLLANO)|CORREGIMIEN(TO)?\\sSANTA(\\s(EL[ÉE]NA|HELENA|EL))?|Vereda Las Palmas)$", ignore_case = TRUE)) ~ NA_character_,
-
-   TRUE ~ lugar_hecho
-  )
-)
-```
-
-
 -   Como se vio en secciones anteriores, la mayoría de los casos
     ocurrieron en Medellín entonces se comienza verificando si los
     barrios/veredas sí corresponden a Medellín y en caso de qué no,
@@ -2484,7 +2436,7 @@ aux_data %>%  count(lugar_hecho,nombre_barrio,codigo_barrio,nmun_proce,ndep_proc
 ```
 
 Se encontró que estas inconsistencias están dadas por: diferencia de
-escritura con la base de barrios auxiliar, se registro fue nombres de
+escritura con la base de barrios auxilar, se registro fue nombres de
 municipios o lugares específicos como edificios, parques o calles y en
 los demás casos Sí corresponden a barrios/veredas de municipios
 diferentes a Medellín. Se procede a arreglar estas inconsistencias.
@@ -2705,16 +2657,6 @@ data <- data %>%
 data %>% count(lugar_hecho,nmun_proce,cod_mun_o)
 ```
 
-```{r}
-data <- data %>% mutate(
-  nmun_proce = case_when(lugar_hecho %in% c("Caribe","Nueva Villa de La Iguaná","Robledo","San Antonio de Prado","Santa Fé","Santo Domingo Savio No.1") ~ "Medellín", 
-                         TRUE ~ nmun_proce),
-  cod_mun_o = case_when(lugar_hecho %in% c("Caribe","Nueva Villa de La Iguaná","Robledo","San Antonio de Prado","Santa Fé","Santo Domingo Savio No.1") ~ "05001",
-                        TRUE ~ cod_mun_o)
-)
-```
-
-
 -   Finalmente, se corrigen algunos casos donde el área no es coherente
     con el barrio/vereda. Por ejemplo:
 
@@ -2751,7 +2693,11 @@ data <- data %>% mutate(
 
 Luego de este tratamiento, la columna quedó con un
 `r round((sum(is.na(data$lugar_hecho))*100) / nrow(data),3)` de valores
-faltantes.Existen algunos casos donde se especifica como lugar de hecho *Habitante
+faltantes. Cabe resaltar que se está tomando algunos valores
+correspondientes a comunas ya que pueden servir más adelante para
+completar.
+
+Además, existen algunos casos donde se especifica como lugar de hecho *Habitante
 de Calle*, por lo tanto, al no indicar un lugar concreto se utiliza esta
 información para completar en la variable **Actividad** cuando sea
 *habitante de calle* y actividad sea *Ninguna* u *Otra*
@@ -3566,6 +3512,37 @@ data <- data %>% mutate(
    str_detect(barrio_nuevo, regex("^(SS?ANTA\\s(EL[ÉE]NA|HELENA|ELENEA)(?!\\sEL\\sLLANO)|CORREGIMIEN(TO)?\\sSANTA(\\s(EL[ÉE]NA|HELENA|EL))?|Vereda Las Palmas)$", ignore_case = TRUE)) ~ NA_character_,
   
    TRUE ~ barrio_nuevo
+  )
+)
+
+data <- data %>% mutate(
+  lugar_hecho = case_when(
+    
+    lugar_hecho %in% c("Doce Octubre", "Dpce De Octubre", "Doce De Octubre Comuna 6", "Doce De Octubre",
+  "Doce De Cotubre", "12 Octubre", "12 De Octubre", "12  De Octubre", "12 De Octubtre",
+  "Doce De Octunre", "12 De Cotubre", "12 De Ctubre", "12 De Ocyubre", "12-Oct",
+  "12 De Ocyubre", "12 De Octubtre", "12 De Ctubre", "12-Oct","Comuna 6","Doce De Octiubre", "Doce  De Octubre","Doce De Oct") ~ NA_character_,
+  
+    str_detect(lugar_hecho, regex("^(SAN\\s{1,2}CR(?:I[sz]T(?:[ÓO]B(?:A[L1I]|AL)?|ONAL|OBAL|ONBAL|OB[AI]L|OBL)|SATO?BAL|STOBAL|STOB[AI]L|SRTOBAL|CRSTOBAL)|SANCRIST[ÓO]BAL|CORR(EGIMIENTO)?\\sSAN\\sCR|CENTRO\\sPOBLADO\\sDE\\sSAN\\sCRIST[ÓO]BAL|CORR(?:\\s)?SAN\\sCRIST[ÓO]BAL|CORREGIMIENTO\\sSAN\\sCRISTO?BA[LI]|CRISTOBAL|San Crsitobal|San Cristibal|San Critobal|San Cristiobal|San Crisatobal|San Cristbal|San Cristoba|Corr San Cristobal San Cristóbal|San Crostobal|San Cristobla|San Crlstobal|San Critobal)$", ignore_case = TRUE)) ~ NA_character_,
+  
+  
+   str_detect(lugar_hecho, regex("^(Vereda La Palma|Vereda Las Playas|Vereda Pajarito|Vereda Palma Alta|Vereda Palma|Vereda Palma Baja)$", ignore_case = TRUE)) ~ NA_character_,
+  
+  lugar_hecho == "Área De Expansión Eduardo Santos" ~ "Eduardo Santos",
+  
+    str_detect(lugar_hecho, regex("\\b#?\\s*COMUNA\\s*#?\\s*([1-9]|1[0-9]|20)\\b", ignore_case = TRUE)) ~ NA_character_,
+ 
+    str_detect(lugar_hecho, regex("\\b(CORREGIMIENTO|CORR)\\sALTAV?I(STA)?\\b|\\bALTAV?I(STA)?\\sLOS\\sCHIVOS\\b", ignore_case = TRUE)) ~ NA_character_,
+  
+    str_detect(lugar_hecho, regex("^((CORREGIMIENTO\\s)?SAN\\sANT(?:I[O0]N(?:I[O0]|IO)?|T[O0]VIO|TONIO|ANTIONIO)?\\sD?E?\\s?(PRADO|PARADO|PRAD[OA0I]|PRADP|PRADE|DEPRADO|RPADO|ARADO|APDO|PRADI|DEL\\sPRAD[OI])\\s*|Corregimiento San Antonio|Corregimiento San An|Corregimiento San Antonio De Prado Baric|Corregimiento San Antonio De Prado La Ro|San Antonio E Prado|San Antonio  De Prad|San Antonio De Pradp|San Antonio Deprado|San Antonio D Prado|San Antonio D Erpado|San Antonio De  Prad|San Antonio De Parado|San Antonio Del Prad|San Antonio De Pradi|Corregimiento San An|San Antonio Prado|San Antonio De Rpado|San Antonio E Prado|San Antonio  De Prad|San Antonio De Pradp|San Antonio Deprado|San Antonio D Erpado|San Antonio De  Prad|San Antovio Prado|Corregimiento San Antonio De Prado)$", ignore_case = TRUE)) ~ NA_character_,
+  
+   str_detect(lugar_hecho, regex("^(MANR(?:I(?:QU(?:E|I[AE]?|4E|W|EM)?|AQUE|IAQUE|IQUE|IAK)?|R(?:IQUE|IQUEZ)|NRIQUE|RIQUE|INQUE|IQ|RINQUE|RIOQUE)|MANRUQUE|MANIRIQUE|MARNRIQUE|MNRIQUE|MANRQUE|MARIQUE|MANRIQ|MANRIQU|Manrioque|Manriue|La Manrique|Manrioque|Marrique|Manriquez|Manrique Centarl||M Central)$", ignore_case = TRUE)) ~ NA_character_,
+  
+   str_detect(lugar_hecho, regex("^(S{0,2}A?N\\s?J(?:A[V]?I{1,2}E{1,2}R?|AIE?R|EVIER|JVA[IE]R|JAVI[AE]R|JAVEIR|JAVIAER|JAVI?IER|AJVIER|JAVIERQ)|San Jvaier|San Javierq|Sa Javier|San Javiaer|San Javeir|San  Javier|San Javer|San Ajvier)\\s*$", ignore_case = TRUE)) ~ NA_character_,
+  
+   str_detect(lugar_hecho, regex("^(SS?ANTA\\s(EL[ÉE]NA|HELENA|ELENEA)(?!\\sEL\\sLLANO)|CORREGIMIEN(TO)?\\sSANTA(\\s(EL[ÉE]NA|HELENA|EL))?|Vereda Las Palmas)$", ignore_case = TRUE)) ~ NA_character_,
+
+   TRUE ~ lugar_hecho
   )
 )
 ```
