@@ -359,7 +359,7 @@ ggplot(base_datos, aes(x = ac_mental, y = edad)) +
 
 ***Figura 2.*** *Distribución de la edad de las víctimas según atención en salud mental.*
 
-# Análisis inferencial: 
+# Análisis inferencial:
 
 ## Materiales y métodos
 
@@ -447,8 +447,8 @@ La interpretación del odds ratio es sencilla y se realiza de la siguiente maner
 
 -   Si $\boldsymbol{OR_j > 1}$, la probabilidad de recibir atención aumenta con esa característica.
 
--   Si $\boldsymbol{OR_j < 1}$, la probabilidad disminuye.
-666666666666666666
+-   Si $\boldsymbol{OR_j < 1}$, la probabilidad disminuye. 666666666666666666
+
 -   Si $\boldsymbol{OR_j = 1}$, la característica no tiene efecto.
 
 Lo anterior es útil para evaluar de qué forma es la influencia de cada característica en la probabilidad. Sin embargo, el valor del odds ratio obtenido se interpreta como cuántas veces más (o menos) probable es que ocurra el evento (recibir atención) en presencia de dicha característica, en comparación con su ausencia o con la categoría de referencia.
@@ -531,6 +531,12 @@ La siguiente figura presenta la curva ROC del modelo, que se aproxima visiblemen
 
 # Conclusiones sobre resultados
 
-Los resultados obtenidos se destaca que factores como la violencia sexual, la hospitalización o algunos niveles asociados al tipo de parentezco de la víctima con el agresor presentaron efectos más fuertes, incrementando la probabilidad de acceso a la atención en salud mental.
+Este estudio permitió identificar los factores que influyen en la probabilidad de que una mujer víctima de violencia de género reciba atención en salud mental luego de haber recibido atenciones médicas. El estudio se basó utilizando un enfoque estadístico bayesiano, basado en datos reales de casos sospechosos de violencia de género registrados al portal del SIVIGILA en la ciudad de Medellín.
+
+A través de un modelo de regresión logística bayesiano, se pudo conocer algunas variables individuales, sociales e institucionales que juegan un papel indispensable en el objetivo de interés.
+
+De los resultados obtenidos se destaca que factores como la violencia sexual, la hospitalización o algunos niveles asociados al tipo de relación de la víctima con el agresor presentaron efectos más fuertes, incrementando la probabilidad de acceso a la atención en salud mental. En particular, la pertenencia a un sistema de salud, es la característica que más incrementa la probabilidad. También se encontraron variables significativas como ser mujer cabeza de familia, el tipo de lugar donde ocurrió el evento y el vínculo con el agresor.
+
+El modelo mostró una alta capacidad predictiva (AUC = 0.9088), lo que refuerza la solidez de los resultados y la utilidad de este enfoque para orientar intervenciones.
 
 Estos hallazgos son claves para diseñar estrategias que mejoren la cobertura y eficacia de los programas de atención, así como para fortalecer políticas públicas que promuevan la denuncia y garanticen el acceso oportuno a los servicios de salud mental, especialmente en poblaciones vulnerables.
