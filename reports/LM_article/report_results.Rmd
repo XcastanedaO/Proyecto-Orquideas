@@ -459,6 +459,12 @@ A continuación se presentan las razones de odds estimadas para las variables m�
 
 **\*\* FALTA TABLA Y RESULTADOS\*\***
 
+En la tabla anterior se especifican con detalle las características que aumentan o disminuyen la probabilidad de que una víctima reciba atención en salud mental tras un evento de violencia de género.
+
+En general, se observa que la probabilidad de recibir atención en salud mental disminuye ligeramente a edades más altas. Por otra parte, esta probabilidad, aumenta significativamente en mujeres cabeza de familia, en casos de violencia sexual, cuando el hecho ocurre en centros poblados o en instituciones como hospitales o escuelas, y cuando el agresor es alguien cercano o identificable. Otro factor influyente es la característica de hospitalización de la víctima, pues esta eleva la probabilidad de atención.
+
+Sin embargo, el factor que más efecto tiene en la probabilidad, es la afiliación a cualquier tipo de seguridad social, incluso en personas no aseguradas, lo que resalta la importancia del vínculo con el sistema de salud para garantizar el acceso a servicios psicológicos.
+
 ### Medidas de desempeño: AUC y curva ROC
 
 **AUC: explicar para qué sirve, cómo se concluye, gráfica y resultado**
