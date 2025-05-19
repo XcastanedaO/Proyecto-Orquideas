@@ -1,10 +1,10 @@
 ---
 title: "Modelo de regresión logístico bayesiano"
 output:
-  pdf_document: default
+  word_document: default
   html_document:
     df_print: paged
-  word_document: default
+  pdf_document: default
 date: "`r Sys.Date()`"
 always_allow_html: true
 ---
@@ -30,6 +30,7 @@ library(sf)
 library(gmodels)   
 library(DescTools)
 library(kableExtra)
+library(pROC)
 
 # Lectura y adeucación de la base de datos
 base_datos <- load_data("data_model.csv", type = "processed")
@@ -205,7 +206,7 @@ A continuación, se describen estas variables y su composición en la base de da
 
 -   **Parentesco agresor:** indica el tipo de vínculo o relación de la víctima con el agresor. Entre ellas se encuentra: pareja(12.433; 26,8%), familiar(9.491; 20,5%), ex-pareja(4.664; 10,1%), conocido(4.193; 9%), desconocido(3.895; 8,4%), madre(3.480; 7,5%), padre(3.040; 6,6%), amigo(1.628; 3,5%), y otro(3.549; 7,7%).
 
-```{r, echo=FALSE, fig.align = "center",fig.width = 12, fig.height = 6}
+```{r, echo=FALSE, fig.align = "center",fig.width = 14, fig.height = 7}
 ###### Atención en salud mental ######
 base_datos <- base_datos %>% mutate(ac_mental = case_when(
   is.na(ac_mental) ~ "Sin información", 
@@ -329,7 +330,7 @@ En relación con las demás variables de interés, la proporción de víctimas q
 
 Ahora bien, también se incluyó una variable cuantitativa: la edad cumplida de la víctima al momento del registro del caso. En la Figura 2 se observa que las víctimas que sí recibieron atención en salud mental tienden a ser más jóvenes en comparación con aquellas que no la recibieron. Esto se evidencia en una mediana de edad más baja y en una mayor concentración de casos aproximadamente entre los 11 y 28 años. En contraste, las víctimas que no accedieron a esta atención presentan una distribución de edades más amplia, con mayor densidad en edades intermedias (20-40 años). Estos resultados sugieren que la edad podría influir en la posibilidad de recibir atención psicológica.
 
-```{r, echo=FALSE, fig.align = "center",fig.width = 12, fig.height = 6}
+```{r, echo=FALSE, fig.align = "center",fig.width = 14, fig.height = 7}
 estadisticas <- base_datos %>%
   group_by(ac_mental) %>%
   summarise(
@@ -518,7 +519,7 @@ tabla_resultados$Odds_Ratio_2 <- c(round(odds_ratios[18:33],2), NA)
 kable(tabla_resultados, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2))
 ```
 
-***Tabla 2.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras.*
+***Tabla 2.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo de atención en salud mental.*
 
 En Tabla 2 se especifican con detalle las características que aumentan o disminuyen la probabilidad de que una víctima reciba atención en salud mental tras un evento de violencia de género.
 
@@ -552,7 +553,37 @@ En este análisis, el modelo obtuvo un **AUC de 0.9088**, lo que refleja una muy
 
 En Figura 3 se presenta la curva ROC del modelo, que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia su buen desempeño.
 
+```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.align = "center",fig.width = 3, fig.height = 3}
+# Calcular probabilidades predichas
+probs_predichas <- plogis(alpha_hat + X_3 %*% beta_hat)
 
+# Convertir a clases (umbral de 0.5)
+predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
+
+# Matriz de confusión
+confusion_matrix <- table(Real = data$ac_mental, Predicho = predicciones_binarias)
+
+TN <- confusion_matrix[1,1]
+FP <- confusion_matrix[1,2]
+FN <- confusion_matrix[2,1]
+TP <- confusion_matrix[2,2]
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+cat("Accuracy:", accuracy, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall (Sensibilidad):", recall, "\n")
+cat("F1-Score:", f1_score, "\n")
+
+roc_obj <- roc(data$ac_mental, as.numeric(probs_predichas))
+auc(roc_obj)
+plot(roc_obj, col = "#AE86D3")
+```
+
+***Figura 3.*** *Curva ROC del modelo de atención en salud mental (AUC =* 0.9088*).*
 
 # Conclusiones sobre resultados
 
