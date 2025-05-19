@@ -3405,9 +3405,10 @@ data %>%
 
 ##### Barrio (nombre):
 
-si **nombre_barrio** no es NA, la nueva variable toma su valor. En
-caso de ser NA, se la asigna a la nueva variable valor de
-**lugar_hecho**
+si **lugar_hecho** no es NA, la nueva variable toma su valor. En
+caso de ser NA, se la asigna a la nueva variable valor de **nombre_barrio**.
+
+**Nota:** lugar_hecho tiene `r sum(is.na(data$lugar_hecho))` registros vacíos, de los cuales se puede completar con nombre_barrio `r sum(is.na(data$lugar_hecho) & !is.na(data$nombre_barrio))` registros
 
 ```{r}
 # Nombre del barrio
@@ -3933,6 +3934,13 @@ save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "c
 2.  Se filtró la base inicial por personas que se identifican como
     mujeres o mujer trans y que los casos hayan sido notificados en
     Medellín, Colombia.
+    
+    
+# Base de datos para análisis espacial
+```{r}
+data_esp <- final_Data %>% filter()
+```
+
 
 3.  **Variables que se re-codificaron:**
 
