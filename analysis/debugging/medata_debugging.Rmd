@@ -3877,7 +3877,7 @@ valores faltantes para implementar métodos de imputación
 
 ```{r, warning=FALSE, message=FALSE}
 # Guardar base de datos con valores faltantes
-save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "csv")
+# save_data(final_data, "medata_1900_2022_debugged", type = "interim", format = "csv")
 ```
 
 # Resumen
@@ -4029,7 +4029,7 @@ Se observa que en la base de datos de población no se tiene información sobre 
 load(file.path(here(),"data","auxiliary","shape_barrios.rdata"))
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Verificar que el código del barrio coincida con el shape
 data_esp %>%
   filter(!(cod_barrio_nuevo %in% unique(barrios$ID))) %>% 
@@ -4048,7 +4048,7 @@ El único caso en que no coincide es con "López de Mesa" porque en el shape hay
 data_esp <- data_esp %>% mutate(barrio_nuevo = case_when(barrio_nuevo == "López de Mesa"~ "López de  Mesa", TRUE ~ barrio_nuevo))
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Verificar que el código del barrio coincida con el nombre según el shape
 data_esp %>%
   left_join(
@@ -4060,7 +4060,7 @@ data_esp %>%
 
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Verificar que los codigos de comuna coincidan con el shape
 data_esp %>%
   filter(!(cod_comuna_nuevo %in% unique(barrios$ID.comuna))) %>% 
@@ -4068,7 +4068,7 @@ data_esp %>%
 ```
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Verificar que el barrio se coherente con la comuna
 data_esp %>%
   left_join(
@@ -4078,7 +4078,7 @@ data_esp %>%
   filter(cod_comuna_nuevo != ID.comuna) %>% count(cod_barrio_nuevo,barrio_nuevo)
 ```
 
-4.  Eliminar casos donde barrio_nuevo no tenga valor. Son `r sum(is.na(data_esp$cod_barrio_nuevo))`
+4.  Eliminar casos donde barrio_nuevo no tenga valor. Son `r sum(is.na(data_esp$cod_barrio_nuevo))` registros
 ```{r}
 data_esp <- data_esp %>% filter(!is.na(cod_barrio_nuevo))
 ```
@@ -4086,5 +4086,5 @@ data_esp <- data_esp %>% filter(!is.na(cod_barrio_nuevo))
 5.  Guardar nueva base de datos
 ```{r, warning=FALSE, message=FALSE}
 # Guardar base de datos con valores faltantes
-save_data(data_esp, "medata_debugged_spatial", type = "interim", format = "csv")
+# save_data(data_esp, "medata_debugged_spatial", type = "interim", format = "csv")
 ```
