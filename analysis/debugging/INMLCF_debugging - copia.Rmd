@@ -189,8 +189,7 @@ variables:
 colnames(f_data)
 ```
 
-La mayoría de variables cuenta con un nivel "Sin información" indicando
-que no se conoce la respectiva información, por lo tanto, se cambia a NA
+No se modificará el nivel "Sin información" 
 
 ```{r, include=FALSE}
 ## Función para reemplazar los datos de "sin información" a NA
@@ -267,19 +266,36 @@ f_data <- f_data %>% mutate(
 )  
 ```
 
+```{r}
+sort(summary(as.factor(f_data$razon_del_suicidio)))
+```
+
 Recordar que la categoría *No aplica* corresponde a los casos de
 presunto homicidio
 
 ```{r}
 sort(summary(as.factor(f_data$manera_de_muerte)))
-```
 
+unique(f_data$manera_de_muerte)
+```
+##############
+```{r}
+f_data <- f_data %>% mutate(
+  manera_de_muerte = case_when( 
+    manera_de_muerte == "Violenta - Suicidio" ~ "Suicidio",
+    manera_de_muerte == "Violenta - Presunto Homicidio" ~ "Presunto homicidio",
+    TRUE ~ manera_de_muerte
+  )
+)
+```
+#############
 Por ende, se selecciona solo los casos en los que el suicidio fue por
 *Maltrato físico - sexual - psicológico*, *Víctima de hostigamiento*,
 *Ciberacoso*, *Bullying* y *No aplica*
 
+
 ```{r}
-sort(summary(as.factor(f_data$razon_del_suicidio)))
+f_data %>% filter(razon_del_suicidio != "No aplica") %>% group_by(manera_de_muerte) %>% summarise(n=n())
 ```
 
 ```{r}
@@ -324,6 +340,10 @@ f_data <- f_data %>% mutate(
     TRUE ~ circunstancia_del_hecho
   )
 )
+```
+
+```{r}
+f_data %>% filter(razon_del_suicidio != "No aplica") %>% group_by(circunstancia_del_hecho) %>% summarise(n=n())
 ```
 
 ### Naturaleza de la violencia
@@ -398,7 +418,9 @@ f_data <- f_data %>% mutate(
     ) ~ "Violencia sociopolítica",
     circunstancia_del_hecho %in% c(
       "Acceso carnal violento","Presunta explotación sexual","Agresión o ataque sexual","Violencia sexual") ~ "Violencia sexual",
-    !is.na(circunstancia_del_hecho) ~ "Otra",
+    circunstancia_del_hecho == "Sin información" ~ "Sin informacion",
+    circunstancia_del_hecho == "Otra" ~ "Otra",
+    !is.na(circunstancia_del_hecho) ~ "ayuda",
     TRUE ~ NA_character_
   )
 )  
@@ -407,6 +429,39 @@ f_data <- f_data %>% mutate(
 ```{r}
 sort(summary(as.factor(f_data$def_naturaleza)))
 ```
+```{r}
+f_data %>% filter(def_naturaleza == "ayuda") %>% group_by(circunstancia_del_hecho) %>% summarise(n=n())
+```
+
+```{r}
+f_data %>% filter(razon_del_suicidio == "No aplica") %>% group_by(def_naturaleza) %>% summarise(n=n())
+```
+
+
+Si la variable circunstancia del hecho es Sin información def_naturaleza también lo deber ser
+
+```{r}
+f_data %>% filter(circunstancia_del_hecho == "Sin información") %>% group_by(manera_de_muerte) %>% summarise(n=n())
+```
+```{r}
+f_data %>% filter(circunstancia_del_hecho == "Otra") %>% group_by(manera_de_muerte) %>% summarise(n=n())
+```
+
+```{r}
+f_data %>% filter(manera_de_muerte == "Presunto homicidio") %>% group_by(circunstancia_del_hecho) %>% summarise(n=n())
+```
+
+
+```{r}
+sort(summary(as.factor(f_data$manera_de_muerte)))
+```
+
+########################################
+```{r}
+
+```
+
+#######################################
 
 Además, se construye una variable llamada **intrafamiliar_sub** para
 indicar la sub-clasificación cuando en el caso se ejerció violencia
