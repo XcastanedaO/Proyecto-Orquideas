@@ -40,15 +40,40 @@ data_list <- list()
 
 # Lectura de las bases años 2013 al 2023
 for (year in 2013:2023) {
-  # data_ <- load_data(paste0("SIVIGILA/875_", year, ".xlsx"), type = "raw", col_types = "text")
   data_ <- readRDS(paste0(here(),"/data/raw/SIVIGILA_rds/data_", year, ".rds"))
   data_list[[as.character(year)]] <- data_
 }
-
+d_2013 <- data_list$`2013`
 # Eliminar última base leída
 rm(data_)
 
-# Juntar las bases de datos
+# Cambiar tipo de las variables 
+excepciones <- c("FEC_NOT", "EDAD","FEC_CON","INIC_SIN","FEC_HOS","FEC_DEF","FECHA_NTO","FEC_ARC_XL","FEC_AJU","edad_agre","fec_hecho")
+
+fechas <- c("FEC_NOT", "FEC_CON","INIC_SIN","FEC_HOS","FEC_DEF","FECHA_NTO","FEC_ARC_XL","FEC_AJU","fec_hecho")
+
+data_list <- lapply(data_list, function(df) {
+
+  # Convertir todas las columnas a character, excepto las excepciones
+  df[] <- lapply(names(df), function(col) {
+    if(col %in% fechas){
+      return(as.Date(df[[col]]))
+    } else if (col %in% excepciones) {
+      return(df[[col]])  
+    } else {
+      return(as.character(df[[col]]))  # convertir a character
+    }
+  })
+  names(df) <- names(df)  # restaurar nombres
+
+  # Ahora aplicar conversiones específicas
+  df$EDAD <- as.numeric(df$EDAD)
+  df$edad_agre <- as.numeric(df$edad_agre)
+
+  return(df)
+})
+
+# Juntar las bases de datos: cuidado bases de diferente longitud
 data <- bind_rows(data_list, .id = "ANO")
 ```
 
