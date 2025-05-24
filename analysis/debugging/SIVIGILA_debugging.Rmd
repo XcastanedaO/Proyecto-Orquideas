@@ -1,0 +1,53 @@
+---
+title: "Depuración información reportada al SIVIGILA desde 2013 hasta 2023."
+date: "2024-11-13"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+\newpage
+
+# Información de la base de datos
+
+# Lectura de la base de datos
+
+```{r, include=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE)
+
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(readr)
+library(sf)
+```
+
+```{r, warning=FALSE}
+saveRDS(X875_2015, paste0(here(),"/data/raw/SIVIGILA_rds/data_2015.rds"))
+
+data_list <- list()
+
+# Lectura de las bases años 2013 al 2023
+for (year in 2013:2023) {
+  data_ <- load_data(paste0("SIVIGILA/875_", year, ".xlsx"), type = "raw", col_types = "text") 
+  data_list[[as.character(year)]] <- data_
+    gc()
+}
+
+# Juntar las bases de datos
+# data <- bind_rows(data_list, .id = "Año")
+```
+
