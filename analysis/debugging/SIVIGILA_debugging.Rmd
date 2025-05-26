@@ -77,3 +77,95 @@ data_list <- lapply(data_list, function(df) {
 data <- bind_rows(data_list, .id = "ANO")
 ```
 
+
+
+Se utiliza la función `clean_names()` del paquete **janitor** para limpiar y estandarizar los nombres de las variables de la base de datos. Esto con el fin de facilitar la manipulación de los datos y garantizar una estructura consistente para aplicar la misma lógica de depuración utilizada en la base de datos de medata.
+
+```{r}
+library(janitor)
+data <- data %>% clean_names
+```
+```{r}
+data %>% filter(!is.na(cod_eve_old_2))%>% select(cod_eve, cod_eve_old, cod_eve_old_2, nombre_evento)
+```
+
+# Depuración de la base de datos
+
+La base de datos está conformada por 205 variables, sin embargo, se
+elimina las siguientes variables por no ser de relevancia para el
+análisis:
+
+
+
+1.  Nombre de la Unidad Primaria Generadora de Datos(**nom_upgd - nombre_upgd - nom_upgd_2**)
+
+2.  Código y nombre del evento (**-cod_eve - evento - nombre_evento - cod_eve_old - cod_eve_old_2,**)
+
+3.  Código asignado en el SGSSS a los prestadores de servicios de salud
+    que se hayan registrado en el 'Registro Especial de Prestadores de
+    Servicios de Salud' (**cod_pre**)
+
+4.  Código asignado en el SGSSS a los prestadores de servicios de salud
+    que indica sede ó territorio (**cod_sub**)
+
+5.  Código Administradora responsable de la atención del paciente,
+    asignado por MSP (**cod_ase**)
+
+6.  Número del certificado defunción (**cer_def\_**)
+
+7.  (**fec_arc_xl**) <----
+
+7.  Fecha efectiva de digitación del registro o realizar un ajuste a un
+    registro previo (**fec_aju\_**)
+  
+8.  Número de registros (**nreg**) - Estado de transformación de la
+    notificación (**estadotran**)
+
+9.  Fuerza (**fm_fuerza**) - Código de la Unidad Militar según tabla de
+    Unidades Militares (**fm_unidad**)
+
+10. Código de la Grado Militar según tabla de Grados Militares
+    (**fm_grado**)
+    
+11. Para uso interno. Versión del SIVIGILA con la que fue grabado o actualizado el registro (**version - version_2**)    
+
+11. Contexto de la notificación, sus categorías son: notificación
+    rutinaria, búsqueda, activa Institucional, vigilancia intensificada,
+    búsqueda activa Comunitaria, investigaciones (**Fuente**)
+    
+
+(**confirmados**)
+(**va_sispro**)
+(**esc_vict - esc_agre**)
+(**fact_preci**)
+(**vulnerab**)
+(**otro_vuln**)
+(**fact_preci**)
+(**grupos** - **otro_grup**)
+(**sust_intx**)
+(**canal_pers**)
+(**tcampo**)
+(**tra_sexual**)
+(**nna_snbf**)
+(**consecutive - consecutive_origen**)
+(**concat**)
+(**calculo**)
+
+
+```{r, include=FALSE}
+data <- data %>%
+  select(-nom_upgd,-nombre_upgd,-nom_upgd_2, ,
+         -cod_eve,-evento,-nombre_evento,-cod_eve_old,-cod_eve_old_2, 
+         -cod_pre,
+         -cod_sub,
+         -cod_ase,
+         -cer_def,
+         -fec_arc_xl,
+         -fec_aju,
+         -fm_fuerza,-fm_unidad,
+         -fm_grado, 
+         -version, -version_2,
+         -estadotran, 
+         -fuente)
+         #-nreg,-mes_caso)
+```
