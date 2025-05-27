@@ -33,6 +33,7 @@ library(stringr)
 library(stringi)
 library(readr)
 library(sf)
+library(janitor)
 ```
 
 ```{r, warning=FALSE}
@@ -43,10 +44,140 @@ for (year in 2013:2023) {
   data_ <- readRDS(paste0(here(),"/data/raw/SIVIGILA_rds/data_", year, ".rds"))
   data_list[[as.character(year)]] <- data_
 }
-d_2013 <- data_list$`2013`
 # Eliminar última base leída
 rm(data_)
+```
 
+Se utiliza la función `clean_names()` del paquete **janitor** para limpiar y estandarizar los nombres de las variables de la base de datos. Esto con el fin de facilitar la manipulación de los datos y garantizar una estructura consistente para aplicar la misma lógica de depuración utilizada en la base de datos de medata.
+
+```{r}
+data_list <- lapply(data_list, clean_names)
+```
+
+Luego, se encontró que las bases de datos tienen diferente cantidad de columnas
+
+```{r}
+col_data <- tibble(
+  year = names(data_list),
+  n_columnas = sapply(data_list, ncol),
+  n_filas = sapply(data_list, nrow)
+)
+col_data
+```
+
+Para evitar repeticiones e inconsistencias, se verifica que las columnas estén nombradas igual y se seleccionan aquellas que aparecen en el diccionario de datos o se conoce su significado
+
+-   **Comparación 2013 y 2014:**
+```{r}
+setdiff(names(data_list$`2014`),names(data_list$`2013`))
+setdiff(names(data_list$`2013`),names(data_list$`2014`))
+```
+Al analizar las variables que están en 2014 pero no en 2013 se encuentran las siguientes variables: priv_liber, desmov_rei, nna_snbf,vic_confli y otra_situa. Podrían pensarse que corresponde respectivamente a gp_carcela,gp_desmovi,gp_pobicfb, gp_vic_vio y gp_otros, pero estas últimas variables ya están en la base.
+
+La base de
+
+campesino = actividad. 2013 no tiene actividad pero se puede crear al unir
+ama_de_cas = actividad
+tra_sexual = actividad
+
+otro_grup = GP_OTROS
+otro_esce = escanario
+otra_arma = armas
+r_protec = remit_prot
+inf_autpj y inf_autfis = INF_AUT
+```{r}
+data_list$`2014` <- data_list$`2014` %>%  rename(gp_carcela = priv_liber, gp_desmovi = desmov_rei, gp_pobicfb = nna_snbf, gp_otros = otra_situa)
+```
+
+-   **Comparación 2013 y 2015:**
+
+```{r}
+setdiff(names(data_list$`2015`),names(data_list$`2013`))
+```
+
+```{r}
+setdiff(names(data_list$`2013`),names(data_list$`2015`))
+```
+
+-   **Comparación 2013 y 2016:**
+
+
+```{r}
+setdiff(names(data_list$`2016`),names(data_list$`2013`))
+```
+
+```{r}
+setdiff(names(data_list$`2013`),names(data_list$`2016`))
+```
+-   **Comparación 2013 y 2017:**
+
+```{r}
+setdiff(names(data_list$`2017`),names(data_list$`2013`))
+```
+
+
+```{r}
+setdiff(names(data_list$`2013`),names(data_list$`2017`))
+```
+
+
+-   **Comparación 2013 y 2018:**
+
+```{r}
+setdiff(names(data_list$`2018`),names(data_list$`2013`))
+```
+
+
+```{r}
+setdiff(names(data_list$`2013`),names(data_list$`2018`))
+```
+
+
+-   **Comparación 2013 y 2019:**
+```{r}
+setdiff(names(data_list$`2019`),names(data_list$`2013`))
+```
+
+```{r}
+setdiff(names(data_list$`2013`),names(data_list$`2019`))
+```
+-   **Comparación 2013 y 2020:**
+```{r}
+setdiff(names(data_list$`2020`),names(data_list$`2013`))
+```
+
+```{r}
+setdiff(names(data_list$`2013`),names(data_list$`2020`))
+```
+-   **Comparación 2013 y 2021:**
+
+```{r}
+setdiff(names(data_list$`2021`),names(data_list$`2013`))
+```
+
+```{r}
+setdiff(names(data_list$`2013`),names(data_list$`2017`))
+```
+
+Las columnas que siguen el patrón x + número se eliminan en la respectiva base. 
+
+```{r}
+data_list <- lapply(data_list, function(df) {
+  df %>% select(-starts_with("x"))
+})
+
+# Se elimina esta variable porque no está en todas las bases y no se encuentra en el diccionario tampoco
+data_list$`2018` <- data_list$`2018` %>% select(-est_f_caso)
+data_list$`2019` <- data_list$`2019` %>% select(-est_f_caso)
+data_list$`2020` <- data_list$`2020` %>% select(-est_f_caso)
+```
+
+
+
+
+**¿CUÁLES VARIABLES SE ESTARÍAN SACRIFICANDO?**
+
+```{r}
 # Cambiar tipo de las variables 
 excepciones <- c("FEC_NOT", "EDAD","FEC_CON","INIC_SIN","FEC_HOS","FEC_DEF","FECHA_NTO","FEC_ARC_XL","FEC_AJU","edad_agre","fec_hecho")
 
@@ -78,13 +209,6 @@ data <- bind_rows(data_list, .id = "ANO")
 ```
 
 
-
-Se utiliza la función `clean_names()` del paquete **janitor** para limpiar y estandarizar los nombres de las variables de la base de datos. Esto con el fin de facilitar la manipulación de los datos y garantizar una estructura consistente para aplicar la misma lógica de depuración utilizada en la base de datos de medata.
-
-```{r}
-library(janitor)
-data <- data %>% clean_names
-```
 ```{r}
 data %>% filter(!is.na(cod_eve_old_2))%>% select(cod_eve, cod_eve_old, cod_eve_old_2, nombre_evento)
 ```
@@ -94,7 +218,6 @@ data %>% filter(!is.na(cod_eve_old_2))%>% select(cod_eve, cod_eve_old, cod_eve_o
 La base de datos está conformada por 205 variables, sin embargo, se
 elimina las siguientes variables por no ser de relevancia para el
 análisis:
-
 
 
 1.  Nombre de la Unidad Primaria Generadora de Datos(**nom_upgd - nombre_upgd - nom_upgd_2**)
