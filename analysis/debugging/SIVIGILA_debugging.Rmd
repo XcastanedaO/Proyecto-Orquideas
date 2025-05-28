@@ -65,10 +65,12 @@ Se utiliza la función `clean_names()` del paquete **janitor** para limpiar y es
 data_list <- lapply(data_list, clean_names)
 ```
 
-Luego, se unen todas las bases
+Luego, se cambia el tipo de las variables y se unen todas las bases
 
 ```{r}
-# Cambiar tipo de las variables 
+# Cambiar tipo en variables especificas  
+data_list$`2016`$fec_hecho <- as.Date(data_list$`2016`$fec_hecho, format="%d/%m/%Y")
+
 excepciones <- tolower(c("FEC_NOT", "EDAD", "FEC_CON", "INIC_SIN", "FEC_HOS", "FEC_DEF", "FECHA_NTO", "FEC_ARC_XL", "FEC_AJU", "edad_agre", "fec_hecho","FECHAHORA"))
 
 fechas <- tolower(c("FEC_NOT", "FEC_CON", "INIC_SIN", "FEC_HOS", "FEC_DEF", "FECHA_NTO", "FEC_ARC_XL", "FEC_AJU", "fec_hecho","FECHAHORA"))
@@ -172,6 +174,10 @@ Ahora bien, la variable **fecha_hora** solo aparecen en la base del 2021, toma c
 
 **Falta mirar qué hacer con: esc_agre, aten_medic,grup_pob,sust_agre,sp_psic,sp_its,otra_asp,pob_lgtbi,otra_situa,est_f_caso**
 
+
+## Fechas
+verificar que hay casos donde el año 1900, cuidado porque esos casos corresponden a valores numericos que había en la columna y al convertir a fecha se ponea así
+
 ## Población vulnerable
 priv_liber, desmov_rei,nna_snbf,vic_conflic pueden completar gp_carcela, gp_desmovi, gp_pobicfb y gp_vic_vio
 
@@ -204,3 +210,6 @@ esta en tipo character hasta 2017 toma valores coherentes con hora. En 2018 toma
 
 ## Nombre del grupo étnico
 nom_grupo solo toma valor a partir de 2018
+
+## edad agresor
+cuidado hay edades en cero, seguro los años donde no se pidió esta información en la ficha
