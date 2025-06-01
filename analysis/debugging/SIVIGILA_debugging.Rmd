@@ -234,7 +234,7 @@ Sin embargo, se puede observa que para años anteriores al 2022, la variable est
 -   Los casos donde no se conoce como se identifica la víctima pero que sea de sexo mujer
 
 ```{r}
-data_aux <- data %>% filter(
+data <- data %>% filter(
   (sexo == "F" & year(fec_not) < 2017) |
   (year(fec_not) >= 2017 & year(fec_not) < 2023 & (ident_gene == "2" | (ident_gene == "3" & sexo == "M"))) |
   (year(fec_not) %in% c(2023, 2024) & ident_gene %in% c("2", "4")) |
@@ -247,7 +247,6 @@ De esta manera, se pasaría de una base de `r nrow_aux` filas a  `r nrow(data)` 
 **Nota:** Si se consideran los casos antes del 2023 donde ident_gene == 4 se rescatarían solo 318 registros más.
 
 
-
 ### País de ocurrencia
 En cuanto a la información sobre el país de ocurrencia del hecho, se encuentran las siguientes variables:
 - **cod_pais_o**
@@ -258,25 +257,31 @@ En cuanto a la información sobre el país de ocurrencia del hecho, se encuentra
 data %>% count(year(fec_not),pais_ocurrencia)
 ```
 
-
 La variable **pais_ocurrencia** solo aparece en años 2022 y 2023 mientras que el **cod_pais_o** (código del país de ocurrencia) está presente para todos los años sin ningún valor NA. Dado esto, se decide filtrar la base de datos para aquellos casos donde el valor de cod_pais_o sea igual a 170, lo que representa a Colombia.
 
 
 ```{r}
-data_aux <- data_aux %>% filter(cod_pais_o == 170)
+nrow_aux <- nrow(data)
+data <- data %>% filter(cod_pais_o == 170)
 ```
 
 Sin embargo, se sigue notando que, aunque la mayoría de los casos corresponden a Colombia, existen algunos valores de **npais_proce** que corresponden a Venezuela y valores NA. Aunque la cantidad de casos fuera de Colombia es baja, se decide eliminar estos registros para mantener la consistencia en la variable de ocurrencia, asegurando que solo se incluyan casos de Colombia.
 
 
 ```{r}
-summary(as.factor(data_aux1$npais_proce))
+summary(as.factor(data$npais_proce))
 
-data_aux <- data_aux %>% filter(npais_proce != "VENEZUELA" | is.na(npais_proce))
+data <- data %>% filter(npais_proce != "VENEZUELA" | is.na(npais_proce))
 ```
 
 
+Así, se pasaría de una base de `r nrow_aux` filas a  `r nrow(data)` filas. 
+
 ## Identificador
+```{r}
+data %>%  filter(duplicated(consecutive))
+```
+
 
 consecutive
 
