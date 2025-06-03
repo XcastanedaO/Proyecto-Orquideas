@@ -36,6 +36,8 @@ library(sf)
 library(janitor)
 ```
 
+Los archivos originales enviados por el Instituto Nacional de Salud están en formato xlsx, sin embargo, dado su tamaño la memoria puede llenarse más fácilmente si se lee cada uno en este formato entonces se leyeron y guardaron en formato rds, asignando de una vez el tipo de dato a cada columna
+
 ```{r, warning=FALSE}
 data_list <- list()
 
@@ -99,6 +101,11 @@ data_list <- lapply(data_list, function(df) {
 
   return(df)
 })
+
+# Crear variable para rastrear el origen del registro
+for (nombre in names(data_list)) {
+  data_list[[nombre]]$origen <- nombre
+}
 
 data <- bind_rows(data_list, .id = "ano")
 # rm(data_list)
@@ -169,13 +176,12 @@ data <- data %>%
          -cod_sub,
          -cod_ase,
          -cer_def,
-         -fec_arc_xl,
          -fec_aju,
          -fm_fuerza,-fm_unidad, -fm_grado, 
          -version,
-         -estadotran, 
+         -estadotran, -est_f_caso,-estado_final_de_caso,-nom_est_f_caso,
          -fuente,
-         -fec_arc_xl, -confirmados, -va_sispro, -esc_vict, esc_agre, -fact_preci, -vulnerab, -otro_vuln, -grupos, -otro_grup, -sust_intx, -canal_pers, -tcampo,  -concat, -calculo, -consecutive_origen,-est_f_caso,-estado_final_de_caso,-nom_est_f_caso,-remit_aut,-remit_just,-gru_pob,-sust_agr,-sp_psic)
+         -fec_arc_xl, -confirmados, -va_sispro, -esc_vict, esc_agre, -fact_preci, -vulnerab, -otro_vuln, -grupos, -otro_grup, -sust_intx, -canal_pers, -tcampo,  -concat, -calculo, -consecutive_origen,-remit_aut,-remit_just,-gru_pob,-sust_agr,-sp_psic)
          
 # Eliminar variables x[#]
 data <- data %>%  select(-starts_with("x"))
@@ -214,7 +220,6 @@ Esta variable se pide en la ficha de notificación de todos los años
 ```{r}
 summary(as.factor(data$sexo))
 ```
- [7] "sexo"   
 
 ### Identidad sexual
 
@@ -273,28 +278,24 @@ summary(as.factor(data$npais_proce))
 
 data <- data %>% filter(npais_proce != "VENEZUELA" | is.na(npais_proce))
 ```
-
-
-Así, se pasaría de una base de `r nrow_aux` filas a  `r nrow(data)` filas. 
-
-
-Como todos los casos corresponden a reportes hechos en Colombia, se eliminan las tres variables relacionadas pues no tienen variabilidad entre ellas.
+Así, se pasaría de una base de `r nrow_aux` filas a  `r nrow(data)` filas. Como todos los casos corresponden a reportes hechos en Colombia, se eliminan las tres variables relacionadas pues no tienen variabilidad entre ellas.
 
 ```{r}
-data <- select(-c(cod_pais_o, pais_ocurrencia, npais_proce))
+data <- data %>% select(-c(cod_pais_o, pais_ocurrencia, npais_proce))
 ```
 
 
 ## Identificador
+
+Esta variable no aparece en el diccionario de datos pero se asume por nombre que corresponde a la variable **NUM_CON** del diccionario y la cual corresponde a: "Se asigna un valor consecutivo para cada reporte generado por la misma UPGD en la misma semana por evento". Al analizar si tiene valores repetidos se encontró que:
+
 ```{r}
 data %>%  filter(duplicated(consecutive))
 ```
 
-
-consecutive
+Por ende, se podría tomar como un identificador del registro en caso de ser necesario
 
 ## Clasificación del caso
-
 
 La variable clasificación inicial del caso (**tip_cas\_**) puede tomar
 los siguientes valores: 1 = Sospechoso, 2 = Probable, 3 = Confirmado por
@@ -304,24 +305,27 @@ Epidemiológico.
 ```{r}
 summary(as.factor(data$tip_cas))
 ```
-La mayoría de casos resultan como casos son sospechosos. Y solo 11 de ellos resultan como probables. Se evalúa la variable de seguimiento del caso (**ajuste**) para estudiar el comportamiento del proceso, pues se ve que algunos casos cambiaron:
+
+La mayoría de casos resultan como casos son sospechosos. Y solo 11 de ellos resultan como probables. Lo que indica que fueron detectados de forma oportuna. Se evalúa la variable de seguimiento del caso (**ajuste**) para estudiar el comportamiento del proceso, pues se ve que algunos casos cambiaron:
 
 ```{r}
 summary(as.factor(data$ajuste))
 ```
 
+Esta variable se registra posterior de obtener resultados de laboratorio o análisis del caso y toma los valores de:
 
-La variable clasificación inicial del caso (**ajuste**) puede tomar
-los siguientes valores: 0 = No aplica, No Ajusta, 3 = Confirmado por Laboratorio, 4 = Confirmado por Clínica, 5 = Confirmador por Nexo Epidemiológico, 6 = Descartado, 7 = Otro ajuste, D = Descarte por error de digitacion
+-   0 = No aplica (es el valor por defecto del sistema si el caso es nuevo o no ha sido ajustado)
+-   3 = Confirmado por laboratorio
+-   4 = Confirmado por clínica
+-   5 = Confirmado por nexo epidemiológico
+-   6= Descartado: indica que los casos fueron descartados, entonces no son estudio de violencia de género, por tanto se descartan de la base de datos.
+-   7= Otra actualización:indica que se modificó algún campo de la ficha, los únicos que no se pueden modificar son código de evento, Upgd, numero de id, fecha de notificación.
+-   D = Descarte por error de digitacion
 
-El valor de **7** indica que se modificó algún campo de la ficha, los
-únicos que no se pueden modificar son código de evento, Upgd, numero de
-id, fecha de notificación.
-
-El valor de **6** indica que los casos fueron descartados, entonces no son estudio de violencia de género, por tanto se descartan de la base de datos.
-
+Dado lo anterior, y que el estado final del caso no brinda información adicional relevante para el análisis, se elimina los registros que fueron descartados y estas dos variables. Además, los casos de *2,9996 y 9997* se convierten a NA
 
 ```{r}
+nrow_aux <- nrow(data)
 data <- data %>% mutate(
   ajuste = case_when(
     ajuste %in% c("2", "9996", "9997") ~ NA_character_,
@@ -334,8 +338,11 @@ data <- data %>% filter(ajuste != "6" | is.na(ajuste))
 summary(as.factor(data$ajuste))
 ```
  
- 
-**No está en esta base la variable de clasificación final**
+```{r}
+data <- data %>% select(-c(tip_cas,ajuste))
+```
+
+**Nota:** En la base de datos de MEData aparece la variable **clasificación final** pero en esta base no, el diccionario indica que **ajuste** corresponde a seguimiento y clasificación final del caso, o sea, que indica también el estado final del caso. 
 
 
 ## Fechas
@@ -346,7 +353,7 @@ Se cuenta con las siguientes fechas:
     informando el evento al siguiente nivel por cualquier mecanismo, en
     especial para los eventos de notificación inmediata.
 
--   **Consulta (fec_con\_)**: fecha en la que consultó el paciente.
+-   **Consulta (fec_con)**: fecha en la que consultó el paciente.
 
 -   **Inicio de síntomas (ini_sin\_)**: fecha del primer día en que el
     paciente inició síntomas.
@@ -361,25 +368,182 @@ Se cuenta con las siguientes fechas:
 
 -   **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento
 
+A continuación, se presenta la composición de estas variables:
 
+```{r}
+data_aux <- data %>% mutate(ini_sin = as.Date(ini_sin))
+date_vars <- data_aux[, sapply(data_aux, inherits, what = "Date")]
+
+resumen_fechas <- sapply(date_vars, function(x) {
+  c(
+    total_NA = sum(is.na(x)),
+    fecha_min = as.character(min(x, na.rm = TRUE)),
+    fecha_max = as.character(max(x, na.rm = TRUE))
+  )
+})
+
+t(resumen_fechas)
+```
+Se observa que la única columna fecha que no tiene valores faltantes es **fec_not**.
 
 ### Inconsistencias
 
-Se encontró que algunos registros parecen tomar fechas genéricas en la
-fecha de nacimiento **(fecha_nto\_)** y en la fecha del hecho
-**(fec_hecho)**. Por ejemplo: 
+Se encontró que algunos registros parecen tomar fechas genéricas. Para ilustrarlo, se muestra algunos casos de fecha de nacimiento **(fecha_nto\_)** y fecha del hecho **(fec_hecho)**:
 
 ```{r}
 data  %>% filter(
-  (month(fecha_nto) == 1 & day(fecha_nto) == 1) | (month(fec_hecho) == 1 & day(fec_hecho) == 1)) %>% 
+  ((month(fecha_nto) == 1 & day(fecha_nto) == 1) | (month(fec_hecho) == 1 & day(fec_hecho) == 1)) & fec_hecho != fec_not) %>% 
   select(fecha_nto,fec_hecho,fec_not) %>% head(5)
 ```
+
+En algunos casos estas fechas genéricas corresponden a valores inconsistentes que tomaba el registro (números únicos o letras) y que al pasar a formato date se convirtieron también en fechas. **La única fecha en la que no pasa esto es en fec_not**.
+
+Teniendo en cuenta todo lo anterior, se decide quedarse solo con la **fecha de notificación**
+
+**Nota: no se eliminan aún para analizar la edad de la víctima**
 
 ## Información de la víctima
 
 ### Edad de la víctima (edad\_,uni_med\_,grupo_edad_ciclo,grupo_edad_quinque)
 
-**falta la edad**
+La edad de la víctima se registra en diferentes medidas (**uni_med**):
+años(1), meses(2), días(3), horas(4), minutos(5). Existen algunos casos
+donde la unidad de medida o la edad son 0:
+
+```{r}
+data %>% filter(uni_med == 0 | edad == 0) %>% count(uni_med,edad,con_fin,origen)
+```
+El diccionario de datos indica que se registra 0 en la edad solo para mortinatos o evento In Utero y en estos casos, debe asignarse por defecto en unidad de medida el mismo valor (cero). Además, la ficha de notificación 2024 agrega: "La unidad de medida 0='no aplica', **solo puede ser utilizada para el evento 215 defectos congénitos**, cuando el diagnóstico se realiza prenatal". 
+
+```{r}
+nrow_aux <- nrow(data)
+data <- data %>% filter(uni_med != 0) 
+```
+
+Dado esta inconsistencia en la información y el interés del estudio, se eliminan `r nrow(data) - nrow_aux` estos registros, quedando una base de datos de `r nrow(data)`, donde la distribución de la edad es:
+
+```{r}
+summary(data$edad)
+```
+
+Luego, también see encuentra que para algunos registros la unidad de medida son incorrectas.
+
+```{r, include = FALSE}
+data <- data %>%
+  mutate(
+    edad_hecho = case_when(
+      uni_med == 1 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto, units = "days")
+      ) / 365.25),
+      # Años
+      uni_med == 2 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto, units = "days")
+      ) / 30.44),
+      # Meses
+      uni_med == 3 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto, units = "days")
+      )),
+      # Días
+      uni_med == 4 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto, units = "hours")
+      )),
+      # Horas
+      uni_med == 5 ~ floor(as.numeric(
+        difftime(fec_hecho, fecha_nto, units = "mins")
+      )),
+      # Minutos
+      TRUE ~ NA_real_
+    ),
+    edad_notif = case_when(
+      uni_med == 1 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto, units = "days")
+      ) / 365.25),
+      # Años
+      uni_med == 2 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto, units = "days")
+      ) / 30.44),
+      # Meses
+      uni_med == 3 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto, units = "days")
+      )),
+      # Días
+      uni_med == 4 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto, units = "hours")
+      )),
+      # Horas
+      uni_med == 5 ~ floor(as.numeric(
+        difftime(fec_not, fecha_nto, units = "mins")
+      )),
+      # Minutos
+      TRUE ~ NA_real_
+    )) 
+
+```
+
+Las variables **edad_hecho** y **edad_notif** se calcularon como la
+diferencia en tiempo entre la fecha de nacimiento y la fecha del hecho y
+notificación, respectivamente, según la unidad de medida. Luego, si se
+compara la edad original con las edades calculadas la diferencia es
+evidente, demostrando que la unidad de medida es incorrecta. Por ejemplo:
+
+```{r}
+data_aux <- data %>% filter(
+  (uni_med == 2 & abs(edad - edad_notif) > 12) |
+    (uni_med == 3 & abs(edad - edad_notif) > 30) |
+    (uni_med == 4 & abs(edad - edad_notif) > 24) |
+    (uni_med == 5 & abs(edad - edad_notif) > 60)
+) %>% arrange(desc(edad_hecho)) %>% select(uni_med,
+                                           edad,
+                                           edad_hecho,
+                                           edad_notif,
+                                           fecha_nto,
+                                           fec_hecho,
+                                           fec_not) 
+data_aux %>% slice_sample(n=10)
+```
+
+Dado que estos registros corresponden al `r round(((nrow(data_aux)*100)/nrow(data))*100,2)` de la base de datos, se decide eliminarlos.
+
+```{r}
+nrow_aux <- nrow(data)
+data <- data %>% filter(is.na(edad_notif) | !(
+    (uni_med == 2 & abs(edad - edad_notif) > 12) |
+    (uni_med == 3 & abs(edad - edad_notif) > 30) |
+    (uni_med == 4 & abs(edad - edad_notif) > 24) |
+    (uni_med == 5 & abs(edad - edad_notif) > 60)
+))
+```
+
+Se eliminan `r nrow_aux - nrow(data_aux)` registros, quedando una base de
+datos de `r nrow(data)`.
+
+```{r}
+summary(data$edad)
+```
+
+Además, para un mejor manejo se pasa la edad a años.
+
+```{r}
+data <- data %>%
+  mutate(edad_ = case_when(
+    uni_med == 1 ~ edad,                           # Años, se mantiene igual
+    uni_med == 2 ~ edad / 12,                      # Meses a años
+    uni_med == 3 ~ edad / 365.25,                  # Días a años 
+    uni_med == 4 ~ edad / (365.25 * 24),           # Horas a años
+    uni_med == 5 ~ edad / (365.25 * 24 * 60)       # Minutos a años
+  ) %>% floor())
+```
+
+
+```{r}
+summary(data$edad)
+```
+
+
+```{r}
+data <- data %>% select(-c(edad_hecho,edad_notif,uni_med,edad))
+```
+
 
 
 ### *Fecha de notificación (eliminar luego de la edad)
@@ -387,12 +551,8 @@ data  %>% filter(
 Se eliminan las columnas de fechas a excepción de fecha de notificación
 y se crea una nueva variable solo con el año de notificación llamada **año_not**
 
-
-Se eliminan las columnas de fechas a excepción de fecha de notificación
-y se crea una nueva variable solo con el año de notificación llamada **año_not**
-
 ```{r}
-data <- data %>% select(-c(fecha_nto_,fec_def_,fec_hos_,fec_con_,ini_sin_,fec_hecho))
+data <- data %>% select(-c(fecha_nto,fec_def_,fec_hos_,fec_con_,ini_sin_,fec_hecho))
 ```
 
 ```{r}
