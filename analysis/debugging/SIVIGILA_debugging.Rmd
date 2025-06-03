@@ -277,6 +277,14 @@ data <- data %>% filter(npais_proce != "VENEZUELA" | is.na(npais_proce))
 
 Así, se pasaría de una base de `r nrow_aux` filas a  `r nrow(data)` filas. 
 
+
+Como todos los casos corresponden a reportes hechos en Colombia, se eliminan las tres variables relacionadas pues no tienen variabilidad entre ellas.
+
+```{r}
+data <- select(-c(cod_pais_o, pais_ocurrencia, npais_proce))
+```
+
+
 ## Identificador
 ```{r}
 data %>%  filter(duplicated(consecutive))
@@ -285,24 +293,116 @@ data %>%  filter(duplicated(consecutive))
 
 consecutive
 
-## Clasificación del caso ???
- [33] "tip_cas"  
- [38] "ajuste" 
+## Clasificación del caso
+
+
+La variable clasificación inicial del caso (**tip_cas\_**) puede tomar
+los siguientes valores: 1 = Sospechoso, 2 = Probable, 3 = Confirmado por
+Laboratorio, 4 = Confirmado por Clínica, 5 = Confirmado por Nexo
+Epidemiológico.
+
+```{r}
+summary(as.factor(data$tip_cas))
+```
+La mayoría de casos resultan como casos son sospechosos. Y solo 11 de ellos resultan como probables. Se evalúa la variable de seguimiento del caso (**ajuste**) para estudiar el comportamiento del proceso, pues se ve que algunos casos cambiaron:
+
+```{r}
+summary(as.factor(data$ajuste))
+```
+
+
+La variable clasificación inicial del caso (**ajuste**) puede tomar
+los siguientes valores: 0 = No aplica, No Ajusta, 3 = Confirmado por Laboratorio, 4 = Confirmado por Clínica, 5 = Confirmador por Nexo Epidemiológico, 6 = Descartado, 7 = Otro ajuste, D = Descarte por error de digitacion
+
+El valor de **7** indica que se modificó algún campo de la ficha, los
+únicos que no se pueden modificar son código de evento, Upgd, numero de
+id, fecha de notificación.
+
+El valor de **6** indica que los casos fueron descartados, entonces no son estudio de violencia de género, por tanto se descartan de la base de datos.
+
+
+```{r}
+data <- data %>% mutate(
+  ajuste = case_when(
+    ajuste %in% c("2", "9996", "9997") ~ NA_character_,
+    TRUE ~ ajuste)) 
+
+data <- data %>% filter(ajuste != "6" | is.na(ajuste))
+```
+
+```{r}
+summary(as.factor(data$ajuste))
+```
  
+ 
+**No está en esta base la variable de clasificación final**
+
 
 ## Fechas
 
-verificar que hay casos donde el año 1900, cuidado porque esos casos
-corresponden a valores numericos que había en la columna y al convertir
-a fecha se ponea así
- [57] "fec_hecho" 
-  [2] "fec_not"
-  [31] "fec_con"                                             [39] "fecha_nto"  
- [32] "ini_sin"
- [35] "fec_hos" 
-  [37] "fec_def"  
+Se cuenta con las siguientes fechas:
+
+-   **Fecha de notificiación (fec_not)**: fecha en la que se está
+    informando el evento al siguiente nivel por cualquier mecanismo, en
+    especial para los eventos de notificación inmediata.
+
+-   **Consulta (fec_con\_)**: fecha en la que consultó el paciente.
+
+-   **Inicio de síntomas (ini_sin\_)**: fecha del primer día en que el
+    paciente inició síntomas.
+
+-   **Hospitalización (fec_hos\_)**: fecha en la que el paciente fue
+    hospitalizado como consecuencia del evento.
+
+-   **Defunción (fec_def\_)**: fecha en la que el paciente fallece como
+    consecuencia del evento.
+
+-   **Nacimiento (fecha_nto\_)** fecha de nacimiento de la paciente
+
+-   **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento
+
+
+
+### Inconsistencias
+
+Se encontró que algunos registros parecen tomar fechas genéricas en la
+fecha de nacimiento **(fecha_nto\_)** y en la fecha del hecho
+**(fec_hecho)**. Por ejemplo: 
+
+```{r}
+data  %>% filter(
+  (month(fecha_nto) == 1 & day(fecha_nto) == 1) | (month(fec_hecho) == 1 & day(fec_hecho) == 1)) %>% 
+  select(fecha_nto,fec_hecho,fec_not) %>% head(5)
+```
 
 ## Información de la víctima
+
+### Edad de la víctima (edad\_,uni_med\_,grupo_edad_ciclo,grupo_edad_quinque)
+
+**falta la edad**
+
+
+### *Fecha de notificación (eliminar luego de la edad)
+
+Se eliminan las columnas de fechas a excepción de fecha de notificación
+y se crea una nueva variable solo con el año de notificación llamada **año_not**
+
+
+Se eliminan las columnas de fechas a excepción de fecha de notificación
+y se crea una nueva variable solo con el año de notificación llamada **año_not**
+
+```{r}
+data <- data %>% select(-c(fecha_nto_,fec_def_,fec_hos_,fec_con_,ini_sin_,fec_hecho))
+```
+
+```{r}
+data <- data %>% mutate(
+  año_not = year(fec_not))
+```
+
+
+
+
 
 ### Nacionalidad
 [101] "nacionalidad"                                       
