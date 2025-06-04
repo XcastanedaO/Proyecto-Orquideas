@@ -420,13 +420,13 @@ nrow_aux <- nrow(data)
 data <- data %>% filter(uni_med != 0) 
 ```
 
-Dado esta inconsistencia en la información y el interés del estudio, se eliminan `r nrow(data) - nrow_aux` estos registros, quedando una base de datos de `r nrow(data)`, donde la distribución de la edad es:
+Dado esta inconsistencia en la información y el interés del estudio, se eliminan `r nrow_aux - nrow(data)` estos registros, quedando una base de datos de `r nrow(data)`, donde la distribución de la edad es:
 
 ```{r}
 summary(data$edad)
 ```
 
-Luego, también see encuentra que para algunos registros la unidad de medida son incorrectas.
+Luego, también se encuentra que para algunos registros la unidad de medida son incorrectas.
 
 ```{r, include = FALSE}
 data <- data %>%
@@ -492,17 +492,14 @@ data_aux <- data %>% filter(
     (uni_med == 3 & abs(edad - edad_notif) > 30) |
     (uni_med == 4 & abs(edad - edad_notif) > 24) |
     (uni_med == 5 & abs(edad - edad_notif) > 60)
-) %>% arrange(desc(edad_hecho)) %>% select(uni_med,
-                                           edad,
-                                           edad_hecho,
-                                           edad_notif,
-                                           fecha_nto,
-                                           fec_hecho,
-                                           fec_not) 
+) %>% select(uni_med, edad,edad_hecho,edad_notif,
+             fecha_nto,
+             fec_hecho,
+             fec_not) 
 data_aux %>% slice_sample(n=10)
 ```
 
-Dado que estos registros corresponden al `r round(((nrow(data_aux)*100)/nrow(data))*100,2)` de la base de datos, se decide eliminarlos.
+Dado que estos registros corresponden al `r round(((nrow(data_aux)*100)/nrow(data))*100,2)` de la base de datos y volver a calcular la edad como la diferencia entre fecha nacimiento y fecha notificación o hecho, no es totalmente confiable por lo que vio en la sección anterior, se decide conservar la edad que se registra en las bases y eliminar estos registros con inconsistencias
 
 ```{r}
 nrow_aux <- nrow(data)
@@ -514,14 +511,14 @@ data <- data %>% filter(is.na(edad_notif) | !(
 ))
 ```
 
-Se eliminan `r nrow_aux - nrow(data_aux)` registros, quedando una base de
-datos de `r nrow(data)`.
+Se eliminan `r nrow_aux - nrow(data)` registros, quedando una base de
+datos de `r nrow(data)`, donde la distribución de la edad es:
 
 ```{r}
 summary(data$edad)
 ```
 
-Además, para un mejor manejo se pasa la edad a años.
+Luego, para un mejor manejo se pasa la edad original a años, donde la distribución de la edad es:
 
 ```{r}
 data <- data %>%
@@ -536,48 +533,197 @@ data <- data %>%
 
 
 ```{r}
-summary(data$edad)
+summary(data$edad_)
 ```
-
-
 ```{r}
 data <- data %>% select(-c(edad_hecho,edad_notif,uni_med,edad))
 ```
 
 
-
-### *Fecha de notificación (eliminar luego de la edad)
+### Fecha de notificación
 
 Se eliminan las columnas de fechas a excepción de fecha de notificación
 y se crea una nueva variable solo con el año de notificación llamada **año_not**
 
 ```{r}
-data <- data %>% select(-c(fecha_nto,fec_def_,fec_hos_,fec_con_,ini_sin_,fec_hecho))
+data <- data %>% select(-c(fecha_nto,fec_def,fec_hos,fec_con,ini_sin,fec_hecho))
 ```
 
 ```{r}
 data <- data %>% mutate(
   año_not = year(fec_not))
+
+summary(as.factor(data$año_not))
 ```
 
-
-
-
-
 ### Nacionalidad
-[101] "nacionalidad"                                       
-[102] "nombre_nacionalidad"  
+Se cuenta con el código (**nacionalidad**) y nombre de la nacionalidad (**nombre_nacionalidad**), que corresponde al estado o nación que
+pertenece la víctima según su documento de identificación. 
+
+```{r}
+nrow_data <- data %>% filter(is.na(nacionalidad) | is.na(nombre_nacionalidad)) %>% nrow()
+```
+Sin embargo, `r nrow_data` registros tienen información faltante en ambas variables, lo que corresponde a un `r round((nrow_data*100)/nrow(data),2)`% de la base de datos. Dado que es un porcentaje alto y se cuenta con lugar de residencia para rastrear a la víctima, se concluye que es preferible eliminar estas dos columnas a eliminar esa cantidad de registros
+
+```{r}
+data <- data %>% select(-c(nacionalidad,nombre_nacionalidad))
+```
 
 ### Lugar de residencia
 #### País
-[110] "cod_pais_r" 
-[112] "pais_residencia"
+Se cuenta con el código y el nombre del país donde reside la víctima al momento de la notificación
+
+```{r}
+data %>% count(cod_pais_r,pais_residencia)
+```
+
+A pesar de tener tantos registros con valores faltantes en ambas variables, se comprobó que pueden ser llenados con información del departamento y municipio de residencia. Por lo tanto, se comienza verificando que los códigos sean correctos, asumiendo que siguen la norma ISO 3166-1 numérico
+[*Ver*](https://www.datosmundial.com/codigos-de-pais.php)
+
+```{r}
+unique(data$cod_pais_r)
+```
+Se encontraron varias inconsistencias de escrituras pero relacionadas al formato, todos los códigos están correctamente relacionados con el país al que corresponden.
+
+```{r}
+data <- data %>% mutate(cod_pais_r = case_when(
+  cod_pais_r == "76" ~ "076",
+  cod_pais_r == "32" ~ "032",
+  cod_pais_r == "4" ~ "004",
+  cod_pais_r == "50" ~ "050",
+  cod_pais_r == "86" ~ "086",
+  TRUE ~ cod_pais_r
+))
+```
+
+Luego de hacer el cambio de esas inconsistencias, se modifica también la escritura de algunos países
+
+```{r}
+data <- data %>%
+  mutate(pais_residencia = pais_residencia %>%
+           str_replace_all("[\\s\\u00A0]+", " ") %>%  # reemplaza espacios raros por uno solo
+           str_trim()) %>%
+  mutate(pais_residencia = case_when(
+    pais_residencia == "REPUBLICA DEMOCRÁTICA DEL CONGO" ~ "República Democrática Del Congo",
+    pais_residencia == "TERRITORIO OCUPADO DE PALESTINA" ~ "Palestina",
+    pais_residencia == "LIBANO" ~ "Líbano",
+    pais_residencia == "REPÚBLICA ÁRABE SIRIA" ~ "Siria",
+    pais_residencia == "REINO UNIDO DE GRAN BRETAÑA E IRLANDA DEL" ~ "Reino Unido",
+    pais_residencia == "KIRGUISTÁN" ~ "Kirguistán",
+    pais_residencia == "TERRITORIO BRITÁNICO DEL OCÉANO ÍNDICO" ~ "Territorio Británico Del Océano Índico",
+    TRUE ~ str_to_title(pais_residencia)
+  ))
+
+```
+
 #### Departamento
-[27] "cod_dpto_r"
-[43] "departamento_residencia
+**departamento_residencia** representa el nombre del departamento y **cod_dpto_r** su respectivo código. Para verificar la concordancia de los códigos y nombres se utiliza la base oficial de DIVIPOLA:
+
+```{r, message=FALSE, warning=FALSE}
+DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text", "text", "text", 
+        "text", "text","text"))
+```
+
+1.  Se comienza analizando los departamentos que no se encuentran en la lista de DIVIPOLA:
+
+```{r}
+data %>%
+  filter(!str_to_lower(departamento_residencia) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% group_by(cod_dpto_r,departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop")
+```
+En la mayoría de los casos no se encuentran porque tienen diferencia de escritura. En los casos en que la víctima reside en el exterior, se cambia el valor de esta variable a la siguiente estructura: *Depto[País]*
+
+```{r}
+data <- data %>% 
+  mutate(
+    departamento_residencia = case_when(
+      departamento_residencia %in% c("PROCEDENCIA DESCONOCIDA","EXTERIOR") & !is.na(pais_residencia) ~ paste0("Depto[", pais_residencia, "]"),
+      departamento_residencia %in% c("PROCEDENCIA DESCONOCIDA","EXTERIOR") & is.na(pais_residencia) ~ NA_character_,
+      departamento_residencia == "ATLANTICO" ~ "Atlántico",
+      departamento_residencia %in% c("BOGOTA","11") ~ "Bogotá, D.c.",
+      departamento_residencia == "BOLIVAR" ~ "Bolívar",
+      departamento_residencia == "BOYACA" ~ "Boyacá",
+      departamento_residencia == "CAQUETA" ~ "Caquetá",
+      departamento_residencia == "CORDOBA" ~ "Córdoba",
+      departamento_residencia == "CHOCO" ~ "Chocó",
+      departamento_residencia == "GUAJIRA" ~ "La Guajira",
+      departamento_residencia == "NORTE SANTANDER" ~ "Norte De Santander",
+      departamento_residencia == "QUINDIO" ~ "Quindío",
+      departamento_residencia == "VALLE" ~ "Valle Del Cauca",
+      departamento_residencia == "SAN ANDRES" ~ "Archipiélago De San Andrés, Providencia Y Santa Catalina",
+      departamento_residencia == "GUAINIA" ~ "Guainía",
+      departamento_residencia == "VAUPES" ~ "Vaupés",
+      departamento_residencia == "1" ~ NA_character_,
+      TRUE ~ str_to_title(departamento_residencia)
+    )
+  )
+```
+
+2.  Analizando que códigos no están en la lista. Se encontraron los siguientes:
+
+```{r}
+data %>%
+  filter(!cod_dpto_r %in% DIVIPOLA$codigo_dane_departamento) %>% group_by(cod_dpto_r,departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop")
+```
+Para los casos *5* y *8* se cambia a *05* y *08* respectivamente. Para los casos donde **departamento_residencia** es un lugar del exterior se cambia a 0, indicando "No aplica". Para los casos donde el departamento es NA se convierte código a NA y para los casos donde departamento es *Bogotá, D.c.* se cambia a *11*, dado que el municipio indica que efectivamente corresponde a casos donde la víctima residía en Bogotá
+
+```{r}
+data <- data %>% mutate(cod_dpto_r = case_when(
+  cod_dpto_r == "5" ~ "05",
+  cod_dpto_r == "8" ~ "08",
+  str_detect(departamento_residencia, "^Depto\\[.*\\]$")~ "0",
+  is.na(departamento_residencia) ~ NA_character_,
+  departamento_residencia == "Bogotá, D.c." ~ "11",
+  TRUE ~ cod_dpto_r
+))
+```
+
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    departamento son:
+```{r}
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_departamento, .keep_all = TRUE),
+    by = c("cod_dpto_r" = "codigo_dane_departamento")
+  ) %>% filter(str_to_lower(departamento_residencia) != str_to_lower(nombre_departamento)) %>% group_by(cod_dpto_r, departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop")
+```
+No hay discordancias.
+
+```{r}
+data %>% count(cod_dpto_r,departamento_residencia)
+```
+
 #### Municipio
-[28] "cod_mun_r"
-[44] "municipio_residencia"  
+*municipio_residencia** representa el nombre del departamento y **cod_mun_r** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
+
+1.  Primero se verifica que códigos no están en la lista oficial, se encontraron los
+    siguientes:
+
+```{r}
+data_aux %>%
+  mutate(cod_mun = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r)) %>%
+  filter(!cod_mun %in% DIVIPOLA$codigo_dane_municipio)  %>% 
+  count(cod_mun_r, municipio_residencia,departamento_residencia, name = "cantidad")
+```
+Se encontraron varias inconsistencias como:
+
+-   Valor *000* que corresponde a casos donde el valor en **municipio_residencia** indicaban el departamento pero que el municipio es desconocido, por ejemplo: * VALLE. MUNICIPIO DESCONOCIDO. En estos casos se cambia el valor de *cod_mun_r* a NA
+-   Valor *000* u otros que corresponden a casos donde el valor en **municipio_residencia** es *EXTERIOR. PAÍS DESCONOCIDO* o *EXTERIOR_[PAÍS]*. En estos casos se cambia el valor de *cod_mun_r* a 0
+
+```{r}
+data_aux <- data %>%
+  mutate(
+    cod_mun_r = case_when(
+      str_detect(municipio_residencia, "^\\*\\s+.+\\.\\s+MUNICIPIO DESCONOCIDO$") ~ NA_character_, 
+      str_detect(municipio_residencia, "^\\*\\s+[A-ZÁÉÍÓÚÑ\\s]+SIN MUNICIPIO$") ~ NA_character_,  
+      str_detect(municipio_residencia, "^EXTERIOR_[A-ZÁÉÍÓÚÑ ]+$") ~ "0",
+      municipio_residencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO") ~ "0",
+      municipio_residencia == "* PROCEDENCIA DESCONOCIDA" ~ NA_character_,
+      # municipio_residencia == ""
+      TRUE ~ cod_mun_r
+    )
+  )
+```
+
 
 ### Estrato
  [105] "estrato"  
@@ -734,6 +880,13 @@ presencia_de_alcohol completar a sust_vict
 ### Datos epidemiológicos
   [3] "semana"                                             
   [4] "ano" 
+  
+  
+```{r}
+data %>% count(month(fec_not),año_not,ano,origen)
+```
+  
+NOTA: Hay casos donde el año de notificación difiere con el año de la semana epidemiologica, puede ser porque la última semana en algún calendario epidemiologico, incluye días de la primer semana del año sigueinte. Pero cómo explicar inconsistencias en meses más avanzados? Porque así se tome o no días del meses sigueitne, esta en el mismo año
   
 ### Hospitalización
  [34] "pac_hos" 
