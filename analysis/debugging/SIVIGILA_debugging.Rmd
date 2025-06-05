@@ -726,17 +726,72 @@ data_aux <- data %>%
 
 
 ### Estrato
- [105] "estrato"  
 
+```{r}
+summary(as.factor(data$estrato))
+```
+
+Esta variable es información de la ficha de datos básicos que se debe registrar para cualquier evento que se reporta al SIVIGILA. Sin embargo, no se encuentra información para los años 2013 al 2017, pero sí para los años posteriores lo que puede explicar porqué la gran cantidad de NA
+
+```{r}
+table(as.factor(data$estrato),as.factor(year(data$fec_not)))
+```
 
 ### Edad de la víctima
   [5] "edad"                                               
   [6] "uni_med" 
+  
+  
 ### Sexo
+
+```{r}
+summary(as.factor(data$sexo))
+```
+
 ### Identidad género
- [98] "ident_gene"
-### Orientación sexual
-[97] "orient_sex"      
+
+Según el diccionario de la base de datos, la variable de identidad de género (**ident_gene**) toma valores de: Masculino(1), Femenino(2) y Transgénero(3).
+
+Según el filtro hecho en secciones anteriores, solo se cuenta con categoría femenino y transgénero, pues no se estudia la violencia de género hacia los hombres.
+```{r}
+summary(as.factor(data$ident_gene))
+```
+
+
+### Orientación sexual 
+
+De acuerdo a las fichas de notificación y el diccionario de la
+base de datos, los niveles de esta variable son:
+homosexual(1),bisexual(2),heterosexual(5) y asexual(6). Sin embargo,
+esta variable también toma valor 3 y 4.
+
+```{r}
+summary(as.factor(data$orient_sex))
+```
+
+
+Al notificar un caso se llena una ficha de datos básicos y una ficha
+relacionada al evento. Ambas fichas en las versiones recientes piden la
+orientación sexual. Sin embargo, la clasificación en la ficha de datos
+tiene una codificación diferente: heterosexual(1), gay/lesbiana(2),
+bisexual(3) y otra(4). Para evitar cruces se reduce a dos categorías:
+
+
+Orientación Sexual, Identidad y expresiones de género no hegemónicas
+(OSIEG no Hegemónicas), y heterosexual.
+
+**¿qué vamos a priorizar para 1? ¿Homosexual o heterosexual?**
+
+```{r, include=FALSE}
+aux <- data %>% mutate(orient_sex =
+                          case_when(as.character(orient_sex) %in% c("1","2","3","6") ~ "OSIEG no hegemónicas",
+                                    as.character(orient_sex) %in% c("5") ~ "Heterosexual",
+                                    as.character(orient_sex) == "4" ~ "Otra",
+                                    TRUE ~ NA_character_))
+```
+
+
+
 
 ### Grupo poblacional
 priv_liber, desmov_rei,nna_snbf,vic_conflic pueden completar gp_carcela,
@@ -745,7 +800,8 @@ para completar gp_otros. Solo está en la base de 2013-2017 y si vemos
 las fichas en estos años hay la opción de seleccionar otro pero luego no
 [76] "desmov_rei" 
 [80] "nna_snbf"
-[81] "priv_liber"                                          [83] "otra_situa" 
+[81] "priv_liber"                                          
+[83] "otra_situa" 
  [82] "vic_confli"
 [15] "gp_discapa"                                         
  [16] "gp_desplaz"                                         
