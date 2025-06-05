@@ -984,7 +984,7 @@ data <- data %>% mutate(orient_sex =
                                     TRUE ~ NA_character_))
 ```
 
-### \*Grupo poblacional
+### Grupo poblacional
 
 priv_liber, desmov_rei,nna_snbf,vic_conflic pueden completar gp_carcela,
 gp_desmovi, gp_pobicfb y gp_vic_vio otra_situa creo que puede servir
@@ -1277,7 +1277,7 @@ summary(as.factor(data$actividad))
 ```
 
 ```{r}
-data <- data %>% select(-ocupacion_)
+data <- data %>% select(-ocupacion)
 ```
        
 
@@ -1314,7 +1314,69 @@ a que apartir de cierta versión no se pide la hora
 
 ### Modalidad de violencia
 
-[47] "naturaleza" [96] "nat_viosex"
+De acuerdo al diccionario existen dos grupos de modalidad:
+violencia no sexual y violencia sexual, cada una con diferentes tipos.
+Si la víctima sufrió violencia no sexual se registra el tipo en la
+variable **naturaleza** y si sufrió violencia sexual se registra el tipo
+en la variable **nat_viosex**
+
+-   **Violencia no sexual:** 1= Violencia Física, 2= Violencia Psicológica, 3= Negligencia y 
+Abandono
+
+```{r}
+summary(as.factor(data$naturaleza))
+```
+
+-   **Violencia sexual:** 5 = Acoso sexual, 6 = Acceso carnal, 7 = Explotación sexual, 10 
+= Trata de personas, 12= Actos sexuales, 14 = Otras violencias sexuales, 15 = Mutilación Genital
+
+```{r}
+summary(as.factor(data$nat_viosex))
+```
+
+Lo primero que se observa es que las variables están tomando valores que no son indicativos entonces se convierten a NA. También se encontraron indicativos que no están definidos en el diccionario como: *4,8,9,11*, a partir de las fichas de años anteriores, se conoce que *4=abuso sexual* y *11=violencia sexual en conflicto armado* entonces se convierte a *6* y *14* respectivamente. Para los demás casos no se pudo determinar que representa el indicativo entonces se convierten a NA
+
+```{r}
+data <- data %>% mutate(
+  naturaleza = case_when(naturaleza %in% c("11001","44110","32606","44068","8","9") ~ NA_character_, naturaleza == "4" ~ "6", naturaleza == "11" ~ "14", TRUE ~ naturaleza),
+  nat_viosex = case_when(nat_viosex %in% c("44110","43813","44068","8","9") ~ NA_character_, nat_viosex == "4" ~ "6", nat_viosex == "11" ~ "14", TRUE ~ nat_viosex)
+)
+```
+
+Ahora, por facilidad en el análisis y evitando la mayor cantidad de celdas
+vacías posibles, se decide unificar la información de ambas variables en
+una variable llamada **def_naturaleza**.
+
+
+```{r}
+data <- data %>%
+  mutate(def_naturaleza = coalesce(naturaleza, nat_viosex))
+```
+
+```{r}
+data <- data %>% select(-c(naturaleza,nat_viosex))
+```
+
+
+
+```{r}
+# # Finalmente, se cambian los indicativos por el nombre del tipo de violencia
+# data <- data %>% mutate(def_naturaleza = case_when(
+#       def_naturaleza == "1" ~ "Física",
+#       def_naturaleza == "2" ~ "Psicológica",
+#       def_naturaleza == "3" ~ "Negligencia y Abandono",
+#       def_naturaleza == "5" ~ "Acoso sexual",
+#       def_naturaleza == "6" ~ "Acceso carnal",
+#       def_naturaleza == "7" ~ "Explotación sexual",
+#       def_naturaleza == "10" ~ "Trata de personas",
+#       def_naturaleza == "12" ~ "Actos sexuales",
+#       def_naturaleza == "14" ~ "Otras violencias sexuales",
+#       def_naturaleza == "15" ~ "Mutilación genital",
+#   TRUE ~ def_naturaleza
+# ))
+```
+
+
 
 ### Mecanismo o arma
 
@@ -1428,7 +1490,23 @@ Porque así se tome o no días del meses sigueitne, esta en el mismo año
 
 ### Informe a autoridades competente
 
-inf_autpj y inf_autfis completa a inf_aut r_protect completar a
+El diccionario de datos especifica que la variable que indica si se informó a la autoridad competente es **inf_aut** y las fichas que se entiende por autoridad competente a: policía judicíal (URI, CTI), fiscalía, policia nacional.
+
+Sin embargo, en la base de datos del 2013 se encontraron dos variables adicionales que pueden estar relacionadas con **inf_aut** dado el nombre que llevan: **inf_autpj** y **inf_autfis**
+
+```{r}
+data %>% count(inf_aut,inf_autpj,inf_autfis)
+```
+
+Aún así, se observa que cuando las dos variables toman valores, **inf_aut** toma valor de 1 (sí) porque alguna de las otras dos toma valor de 1 (sí). Lo que da a entender que **inf_aut** es más general y realmente no se necesita la unión de las tres variables. Solo hay 32 casos donde **inf_autpj** y **inf_autfis** son 2 (No) y **inf_aut** es 1 (Sí), se decide dejarlo así teniendo en cuenta que puede trarse de que no reportaron a esas autoridades sino a otra. 
+
+Luego, se convierte a NA los valores **inf_aut** que no son correctos y se elimina entonces las otros dos variables
+```{r}
+data <- data %>% mutate(inf_aut == ifelse(inf_aut %in% c("B","P","p","3","5"),NA_character_,inf_aut))
+```
+
+ 
+r_protect completar a
 remit_prot
 
 [68] "inf_aut"\
@@ -1439,42 +1517,44 @@ remit_prot
 
 ### Recolección evidencia medicina legal
 
-[95] "evi_mlegal"
-
-### Condición final de la víctima al momento de la notificación
-
-[36] "con_fin" 
-
-#### Causa básica de defunción
-Esta variable corresponde al diagnóstico CIE-10
-[(Ver)](https://web.sispro.gov.co/WebPublico/Consultas/ConsultarDetalleReferenciaBasica.aspx?Code=CIE10) que ocasionó la muerte de la víctima y que está relacionado con el
-evento de interés. Toma un valor si la variable **con_fin\_** es igual a
-2 (muerto), en caso contrario, se le asigna "No aplica" para no
-confundir con valores faltantes. Además, para los valores que no son un
-código válido se cambian a NA y se completan los códigos incompletos.
-
-
-```{r, message=FALSE, warning=FALSE}
-CIE <- load_data("CIE10.xlsx", type = "auxiliary")
+```{r}
+data %>% count(def_naturaleza,evi_mlegal)
 ```
 
-```{r}
-data_aux %>% filter(!(cbmte %in% CIE$Codigo)) %>%  count(cbmte,con_fin)
-```
+Esta variable indica si se recolectó o no evidencia médico legal y solo se
+realiza en caso de violencias sexuales, en opciones 6, 7, 10, 14 y 15, según el diccionario de datos. Por lo tanto, en los casos que no son violencia sexual y esta variable es NA se asigna "No aplica" y se cambia a NA el caso con valor de *3*.
+
+Se observa también que hay casos que no fueron violencia sexual pero indican que sí se recogió evidencia, ante estos casos se dejan tal cual
 
 ```{r}
-data_aux <- data %>% mutate(
-  cbmte = case_when(
-    cbmte %in% c("0001", "1","2","6","8139","8888","9998","9999","O03X","O06X") ~ NA_character_,
-    !is.na(con_fin) & con_fin == 1 ~ "No aplica", 
-    cbmte %in% c("A05","S02","S65","T75","K52","S02","S65","T75") ~ paste0(cbmte,"0"),
-    cbmte %in% c("A09","E43","E46","J22","O03","O06") ~ paste0(cbmte,"X"),
-    TRUE ~ cbmte
+# Transformar los NA en las columnas seleccionadas a "No aplica"
+data <- data %>%
+  mutate(evi_mlegal = case_when(
+   !is.na(def_naturaleza) & is.na(evi_mlegal) & !(def_naturaleza %in% c("6", "7", "10", "14", "15")) ~ "No aplica",
+    evi_mlegal == 3 ~ NA,
+    TRUE ~ evi_mlegal
+  ))
+```
+
+### Condición final de la víctima al momento de la notificación (con_fin\_)
+
+Según los datos esta variable toma tres posibles valores: 0 = No sabe,
+no responde, 1 = Vivo, 2 = Muerto. Sin embargo, el formato de
+notificación 2024 indica que "0" solo aplica cuando se capte el caso por
+BAI (Brotes, Alertas e Incidencias) y se desconoce el dato, o para
+defectos congénitos cuando la unidad de medida es "0". Dado que el
+evento de interés no es ninguno de los mencionados, se cambia los casos
+con "0" por NA.
+
+```{r}
+data <- data %>% mutate(
+  con_fin = case_when(
+    con_fin %in% c("0","9998") ~ NA_character_,
+    TRUE ~ con_fin
   )
 )
-
-unique(data$cbmte)
 ```
+
 
 
 
