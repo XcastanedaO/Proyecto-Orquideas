@@ -801,46 +801,124 @@ data %>% count(cod_dpto_r,departamento_residencia)
 ```
 
 #### Municipio
+*municipio_residencia** representa el nombre del departamento y **cod_mun_r** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
 
-\*municipio_residencia **representa el nombre del departamento y**
-cod_mun_r\*\* su respectivo código. Este código está compuesto por los
-últimos tres dígitos del código Divipola para cada municipio
-
-1.  Primero se verifica que códigos no están en la lista oficial, se
-    encontraron los siguientes:
+1.  Primero se verifica que códigos no están en la lista oficial, se encontraron los
+    siguientes:
 
 ```{r}
-data_aux %>%
+data %>% 
   mutate(cod_mun = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r)) %>%
   filter(!cod_mun %in% DIVIPOLA$codigo_dane_municipio)  %>% 
-  count(cod_mun_r, municipio_residencia,departamento_residencia, name = "cantidad")
+  count(cod_mun_r, municipio_residencia,departamento_residencia,pais_residencia, name = "cantidad")
 ```
-
 Se encontraron varias inconsistencias como:
 
--   Valor *000* que corresponde a casos donde el valor en
-    **municipio_residencia** indicaban el departamento pero que el
-    municipio es desconocido, por ejemplo: \* VALLE. MUNICIPIO
-    DESCONOCIDO. En estos casos se cambia el valor de *cod_mun_r* a NA
--   Valor *000* u otros que corresponden a casos donde el valor en
-    **municipio_residencia** es *EXTERIOR. PAÍS DESCONOCIDO* o
-    *EXTERIOR\_[PAÍS]*. En estos casos se cambia el valor de *cod_mun_r*
-    a 0
+-   Valor *000* que corresponde a casos donde el valor en **municipio_residencia** indicaban el departamento pero que el municipio es desconocido, por ejemplo: * VALLE. MUNICIPIO DESCONOCIDO. En estos casos se cambia el valor de *cod_mun_r* a NA
+-   Valor *000* u otros, que corresponden a casos donde el valor en **municipio_residencia** es *EXTERIOR. PAÍS DESCONOCIDO*, *EXTERIOR_[PAÍS]* o nombres de otros países. En estos casos se cambia el valor de *cod_mun_r* a 0
+-   Hay un caso donde *municipio_residencia* es Armenia pero el filtro indica que el código es incorrecto. Este caso no se le puede corregir el código porque no se sabe si se trata de Armenia de Antioquia o de Quindio
+-   
 
 ```{r}
-data_aux <- data %>%
+data <- data %>%
   mutate(
     cod_mun_r = case_when(
       str_detect(municipio_residencia, "^\\*\\s+.+\\.\\s+MUNICIPIO DESCONOCIDO$") ~ NA_character_, 
       str_detect(municipio_residencia, "^\\*\\s+[A-ZÁÉÍÓÚÑ\\s]+SIN MUNICIPIO$") ~ NA_character_,  
-      str_detect(municipio_residencia, "^EXTERIOR_[A-ZÁÉÍÓÚÑ ]+$") ~ "0",
-      municipio_residencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO") ~ "0",
-      municipio_residencia == "* PROCEDENCIA DESCONOCIDA" ~ NA_character_,
-      # municipio_residencia == ""
+      str_detect(str_trim(municipio_residencia), "^EXTERIOR_[A-ZÁÉÍÓÚÑ ]+$") ~ "0",
+      municipio_residencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO","MAYOTTE","MALTA","MONTSERRAT") ~ "0",
+      municipio_residencia %in% c("* PROCEDENCIA DESCONOCIDA","MUNICIPIO EXTRANJERO DESCONOCIDO","11") ~ NA_character_,
+      municipio_residencia == "ARMENIA" & is.na(departamento_residencia) ~ NA_character_,
+      municipio_residencia == "BELÉN DE BAJIRA" ~ "493",
+      municipio_residencia == "MAPIRIPANA (CD)" ~ "343",
+      departamento_residencia == "Depto[Territorio Británico Del Océano Índico]" ~ "0",
+      departamento_residencia == "Bogotá, D.c." & municipio_residencia %in% c("001","11001") ~ "001",
+      pais_residencia != "Colombia" ~ "0",
       TRUE ~ cod_mun_r
     )
   )
 ```
+
+**Nota:** Una vez verificados los códigos, se transforma esta variable para que tome como valor el código completo (5 dígitos)
+
+```{r}
+data <- data %>%
+  mutate(cod_mun_r = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r))
+```
+
+2.  Los municipios que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!str_to_lower(municipio_residencia) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(cod_mun_r,municipio_residencia,departamento_residencia,pais_residencia) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+```{r}
+# Variable auxiliar para extraer los casos con valor "EXTERIOR_[PAÍS]" para luego pasarlo a la estructura Mun[PAÍS]
+data <- data %>% mutate(aux_p = str_extract(str_to_lower(municipio_residencia), "(?<=exterior_).+"))
+
+data <- data %>% mutate(municipio_residencia = case_when(
+  
+      # Asignar Mun[] para hechos ocurridos en el exterior
+      str_detect(str_trim(municipio_residencia), "^EXTERIOR_[A-ZÁÉÍÓÚÑ ]+$") & !is.na(pais_residencia) ~ paste0("Mun[", pais_residencia, "]"),
+      is.na(pais_residencia) & !is.na(aux_p) & aux_p %in% str_to_lower(unique(pais_residencia)) ~ paste0("Mun[", str_to_title(str_extract(municipio_residencia, "(?<=EXTERIOR_).+")), "]"),
+      
+      # Casos que no permiten determinar el municipio
+      municipio_residencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO","MAYOTTE","MONTSERRAT","* PROCEDENCIA DESCONOCIDA","11","MUNICIPIO EXTRANJERO DESCONOCIDO") ~ NA_character_,
+      str_detect(municipio_residencia, "^\\*\\s+[A-ZÁÉÍÓÚÑ\\s]+SIN MUNICIPIO$") ~ NA_character_,
+      str_detect(municipio_residencia, "^\\*\\s+.+\\.\\s+MUNICIPIO DESCONOCIDO$") ~ NA_character_,
+      
+      # Modificar valores de casos específicos
+      municipio_residencia == "MALTA" ~ "Mun[Malta]",
+      municipio_residencia == "MONTSERRAT" ~ "Mun[Montserrat]",
+      departamento_residencia == "Bogotá, D.c." & municipio_residencia %in% c("001","11001") ~ "Bogotá, D.c.",
+      municipio_residencia == "EXTERIOR_ALBANIA" ~ "Mun[Albania]",
+      municipio_residencia == "EXTERIOR_ANGUILA" ~ "Mun[Anguila]",
+      municipio_residencia == "EXTERIOR_AUSTRALIA" ~ "Mun[Australia]",
+      municipio_residencia == "EXTERIOR_BOLIVIA" ~ "Mun[Bolivia]",
+      municipio_residencia == "EXTERIOR_BÉLICE" ~ "Mun[Belice]",
+      municipio_residencia == "EXTERIOR_ESPAÑA" ~ "Mun[España]",
+      municipio_residencia == "EXTERIOR_ESTADOS UNIDOS" ~ "Mun[Estados Unidos De América]",
+      str_trim(municipio_residencia) == "EXTERIOR_ISLAS FEROE" ~ "Mun[Islas Feroe]",
+      municipio_residencia == "EXTERIOR_ISRAEL" ~ "Mun[Israel]",
+      municipio_residencia == "EXTERIOR_LIBERIA" ~ "Mun[Liberia]",
+      municipio_residencia == "EXTERIOR_MARTINICA" ~ "Mun[Martinica]",
+      municipio_residencia == "EXTERIOR_MAURICIO" ~ "Mun[Isla Mauricio]",
+      municipio_residencia == "EXTERIOR_NORUEGA" ~ "Mun[Noruega]",
+      municipio_residencia == "EXTERIOR_NUEVA CALEDONIA" ~ "Mun[Nueva Caledonia]",
+      municipio_residencia == "EXTERIOR_PERU" ~ "Mun[Perú]",
+      municipio_residencia == "EXTERIOR_QATAR" ~ "Mun[Catar]",
+      municipio_residencia == "EXTERIOR_REPUBLICA DEMOCRÁTICA DEL CONGO" ~ "Mun[República Democrática Del Congo]",
+      municipio_residencia == "EXTERIOR_REPÚBLICA ÁRABE SIRIA" ~ "Mun[Siria]",
+      municipio_residencia == "EXTERIOR_SANTA HELENA" ~ "Mun[Santa Elena, Ascensión y Tristán de Acuña]",
+      municipio_residencia == "EXTERIOR_SANTA LUCIA" ~ "Mun[Santa Lucía]",
+      municipio_residencia == "EXTERIOR_SUIZA" ~ "Mun[Suiza]",
+      municipio_residencia == "EXTERIOR_URUGUAY" ~ "Mun[Uruguay]",
+
+      TRUE ~ str_to_title(municipio_residencia)
+))
+
+data <- data %>% select(-aux_p)
+
+data <- data %>% 
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
+    by = c("cod_mun_r" = "codigo_dane_municipio")
+  ) %>% mutate(municipio_residencia = ifelse(!is.na(nombre_municipio),nombre_municipio,municipio_residencia)) 
+
+data <- data %>% select(-nombre_municipio)
+
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
+    by = c("cod_mun_r" = "codigo_dane_municipio")
+  ) %>% 
+  filter(str_to_lower(municipio_residencia) != str_to_lower(nombre_municipio)) %>%
+  count(cod_mun_r, municipio_residencia,nombre_municipio, name = "cantidad")
+
+data %>% count(municipio_residencia,cod_mun_r,departamento_residencia) 
+```
+
 
 ### Estrato
 
@@ -1365,7 +1443,40 @@ remit_prot
 
 ### Condición final de la víctima al momento de la notificación
 
-[36] "con_fin" \#### Causa básica de defunción [40] "cbmte"
+[36] "con_fin" 
+
+#### Causa básica de defunción
+Esta variable corresponde al diagnóstico CIE-10
+[(Ver)](https://web.sispro.gov.co/WebPublico/Consultas/ConsultarDetalleReferenciaBasica.aspx?Code=CIE10) que ocasionó la muerte de la víctima y que está relacionado con el
+evento de interés. Toma un valor si la variable **con_fin\_** es igual a
+2 (muerto), en caso contrario, se le asigna "No aplica" para no
+confundir con valores faltantes. Además, para los valores que no son un
+código válido se cambian a NA y se completan los códigos incompletos.
+
+
+```{r, message=FALSE, warning=FALSE}
+CIE <- load_data("CIE10.xlsx", type = "auxiliary")
+```
+
+```{r}
+data_aux %>% filter(!(cbmte %in% CIE$Codigo)) %>%  count(cbmte,con_fin)
+```
+
+```{r}
+data_aux <- data %>% mutate(
+  cbmte = case_when(
+    cbmte %in% c("0001", "1","2","6","8139","8888","9998","9999","O03X","O06X") ~ NA_character_,
+    !is.na(con_fin) & con_fin == 1 ~ "No aplica", 
+    cbmte %in% c("A05","S02","S65","T75","K52","S02","S65","T75") ~ paste0(cbmte,"0"),
+    cbmte %in% c("A09","E43","E46","J22","O03","O06") ~ paste0(cbmte,"X"),
+    TRUE ~ cbmte
+  )
+)
+
+unique(data$cbmte)
+```
+
+
 
 ## Valores faltantes
 
