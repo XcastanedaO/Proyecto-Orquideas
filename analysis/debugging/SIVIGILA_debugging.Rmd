@@ -857,10 +857,6 @@ años posteriores lo que puede explicar porqué la gran cantidad de NA
 table(as.factor(data$estrato),as.factor(year(data$fec_not)))
 ```
 
-### Edad de la víctima
-
-[5] "edad"\
-[6] "uni_med"
 
 ### Sexo
 
@@ -903,7 +899,7 @@ Orientación Sexual, Identidad y expresiones de género no hegemónicas
 (OSIEG no Hegemónicas), y heterosexual.
 
 ```{r, include=FALSE}
-aux <- data %>% mutate(orient_sex =
+data <- data %>% mutate(orient_sex =
                           case_when(as.character(orient_sex) %in% c("1","2","3","6") ~ "OSIEG no hegemónicas",
                                     as.character(orient_sex) %in% c("5") ~ "Heterosexual",
                                     as.character(orient_sex) == "4" ~ "Otra",
@@ -1048,7 +1044,7 @@ data <- data %>%
       TRUE ~ as.character(ocupacion)),
     
     # Extraer solo los primeros dos dígitos del código
-    ocupacion = substr(ocupacion, 1, 2))
+    ocupacion = substr(ocupacion, 1, 1))
 
 ```
 
@@ -1056,7 +1052,7 @@ data <- data %>%
 ```{r}
 # Cargar y filtrar la base de datos CIUO
 CIUO <- load_data("CIUO88.xlsx", type = "auxiliary")
-CIUO <- CIUO %>% filter(Level == "2")
+CIUO <- CIUO %>% filter(Level == "1")
 ```
 
 
@@ -1068,10 +1064,6 @@ data <- data %>%
       any(grepl(paste0("^", ocup), CIUO$`ISCO 08 Code`))  # Verificar si el código de ocupación está en CIUO
     }), ocupacion, NA)  # Si el código es válido, mantener ocupacion; si no, asignar NA
   )
-
-# Extraer solo los primeros dos dígitos del código de ocupación
-data <- data %>%
-  mutate(ocupacion = substr(ocupacion, 1, 2))
 
 # Verificación
 summary(as.factor(data$ocupacion))
@@ -1096,7 +1088,7 @@ summary(as.factor(data$campesino))
 
 ```{r}
 # Filtrar registros donde 'actividad' es NA y 'ama_de_cas' o 'tra_sexual' tienen valores
-data %>% filter(is.na(actividad) & (!is.na(ama_de_cas)|!is.na(tra_sexual))) %>% select(ama_de_cas, tra_sexual)
+data %>% filter(is.na(actividad) & (!is.na(ama_de_cas)|!is.na(campesino)|!is.na(tra_sexual))) %>% select(actividad,ama_de_cas, tra_sexual, campesino)
 ```
 
 
@@ -1150,7 +1142,6 @@ summary(as.factor(data$actividad))
 
 
 
-
 ```{r, include=FALSE}
 aux_nrow <- data %>% filter((actividad == "Ninguna" |
                                actividad == "Otro") &
@@ -1158,6 +1149,60 @@ aux_nrow <- data %>% filter((actividad == "Ninguna" |
                                  ocupacion != "")) %>%
   nrow()
 ```
+
+Son `r aux_nrow` registros con valor "Otro" o "Ninguna" en **actividad**
+y que tienen valor en **ocupación**. Por lo tanto, se completa entre sí. Para evitar tantas categorías, se extrae el primer dígito que representa los 10 grupos principales de
+ocupaciones:
+
+
+```{r, echo=TRUE}
+ocupaciones <- c(
+  "0" = "Armed Forces Occupations",
+  "1" = "Managers",
+  "2" = "Professionals",
+  "3" = "Technicians and Associate Professionals",
+  "4" = "Clerical Support Workers",
+  "5" = "Service and Sales Workers",
+  "6" = "Skilled Agricultural, Forestry and Fishery Workers",
+  "7" = "Craft and Related Trades Workers",
+  "8" = "Plant and Machine Operators, and Assemblers",
+  "9" = "Elementary Occupations")
+```
+
+
+Algunas categorías se cambian a su nombre equivalente en la CIUO:
+
+-   Maestro(a) a Professionals
+-   Trabajador(a) doméstico(a) a Elementary Occupations
+-   Campesino/a a Skilled Agricultural, Forestry and Fishery Workers
+    
+
+      
+
+```{r}
+data <- data %>%
+  mutate(
+    actividad = case_when(
+      # Si 'actividad' es "Ninguna" o "Otro", asignar el primer dígito de 'ocupacion'
+      (actividad == "Ninguna" | actividad == "Otro") & (!is.na(ocupacion) & ocupacion != "") ~ 
+        ocupaciones[str_sub(ocupacion, 1, 1)],  
+      
+      # Cambiar valores específicos de 'actividad' por sus equivalentes CIUO
+      actividad == "Maestro(a)" ~ "Professionals",
+      actividad == "Trabajador(a) doméstico(a)" ~ "Elementary Occupations",
+      actividad == "Campesino/a" ~ "Skilled Agricultural, Forestry and Fishery Workers",
+      
+      # De lo contrario, mantener el valor original de 'actividad'
+      TRUE ~ actividad))
+
+summary(as.factor(data$actividad))
+```
+
+```{r}
+data <- data %>% select(-ocupacion_)
+```
+       
+
 
 
 ## Información del agresor
