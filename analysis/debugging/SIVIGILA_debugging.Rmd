@@ -1287,18 +1287,131 @@ data <- data %>% select(-ocupacion)
 
 ### Edad agresor
 
-cuidado hay edades en cero, seguro los años donde no se pidió esta
-información en la ficha
+```{r}
+summary(as.factor((sort(data$edad_agre))))
+```
+
+```{r}
+edad0 <- sum(data$edad_agre == 0, na.rm = TRUE)
+edad0/nrow(data)
+```
+
+Se ve que esta variable (cuya unidad de medida es años), contiene edades muy bajas para el agresor, lo cual parece ser una inconsistencia en la variable. Incluso solamente analizando la proporción de edades iguales a 0 es de `r round((edad0/nrow(data))*100,3)`% de los registros que presentan este
+problema y de acuerdo con las fichas de notificación de violencia
+disponibles, no en todas se hace esta pregunta.
+
+Por tanto los valores de 0 o de edades muy pequeñas podrían corresponder a valores faltantes de los años restantes de notificaciones en las que no se pregunta esto.
+Así, la variable tiene bastantes valores faltantes, por lo tanto es
+necesario eliminarla del análisis.
+
+```{r}
+aux_data <- data %>% filter(year(data$fec_not) >= 2015)
+
+table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
+```
+
+```{r}
+data <- data %>%
+  select(-edad_agre)
+```
+
 
 ## Información del hecho
 
 ### Lugar de procedencia/ocurrencia del hecho
 
+Se refiere al lugar donde posiblemente el paciente adquirió o al cual se
+atribuye la exposición al agente o factor de riesgo que ocasionó el
+evento.
+
+
+
 #### Departamento
 
 [9] "cod_dpto_o"\
 [41] "departamento_ocurrencia"\
-\#### Municipio [10] "cod_mun_o" [42] "municipio_ocurrencia"
+
+
+Se cuenta tanto con el código como con el nombre
+
+```{r}
+summary(as.factor(data$cod_dpto_o))
+```
+
+```{r}
+summary(as.factor(data$departamento_ocurrencia))
+```
+
+Se comienza modificando la escritura de los niveles y cambiando a NA el
+nivel "DEPTO DESCONOCIDO"
+
+
+```{r}
+data <- data %>% mutate(
+  ndep_proce = case_when(
+    ndep_proce == "DEPTO DESCONOCIDO" ~ NA_character_,
+    ndep_proce == "BOLIVAR" ~ "Bolívar",
+    ndep_proce == "CHOCO" ~ "Chocó",
+    ndep_proce == "CORDOBA" ~ "Córdoba",
+    ndep_proce == "STA MARTA D.E." ~ "Magdalena",
+    TRUE ~ str_to_title(tolower(ndep_proce))
+  )
+)
+```
+
+la codificación Divipola.
+
+1.  Al analizar que códigos no están en la lista, se encontraron los
+    siguientes:
+
+```{r}
+data %>% filter(!cod_dpto_o %in% DIVIPOLA$codigo_dane_departamento) %>% count(cod_dpto_o,ndep_proce, name = "Cantidad")
+```
+
+Estos códigos no existen. El primer caso se cambia a NA y el segundo a
+*47* que es el código DIVIPOLA correspondiente a Magdalena
+
+
+```{r}
+data <- data %>% mutate(
+  cod_dpto_o = case_when(
+    cod_dpto_o == "01" ~ NA_character_,
+    cod_dpto_o == "48" ~ "47",
+    TRUE ~ cod_dpto_o
+  )
+)
+```
+
+2.  Los departamentos que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!str_to_lower(ndep_proce) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% count(cod_dpto_o,ndep_proce)
+```
+
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    departamento son:
+
+```{r}
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_departamento, .keep_all = TRUE),
+    by = c("cod_dpto_o" = "codigo_dane_departamento")
+  ) %>% filter(str_to_lower(ndep_proce) != str_to_lower(nombre_departamento)) %>% count(cod_dpto_o,ndep_proce)
+```
+
+No hay discordancias.
+
+```{r, include=FALSE}
+unique(data$ndep_proce)
+```
+
+
+
+#### Municipio [10] "cod_mun_o" [42] "municipio_ocurrencia"
+
+
+
 
 #### Área
 
