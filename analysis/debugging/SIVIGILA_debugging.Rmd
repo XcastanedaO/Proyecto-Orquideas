@@ -1328,10 +1328,6 @@ evento.
 
 #### Departamento
 
-[9] "cod_dpto_o"\
-[41] "departamento_ocurrencia"\
-
-
 Se cuenta tanto con el código como con el nombre
 
 ```{r}
@@ -1348,15 +1344,26 @@ nivel "DEPTO DESCONOCIDO"
 
 ```{r}
 data <- data %>% mutate(
-  ndep_proce = case_when(
-    ndep_proce == "DEPTO DESCONOCIDO" ~ NA_character_,
-    ndep_proce == "BOLIVAR" ~ "Bolívar",
-    ndep_proce == "CHOCO" ~ "Chocó",
-    ndep_proce == "CORDOBA" ~ "Córdoba",
-    ndep_proce == "STA MARTA D.E." ~ "Magdalena",
-    TRUE ~ str_to_title(tolower(ndep_proce))
-  )
-)
+  departamento_ocurrencia = case_when(
+    departamento_ocurrencia %in% c("PROCEDENCIA DESCONOCIDA", "DEPTO DESCONOCIDO", "1", "11", "2") ~ NA_character_,
+    departamento_ocurrencia == "BOLIVAR" ~ "Bolívar",
+    departamento_ocurrencia == "BOGOTA" ~ "Bogotá, D.C.",
+    departamento_ocurrencia == "ATLANTICO" ~ "Atlántico",
+    departamento_ocurrencia == "BOYACA" ~ "Boyacá",
+    departamento_ocurrencia == "VAUPES" ~ "Vaupés",
+    departamento_ocurrencia == "SAN ANDRES" ~ "Archipiélago De San Andrés, Providencia Y Santa Catalina",
+    departamento_ocurrencia == "GUAINIA" ~ "Guainía",
+    departamento_ocurrencia == "CAQUETA" ~ "Caquetá",
+    departamento_ocurrencia == "NORTE SANTANDER" ~ "Norte De Santander",
+    departamento_ocurrencia == "VALLE" ~ "Valle Del Cauca",
+    departamento_ocurrencia == "QUINDIO" ~ "Quindío",
+    departamento_ocurrencia == "CHOCO" ~ "Chocó",
+    departamento_ocurrencia == "CORDOBA" ~ "Córdoba",
+    departamento_ocurrencia == "STA MARTA D.E." ~ "Magdalena",
+    departamento_ocurrencia == "GUAJIRA" ~ "La Guajira",
+    
+    TRUE ~ str_to_title(tolower(departamento_ocurrencia))))
+
 ```
 
 la codificación Divipola.
@@ -1365,65 +1372,151 @@ la codificación Divipola.
     siguientes:
 
 ```{r}
-data %>% filter(!cod_dpto_o %in% DIVIPOLA$codigo_dane_departamento) %>% count(cod_dpto_o,ndep_proce, name = "Cantidad")
+data %>% filter(!cod_dpto_o %in% DIVIPOLA$codigo_dane_departamento) %>% count(cod_dpto_o,departamento_ocurrencia, name = "Cantidad")
 ```
 
-Estos códigos no existen. El primer caso se cambia a NA y el segundo a
-*47* que es el código DIVIPOLA correspondiente a Magdalena
-
+Estos códigos no existen. como no corresponden a departamentos exactos de Colombia, se conierten a un caso NA.
 
 ```{r}
 data <- data %>% mutate(
   cod_dpto_o = case_when(
-    cod_dpto_o == "01" ~ NA_character_,
-    cod_dpto_o == "48" ~ "47",
-    TRUE ~ cod_dpto_o
-  )
-)
+    cod_dpto_o %in% c("00","01") ~ NA_character_,
+    TRUE ~ cod_dpto_o))
 ```
+
+
 
 2.  Los departamentos que no se encuentran en la lista son:
 
 ```{r}
 data %>%
-  filter(!str_to_lower(ndep_proce) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% count(cod_dpto_o,ndep_proce)
+  filter(!str_to_lower(departamento_ocurrencia) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% count(cod_dpto_o,departamento_ocurrencia)
 ```
 
-3.  Los casos donde hay discordancia entre el código y el nombre del
-    departamento son:
+```{r}
+data <- data %>% mutate(
+  cod_dpto_o = case_when(
+    cod_dpto_o == "11" & is.na(departamento_ocurrencia) ~ NA_character_,
+    TRUE ~ cod_dpto_o))
+```
+
 
 ```{r}
 data %>%
-  left_join(
-    DIVIPOLA %>% distinct(codigo_dane_departamento, .keep_all = TRUE),
-    by = c("cod_dpto_o" = "codigo_dane_departamento")
-  ) %>% filter(str_to_lower(ndep_proce) != str_to_lower(nombre_departamento)) %>% count(cod_dpto_o,ndep_proce)
+  filter(!str_to_lower(departamento_ocurrencia) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% count(cod_dpto_o,departamento_ocurrencia)
 ```
 
-No hay discordancias.
 
 ```{r, include=FALSE}
-unique(data$ndep_proce)
+unique(sort(data$departamento_ocurrencia))
 ```
 
 
 
-#### Municipio [10] "cod_mun_o" [42] "municipio_ocurrencia"
+#### Municipio 
+
+[10] "cod_mun_o" 
+[42] "municipio_ocurrencia"
+
+se cuenta tanto con el código como con el nombre. La variable
+**municipio_ocurrencia** correspondiente al nombre tomaba en algunos casos nombres
+de departamento o que indicaban desconocimiento del municipio, por ende,
+se cambian a NA.
 
 
+```{r}
+unique(sort(data$municipio_ocurrencia))
+```
+
+
+
+```{r}
+data <- data %>% mutate(
+  municipio_ocurrencia = case_when(
+    municipio_ocurrencia %in% c("COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR","* ANTIOQUIA. MUNICIPIO DESCONOCIDO","* CHOCO. MUNICIPIO DESCONOCIDO","* MAGDALENA. MUNICIPIO DESCONOCIDO","* MAGDALENA. MUNICIPIO DESCONOCIDO","ANTIOQUIA") ~ NA_character_,
+    municipio_ocurrencia == "MEDELLIN" ~ "Medellín",
+    municipio_ocurrencia == "ACACIAS" ~ "Acacías",
+    municipio_ocurrencia == "FUSAGASUGA" ~ "Fusagasugá",
+    municipio_ocurrencia == "ITAGUI" ~ "Itagüí",
+    municipio_ocurrencia == "COCORNA" ~ "Cocorná",
+    municipio_ocurrencia == "SAN JERONIMO" ~ "San Jerónimo",
+    municipio_ocurrencia == "ABRIAQUI" ~ "Abriaquí",
+    municipio_ocurrencia == "MONTERIA" ~ "Montería",
+    municipio_ocurrencia == "ALEJANDRIA" ~ "Alejandría",
+    municipio_ocurrencia == "CORDOBA" ~ "Córdoba",
+    municipio_ocurrencia == "AMAGA" ~ "Amagá",
+    municipio_ocurrencia == "APARTADO" ~ "Apartadó",
+    municipio_ocurrencia == "PUERTO BERRIO" ~ "Puerto Berrío",
+    municipio_ocurrencia == "VALPARAISO" ~ "Valparaíso",
+    municipio_ocurrencia == "DON MATIAS" ~ "Donmatías",
+    municipio_ocurrencia == "SAN JUAN DE URABA" ~ "San Juan de Urabá",
+    municipio_ocurrencia == "LOS CORDOBAS" ~ "Los córdobas",
+    municipio_ocurrencia == "SAN VICENTE" & departamento_ocurrencia == "Antioquia" ~ "San Vicente Ferrer",
+    municipio_ocurrencia == "SAN PEDRO" & departamento_ocurrencia == "Antioquia" ~ "San Pedro De Los Milagros",
+    
+    TRUE ~ str_to_title(tolower(municipio_ocurrencia))
+  ))
+```
+
+
+```{r}
+unique(sort(data$municipio_ocurrencia))
+```
+
+
+
+Luego, se verifica la concordancia de los códigos y nombres con ayuda de
+la codificación Divipola:
+
+1.  Al analizar que códigos no están en la lista, se encontraron los
+    siguientes:
+
+```{r}
+data %>%
+  mutate(cod_mun = ifelse(!is.na(cod_mun_o) & !is.na(cod_dpto_o), paste0(cod_dpto_o, cod_mun_o), cod_mun_o)) %>%
+  filter(!cod_mun %in% DIVIPOLA$codigo_dane_municipio)  %>% 
+  count(cod_mun_o, municipio_ocurrencia, departamento_ocurrencia, name = "cantidad")
+```
 
 
 #### Área
 
 [11] "area"
 
+
+
+Con respecto a la variable **area**, corresponden a la ubicación donde ocurrieron los
+hechos de violencia. Según las fichas de SIVIGILA las categorías corresponden a: (1) Cabecera municipal, (2) Centro poblado o (3) Rural disperso.
+
+```{r}
+summary(as.factor(data$area))
+```
+
+
 ### Hora del hecho
 
 esta en tipo character hasta 2017 toma valores coherentes con hora. En
 2018 toma decimales y en el resto toma valores boolean o NA. Se atribuye
-a que apartir de cierta versión no se pide la hora
+a que apartir de cierta versión no se pide la hora lo
+que explica los `r sum(is.na(data$hora_hecho) | data$hora_hecho == "")`
+registros con NA.
 
 [58] "hora_hecho"
+
+```{r}
+sum(is.na(data$hora_hecho) | data$hora_hecho == "")/nrow(data)
+```
+
+```{r}
+data <- data %>% mutate(hora_hecho = ifelse(hora_hecho == "", NA_character_, hora_hecho))
+```
+
+Al corresponder a un porcentaje muy alto de NA se elimina esta variable, pues no es son demasiados datos por imputar.
+
+```{r}
+data <- data %>% select(-hora_hecho)
+```
+
 
 ### Modalidad de violencia
 
