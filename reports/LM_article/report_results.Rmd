@@ -586,7 +586,6 @@ plot(roc_obj, col = "#AE86D3")
 ***Figura 3.*** *Curva ROC del modelo de atención en salud mental (AUC =* 0.9088*).*
 
 # Conclusiones sobre resultados
-
 Este estudio permitió identificar los factores que influyen en la probabilidad de que una mujer víctima de violencia de género reciba atención en salud mental luego de haber recibido atenciones médicas. El estudio se basó utilizando un enfoque estadístico bayesiano, basado en datos reales de casos sospechosos de violencia de género registrados al portal del SIVIGILA en la ciudad de Medellín.
 
 A través de un modelo de regresión logística bayesiano, se pudo conocer algunas variables individuales, sociales e institucionales que juegan un papel indispensable en el objetivo de interés.
@@ -596,3 +595,104 @@ De los resultados obtenidos se destaca que factores como la violencia sexual, la
 El modelo mostró una alta capacidad predictiva (AUC = 0.9088), lo que refuerza la solidez de los resultados y la utilidad de este enfoque para orientar intervenciones.
 
 Estos hallazgos son claves para diseñar estrategias que mejoren la cobertura y eficacia de los programas de atención, así como para fortalecer políticas públicas que promuevan la denuncia y garanticen el acceso oportuno a los servicios de salud mental, especialmente en poblaciones vulnerables.
+
+# Resultados modelo de regresión logístico 2
+En este segundo modelo se mantiene como variable de respuesta la **remisión a atención en salud mental** como en el modelo anterior, pero se realizaron dos modificaciones para mejorar la interpretación de los resultados y evitar posibles sesgos por categorías con pocos casos: se excluyó la variable **tipo de seguridad social** y se reagruparon categorías de algunas variables predictoras para reducir su número de categorías y facilitar la interpretación de los resultados, asi:
+
+-     En la variable **escenario del hecho**, se agruparon las categorías: área deportiva y recreativa, comercio y áreas de servicios, espacios abiertos, establecimiento educativo, institución de salud, lugar de trabajo, lugares de esparcimiento con expendio de alcohol, otro y vía pública,  bajo una nueva categoría denominada *espacio público y social*.
+
+-    En la variable **parentesco con el agresor**, se agregaron padre y madre en la categoría familiar; amigo se convirtió a conocido; y el nivel otro se integró con desconocido.
+
+Luego de estas modificaciones, los niveles de las variables predictoras cualitativas y su respectivo nivel de referencia en el modelo son:
+
+-   **Jefatura del hogar:** indica si la víctima era la persona responsable del hogar. El 95,1% (44.145) de las víctimas no eran mujeres cabeza de familia. *Referencia:* No.
+
+-   **Tipo de violencia:** indica el tipo de violencia ejercida sobre la víctima. Física (20.882; 45%), sexual (14.919; 32,2%), psicológica (6596; 14,2%) o negligencia o abandono (3976; 8.6%). *Referencia:* Negligencia y abandono.
+
+-   **Área de ocurrencia:** indica si el área donde ocurrió el caso corresponde a una cabecera municipal (45.344; 97,8%), centro poblado (893; 1,9%) o zona rural dispersa (136; 0,3%). *Referencia:* Cabecera municipal.
+
+-   **Sexo del agresor:** masculino (35.496; 76,5%), femenino (10.727; 23,1%) e intersexual (150; 0,3%). *Referencia:* Intersexual.
+
+-   **Convivencia con agresor:** indica si la víctima convivía. El 57,2% (26.513) de las víctimas no convivían con él. *Referencia:* No.
+
+-   **Hospitalización:** indica si la víctima necesitó ser hospitalizada como consecuencia del hecho. El 89,2% (41.358) no fue hospitalizada. *Referencia:* No.
+
+-   **Escenario del hecho:** Se refiere al tipo de lugar donde ocurrió la agresión, vivienda (32.345; 69,75%) y espacio público y social (14028; 30.25%). *Referencia:* Espacio público y social.
+
+-   **Parentesco agresor:** indica el tipo de vínculo o relación de la víctima con el agresor. Entre ellas se encuentra: pareja(12.433; 26,8%), familiar(16.011; 34,5%), ex-pareja(4.664; 10,1%), conocido(5.821; 12,6%), desconocido(7.444; 16,1%). *Referencia:* desconocido(a).
+
+A continuación, se presentan los resultados obtenidos del modelo:
+```{r, echo=FALSE, warning=FALSE, message= FALSE}
+data_2 <- base_datos %>% select(c("ac_mental",
+                                "edad", "mujer_cabf","def_naturaleza",
+                                "area_", "sexo_agre", "parentezco_agresor",
+                                "conv_agre", "pac_hos_" , "escenario"))
+
+data_2 <- data_2 %>% mutate(escenario = case_when(
+  escenario %in% c("Otro", "Área deportiva y recreativa",
+                   "Comercio y áreas de servicios", "Espacios abiertos",
+                   "Establecimiento educativo", "Institución de salud", "Lugar de trabajo",
+                   "Lugares de esparcimiento con expendio de alcohol", "Vía Pública") ~ "Espacio público y social",
+  TRUE ~ escenario
+))
+
+data_2 <- data_2 %>% mutate(parentezco_agresor = case_when(
+  parentezco_agresor %in% c("Padre", "Madre") ~ "Familiar",
+  parentezco_agresor == "Amigo(a)" ~ "Conocido(a)",
+  parentezco_agresor == "Otro" ~ "Desconocido(a)",
+  TRUE ~ parentezco_agresor
+))
+
+data_2 <- data_2[!apply(is.na(data_2), 1, any), ]
+
+data_2 <- data_2 %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c(2, 1)),
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Violencia física", "Violencia psicológica", "Violencia sexual")),
+
+    area_ = factor(area_, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+
+    parentezco_agresor = factor(parentezco_agresor, levels = c("Desconocido(a)", "Pareja", "Familiar", "Ex_Pareja","Conocido(a)")),
+
+    escenario = factor(escenario, levels = c("Espacio público y social","Vivienda")),
+    conv_agre = factor(conv_agre, levels = c(2, 1)),
+    pac_hos_ = factor(pac_hos_, levels = c(2, 1)),
+  )
+
+##### Modelo 4: con menos categorías en parentesco y escenario y sin tipo de seguridad social
+X_4 <- model.matrix(ac_mental ~
+                      edad + mujer_cabf + def_naturaleza +
+                      area_ + sexo_agre +
+                      parentezco_agresor + conv_agre  +
+                      pac_hos_ + escenario,
+                    data = data_2)[, -1]
+
+# Extraer muestras
+posterior_samples_2 <- readRDS(file.path(here(),"models","model_without_SS","posterior_sample_model_4.rds"))
+
+# Calcular la media de los coeficientes estimados
+alpha_hat_2 <- mean(posterior_samples_2$alpha)
+beta_hat_2 <- colMeans(posterior_samples_2$beta)
+
+# Calcular Odds Ratios
+odds_ratios_2 <- exp(beta_hat_2)
+intercepto_OR_2 <- exp(alpha_hat_2)
+
+# Crear tabla de resultados
+tabla_resultados_2 <- data.frame(
+  Parametro_1 = paste0("β", 1:13),
+  Variable_1 = c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)"),
+  Odds_Ratio_1 = round(odds_ratios_2[1:13],2)
+)
+
+tabla_resultados_2$Parametro_2 <- c(paste0("β", 14:16), rep("", nrow(tabla_resultados_2) - 3))
+tabla_resultados_2$Variable_2 <- c("Convivencia agresor", "Hospitalización", "Esc. Espacio público y social",rep(NA, nrow(tabla_resultados_2) - 3))
+tabla_resultados_2$Odds_Ratio_2 <- c(round(odds_ratios_2[14:16], 2), rep(NA, nrow(tabla_resultados_2) - 3))
+
+# Mostrar tabla
+kable(tabla_resultados_2, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2))
+```
+
+***Tabla 2.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo #2 de atención en salud mental.*

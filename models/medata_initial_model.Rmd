@@ -99,9 +99,11 @@ data <- data %>%
 
 str(data)
 ```
+
 ```{r}
 as.factor(data_model$año_not)
 ```
+
 ```{r}
 levels(as.factor(data_model$actividad))
 ```
@@ -115,6 +117,7 @@ data %>% explore()
 data %>% group_by(ac_mental) %>% summarise(n=n()) %>%
   mutate(proportion = n / sum(n))
 ```
+
 ```{r}
 ## Remove missing values
 data <- data[!apply(is.na(data), 1, any), ]
