@@ -695,4 +695,49 @@ tabla_resultados_2$Odds_Ratio_2 <- c(round(odds_ratios_2[14:16], 2), rep(NA, nro
 kable(tabla_resultados_2, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2))
 ```
 
-***Tabla 2.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo #2 de atención en salud mental.*
+***Tabla 3.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo 2 de atención en salud mental.*
+
+Entre mujeres con características similares, aquellas que son cabeza de familia son un 60% más propensas a recibir atención en salud mental que las que no lo son y vivir en un centro poblado o en zona rural dispersa se asocia con una mayor probabilidad relativa de atención del 78% y 80%, respectivamente, en comparación con vivir en una cabecera municipal. De forma similar, haber sido agredida en un espacio público o social con un 41% más de probabilidad relativa en relación con quienes fueron agredidas en su vivienda. 
+
+En contraste, cuando el agresor es una persona cercana, como un familiar (28% menos propensas), pareja (20% menos) o ex-pareja (12% menos),  las mujeres son menos propensas a recibir atención, en comparación con casos donde no se conoce al agresor. Además, convivir con el agresor también reduce en un 9% las probabilidades de recibir atención y en cuanto a la edad, por cada año adicional, las mujeres son 1% menos propensas. 
+
+Finalmente, un hallazgo relevante es que las mujeres que fueron hospitalizadas tras el hecho de violencia son 704% más propensas a recibir atención psicológica pero se debe tener en cuenta que en la base de datos el 89,2% (41.358) de las mujeres no fueron hospitalizadas, lo que puede influir en este resultado. Asimismo, se observa una fuerte asociación entre el tipo de violencia y el acceso a atención mental. En comparación con negligencia y abandono, las mujeres víctimas de violencia física, psicológica y sexual son más propensas a recibir atención, con aumentos relativos del 303%, 50% y 4191%, respectivamente. 
+
+**Nota:** Las cifras expresadas en porcentajes corresponden a razones de odds.
+**Nota 2:** Las categorías de sexo masculino y parentesco conocido no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual y agresor desconocido, respectivamente. 
+
+Ahora bien, este modelo obtuvo un **AUC de 0.8727**, menor al modelo anterior pero también identifica correctamente, en la gran mayoría de los casos, si una víctima de violencia de género recibió atención psicológica a partir de las características observadas. Asimismo, en Figura 4 se presenta la curva ROC, que también que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia el buen desempeño del modelo
+
+```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.align = "center",fig.width = 3, fig.height = 3}
+# Calcular probabilidades predichas
+probs_predichas_2 <- plogis(alpha_hat_2 + X_4 %*% beta_hat_2)
+
+# Convertir a clases (umbral de 0.5)
+predicciones_binarias_2 <- ifelse(probs_predichas_2 > 0.5, 1, 0)
+
+# Matriz de confusión
+confusion_matrix_2 <- table(Real = base_datos$ac_mental, Predicho = predicciones_binarias_2)
+
+TN_2 <- confusion_matrix_2[1,1]
+FP_2 <- confusion_matrix_2[1,2]
+FN_2 <- confusion_matrix_2[2,1]
+TP_2 <- confusion_matrix_2[2,2]
+
+accuracy_2 <- (TP_2 + TN_2) / (TP_2 + TN_2 + FP_2 + FN_2)
+precision_2 <- TP_2 / (TP_2 + FP_2)
+recall_2 <- TP_2 / (TP_2 + FN_2)
+f1_score_2 <- 2 * (precision_2 * recall_2) / (precision_2 + recall_2)
+
+cat("Accuracy:", accuracy_2, "\n")
+cat("Precision:", precision_2, "\n")
+cat("Recall (Sensibilidad):", recall_2, "\n")
+cat("F1-Score:", f1_score_2, "\n")
+
+roc_obj_2 <- roc(base_datos$ac_mental, as.numeric(probs_predichas_2))
+auc(roc_obj_2)
+plot(roc_obj_2, col = "#AE86D3")
+```
+
+***Figura 4.*** *Curva ROC del modelo 2 de atención en salud mental (AUC =*0.8727*).*
+
+**FALTA MIRAR CUÁLES DEJARON DE SER SIGNIFICATIVAS O PASARON A SERLO**
