@@ -1287,41 +1287,6 @@ data <- data %>% select(-ocupacion)
 ```
        
 
-
-
-## Información del agresor
-
-### Edad agresor
-
-```{r}
-summary(as.factor((sort(data$edad_agre))))
-```
-
-```{r}
-edad0 <- sum(data$edad_agre == 0, na.rm = TRUE)
-edad0/nrow(data)
-```
-
-Se ve que esta variable (cuya unidad de medida es años), contiene edades muy bajas para el agresor, lo cual parece ser una inconsistencia en la variable. Incluso solamente analizando la proporción de edades iguales a 0 es de `r round((edad0/nrow(data))*100,3)`% de los registros que presentan este
-problema y de acuerdo con las fichas de notificación de violencia
-disponibles, no en todas se hace esta pregunta.
-
-Por tanto los valores de 0 o de edades muy pequeñas podrían corresponder a valores faltantes de los años restantes de notificaciones en las que no se pregunta esto.
-Así, la variable tiene bastantes valores faltantes, por lo tanto es
-necesario eliminarla del análisis.
-
-```{r}
-aux_data <- data %>% filter(year(data$fec_not) >= 2015)
-
-table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
-```
-
-```{r}
-data <- data %>%
-  select(-edad_agre)
-```
-
-
 ## Información del hecho
 
 ### Lugar de procedencia/ocurrencia del hecho
@@ -1632,11 +1597,40 @@ presencia_de_alcohol completar a sust_vict [56] "sust_vict" [107]
 
 [61] "zona_conf"
 
-## Información del agresión
+## Información del agresor
 
-### Edad
+Es importante mencionar que en las bases de datos proporcionadas no hay información respecto al parentesco con la víctima, como sí la hay en MEData y las fichas indican que se pide. 
 
-[49] "edad_agre"
+### Edad agresor
+
+```{r}
+summary(as.factor((sort(data$edad_agre))))
+```
+
+```{r}
+edad0 <- sum(data$edad_agre == 0, na.rm = TRUE)
+edad0/nrow(data)
+```
+
+Se ve que esta variable (cuya unidad de medida es años), contiene edades muy bajas para el agresor, lo cual parece ser una inconsistencia en la variable. Incluso solamente analizando la proporción de edades iguales a 0 es de `r round((edad0/nrow(data))*100,3)`% de los registros que presentan este
+problema y de acuerdo con las fichas de notificación de violencia
+disponibles, no en todas se hace esta pregunta.
+
+Por tanto los valores de 0 o de edades muy pequeñas podrían corresponder a valores faltantes de los años restantes de notificaciones en las que no se pregunta esto.
+Así, la variable tiene bastantes valores faltantes, por lo tanto es
+necesario eliminarla del análisis.
+
+```{r}
+aux_data <- data %>% filter(year(data$fec_not) >= 2015)
+
+table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
+```
+
+```{r}
+data <- data %>%
+  select(-edad_agre)
+```
+
 
 ### Sexo
 

@@ -1287,42 +1287,6 @@ summary(as.factor(data$actividad))
 ```{r}
 data <- data %>% select(-ocupacion)
 ```
-       
-
-
-
-## Información del agresor
-
-### Edad agresor
-
-```{r}
-summary(as.factor((sort(data$edad_agre))))
-```
-
-```{r}
-edad0 <- sum(data$edad_agre == 0, na.rm = TRUE)
-edad0/nrow(data)
-```
-
-Se ve que esta variable (cuya unidad de medida es años), contiene edades muy bajas para el agresor, lo cual parece ser una inconsistencia en la variable. Incluso solamente analizando la proporción de edades iguales a 0 es de `r round((edad0/nrow(data))*100,3)`% de los registros que presentan este
-problema y de acuerdo con las fichas de notificación de violencia
-disponibles, no en todas se hace esta pregunta.
-
-Por tanto los valores de 0 o de edades muy pequeñas podrían corresponder a valores faltantes de los años restantes de notificaciones en las que no se pregunta esto.
-Así, la variable tiene bastantes valores faltantes, por lo tanto es
-necesario eliminarla del análisis.
-
-```{r}
-aux_data <- data %>% filter(year(data$fec_not) >= 2015)
-
-table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
-```
-
-```{r}
-data <- data %>%
-  select(-edad_agre)
-```
-
 
 ## Información del hecho
 
@@ -1500,62 +1464,222 @@ data <- data %>% select(-c(naturaleza,nat_viosex))
 
 ### Mecanismo o arma
 
-otra_arma, arma, otro_mec, mecanismo_utilizado... para completar a armas
-[53] "otra_arma" [99] "arma"\
-[54] "otro_mec" [108] "mecanismo_utilizado_para_la_agresion"\
-[55] "cual_o_mec" [52] "armas"
+El diccionario de datos indica que la variable **armas** indica el mecanismo utilizado en la agresión y que es dependiente si la variable "Modalidad" es 
+1= Violencia física. Sin embargo, en esta base se encuentran otras variables que parecen representar la misma característica: **otra_arma**,**otro_mec**,**cual_o_mec**, **arma** y **mecanismo_utilizado_para_la_agresion**
+
+```{r}
+lapply(data_aux[, c("armas","otra_arma", "otro_mec", "cual_o_mec", "arma", "mecanismo_utilizado_para_la_agresion")], unique, useNA = "ifany")
+```
+
+Se observa que la variable **armas** está tomando valores en NA y valores inconsistentes según el diccionario: *5*,*6*,*7*,*8*,*9* y *10*
+
+```{r}
+data %>% filter(is.na(armas) | armas %in% c("5","6","7","8","9","10")) %>% count(armas,arma,cual_o_mec,otra_arma,otro_mec,mecanismo_utilizado_para_la_agresion)
+```
+
+
 
 #### Quemaduras
 
-[84] "que_cara"\
-[85] "que_cuello"\
-[86] "que_mano"\
-[87] "que_pie"\
-[88] "que_pliegu"\
-[89] "que_genita"\
-[90] "que_tronco"\
-[91] "que_miesup"\
-[92] "que_mieinf"\
+Este conjunto de variables deben tomar valor en caso de que el mecanismo de agresión haya sido 12 = Quemaduras por fuego o llama, 13 = Quemaduras por ácido, álcalis, o sustancias corrosivas y 14 = Quemadura por líquido hirviente. La mayoría de variables indican la parte de la quemadura (**que_[]**), y las demás del grado (**cla_gra**) y extensión (**ext_que**) de la misma.
+
+```{r}
+lapply(data_aux[, c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")], table, useNA = "ifany")
+```
+
+Se observa que hay casos donde las variables están tomando valores inconsistentes, estos casos se cambian a NA
+
+```{r}
+data_aux <- data %>%
+  mutate(across(
+    all_of(c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")),
+    ~ case_when(
+        !(.x %in% c("1", "2")) ~ NA_character_,
+        TRUE ~ .x
+      ),
+    .names = "{.col}"
+  ))
+
+```
+
+Ahora bien, se observa que en los casos en que no hay quemaduras, estas variables
+contienen valores faltantes (NA), lo que puede generar dificultades en
+los análisis. Entonces, se transforman los valores NA en una categoría
+explícita como "No aplica". Y a su vez, se garantiza que estas variables tomen valor únicamente en los mecanismos de agresión correctos
+
+```{r}
+data <- data %>%
+  mutate(across(
+    all_of(c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")),
+    ~ ifelse(is.na(armas) | armas %in% c(12, 13, 14), ., "No aplica")
+  ))
+```
+
+**FALTA TERMINAR PORQUE SE NECESITA ORGANIZAR PRIMERO MECANISMO**
+
 [93] "cla_gra"\
 [94] "ext_que"
 
 ### Escenario
 
-otro_esce puede completar a escenario [59] "escenario" [60] "otro_esce"
+Corresponde al lugar donde ocurrió la agresión. Toma valores como: 1 = Vía Pública, 2 = Vivienda, 3 = Establecimiento educativo, 4 = Lugar de trabajo, 7 = Otro, 8 = 
+Comercio y áreas de servicios (Tienda, centro comercial, etc), 9 = otros Espacios abiertos (bosques, potreros, etc), 10 = Lugares de esparcimiento con expendio de alcohol, 11 = Institución de salud y 12 = Área deportiva y recreativa.
+
+La base de datos tiene dos variables que  aparentemente representa esta características:
+
+-   **escenario**
+
+```{r}
+summary(as.factor(data$escenario))
+```
+Se observa que esta variable toma valores *5* y *6* que no aparecen definidos en el diccionario ni fichas de notificación.
+
+-   **otro_esce**
+
+```{r}
+summary(as.factor(data$otro_esce))
+```
+
+Se observa que esta variable no está normalizada, por ende, se utilizará para completar información de la variable **escenario**. Al analizar los casos donde **escenario** es *5*, *6* y NA, se obtiene:
+
+```{r}
+data %>% filter(is.na(escenario) | escenario %in% c("5","6")) %>% count(escenario,otro_esce)
+```
+Solo se podría recuperar información para *7* casos. Entonces se completa esta información y los casos con valor *5* y *6* se cambia a NA
+
+```{r}
+data <- data %>% mutate(escenario = case_when(
+  escenario %in% c("5","6") ~ NA_character_,
+  is.na(escenario) ~ otro_esce,
+  TRUE ~ escenario
+))
+```
+
+Luego, se elimina la variable **otro_esce**
+
+```{r}
+data <- data %>% select(-otro_esce)
+```
+
+
 
 ### Ámbito lugar
+Representa el ámbito de la violencia según lugar de ocurrencia. Puede tomar valores como: 1 = Escolar, 2 = Laboral, 3 = Institucional, 4 = Virtual, 5 = Comunitario, 6 = Hogar y 7 = Otros ámbitos. Es una variable obligatoria
 
-[100] "ambito_lug"
+```{r}
+summary(as.factor(data$ambito_lug))
+```
+
 
 ### Presencia de alcohol o sustancias
 
-presencia_de_alcohol completar a sust_vict [56] "sust_vict" [107]
-"presencia_de_alcohol_u_otra_sustancia_en_la_victima"
+En la base de datos se encuentran dos variables que indican si había presencia de alcohol u otra sustancia en la Víctima: **sust_vict** y **presencia_de_alcohol_u_otra_sustancia_en_la_victima**. La primer variable tiene el nombre que aparece en el diccionario de datos y es obligatoria
+
+```{r}
+data %>% count(sust_vict,presencia_de_alcohol_u_otra_sustancia_en_la_victima)
+```
+Se observa que hay *28653* casos que toma valor sí(1) y *556310* no(2) en **presencia_de_alcohol_u_otra_sustancia_en_la_victima** pero NA en **sust_vict**, entonces se completará esta última variable con ellos. Las inconsistencias se cambian a NA
+
+```{r}
+data <- data %>% mutate(sust_vict = case_when(
+  sust_vict == "M" ~ NA_character_,
+  presencia_de_alcohol_u_otra_sustancia_en_la_victima %in% c("1","2") & is.na(sust_vict) ~ presencia_de_alcohol_u_otra_sustancia_en_la_victima,
+  TRUE ~ sust_vict
+))
+```
+
+Luego, se elimina la variable **presencia_de_alcohol_u_otra_sustancia_en_la_victima**
+
+```{r}
+data <- data %>% select(-presencia_de_alcohol_u_otra_sustancia_en_la_victima)
+```
+
+
 
 ### Atencedente de violencia
 
-[48] "antec"
+Indica si la persona ha sido violentada con anterioridad. Es una variable obligatoria.
+
+```{r}
+summary(as.factor(data$antec))
+```
+Los valores con inconsistencia se cambian a NA
+
+```{r}
+data <- data %>% mutate(antec = if_else(antec %in% c("43880","0","3","4","5","6"), NA_character_, antec))
+```
 
 ### Hecho dentro del conflicto armado
+Representa si el caso se dio en el marco del conflicto armado
 
-[61] "zona_conf"
+```{r}
+summary(as.factor(data_aux$zona_conf))
+```
 
-## Información del agresión
+Los valores con inconsistencia se cambian a NA
 
-### Edad
+```{r}
+data_aux <- data %>% mutate(zona_conf = if_else(zona_conf %in% c("44000","44097","E","M","V"), NA_character_, zona_conf))
+```
 
-[49] "edad_agre"
+
+## Información del agresor
+
+Es importante mencionar que en las bases de datos proporcionadas no hay información respecto al parentesco con la víctima, como sí la hay en MEData y las fichas indican que se pide. 
+
+
+### Edad agresor
+
+```{r}
+summary(as.factor((sort(data$edad_agre))))
+```
+
+```{r}
+edad0 <- sum(data$edad_agre == 0, na.rm = TRUE)
+edad0/nrow(data)
+```
+
+Se ve que esta variable (cuya unidad de medida es años), contiene edades muy bajas para el agresor, lo cual parece ser una inconsistencia en la variable. Incluso solamente analizando la proporción de edades iguales a 0 es de `r round((edad0/nrow(data))*100,3)`% de los registros que presentan este
+problema y de acuerdo con las fichas de notificación de violencia
+disponibles, no en todas se hace esta pregunta.
+
+Por tanto los valores de 0 o de edades muy pequeñas podrían corresponder a valores faltantes de los años restantes de notificaciones en las que no se pregunta esto.
+Así, la variable tiene bastantes valores faltantes, por lo tanto es
+necesario eliminarla del análisis.
+
+```{r}
+aux_data <- data %>% filter(year(data$fec_not) >= 2015)
+
+table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
+```
+
+```{r}
+data <- data %>%
+  select(-edad_agre)
+```
 
 ### Sexo
 
-[50] "sexo_agre"
+```{r}
+summary(as.factor(data$sexo_agre))
+```
+Se observa que tres registros están tomando valores numéricos, estos casos puede correpsonder a fechas en la base original y que al cargar se convirtieron en número. Además, se encuentran registros con valor *SD*, que pueden significar "Sin dato". En todos los casos se convierte a NA
+
+```{r}
+data <- data %>% mutate(sexo_agre = if_else(sexo_agre %in% c("21792","3218244774","38240","SD"), NA_character_, sexo_agre))
+```
 
 ### Convivencia con la víctima
 
-[51] "conv_agre"
+Esta variable indica si la víctima tenía o no convivencia con el agresor
 
 ```{r}
-summary(as.)
+summary(as.factor(data$conv_agre))
+```
+Solo se encuentra un registro con un valor inconsistente, se cambia a NA
+
+```{r}
+data <- data %>% mutate(conv_agre = if_else(conv_agre == "78783", NA_character_, conv_agre))
 ```
 
 
