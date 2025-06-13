@@ -902,12 +902,16 @@ data <- data %>% select(-aux_p)
 
 data <- data %>% 
   left_join(
-    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE) %>% select(codigo_dane_municipio,nombre_municipio),
     by = c("cod_mun_r" = "codigo_dane_municipio")
-  ) %>% mutate(municipio_residencia = ifelse(!is.na(nombre_municipio),nombre_municipio,municipio_residencia)) 
+  ) %>% mutate(municipio_residencia = ifelse(!is.na(nombre_municipio),str_to_title(nombre_municipio),municipio_residencia)) 
 
-data <- data %>% select(-nombre_municipio)
+data <- data %>% select(-c(nombre_municipio))
+```
 
+3.  Verificar concordancia entre código y  nombre
+
+```{r}
 data %>%
   left_join(
     DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
@@ -915,8 +919,10 @@ data %>%
   ) %>% 
   filter(str_to_lower(municipio_residencia) != str_to_lower(nombre_municipio)) %>%
   count(cod_mun_r, municipio_residencia,nombre_municipio, name = "cantidad")
+```
 
-data %>% count(municipio_residencia,cod_mun_r,departamento_residencia) 
+```{r}
+data %>% count(municipio_residencia,cod_mun_r,departamento_residencia)
 ```
 
 

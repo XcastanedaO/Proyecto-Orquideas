@@ -709,7 +709,7 @@ data <- data %>%
 
 #### Departamento
 
-**departamento_residencia** representa el nombre del departamento y
+**departamento_residencia** representa el nombre del departamento donde residía la víctima y
 **cod_dpto_r** su respectivo código. Para verificar la concordancia de
 los códigos y nombres se utiliza la base oficial de DIVIPOLA:
 
@@ -799,6 +799,7 @@ No hay discordancias.
 ```{r}
 data %>% count(cod_dpto_r,departamento_residencia)
 ```
+
 
 #### Municipio
 *municipio_residencia** representa el nombre del departamento y **cod_mun_r** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
@@ -902,12 +903,16 @@ data <- data %>% select(-aux_p)
 
 data <- data %>% 
   left_join(
-    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE) %>% select(codigo_dane_municipio,nombre_municipio),
     by = c("cod_mun_r" = "codigo_dane_municipio")
-  ) %>% mutate(municipio_residencia = ifelse(!is.na(nombre_municipio),nombre_municipio,municipio_residencia)) 
+  ) %>% mutate(municipio_residencia = ifelse(!is.na(nombre_municipio),str_to_title(nombre_municipio),municipio_residencia)) 
 
-data <- data %>% select(-nombre_municipio)
+data <- data %>% select(-c(nombre_municipio))
+```
 
+3.  Verificar concordancia entre código y  nombre
+
+```{r}
 data %>%
   left_join(
     DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
@@ -915,9 +920,12 @@ data %>%
   ) %>% 
   filter(str_to_lower(municipio_residencia) != str_to_lower(nombre_municipio)) %>%
   count(cod_mun_r, municipio_residencia,nombre_municipio, name = "cantidad")
-
-data %>% count(municipio_residencia,cod_mun_r,departamento_residencia) 
 ```
+
+```{r}
+data %>% count(municipio_residencia,cod_mun_r,departamento_residencia)
+```
+
 
 
 ### Estrato
@@ -1546,64 +1554,236 @@ presencia_de_alcohol completar a sust_vict [56] "sust_vict" [107]
 
 [51] "conv_agre"
 
+```{r}
+summary(as.)
+```
+
+
 ## Información de la atención
 
 ### Lugar de notificación
 
 #### Departamento
 
-[29] "cod_dpto_n" [45] "departamento_notificacion"
+**departamento_notificacion** representa el nombre del departamento donde se notificó el caso y
+**cod_dpto_n** su respectivo código. Para verificar la concordancia de los códigos y nombres se utiliza la base oficial de DIVIPOLA:
+
+```{r, message=FALSE, warning=FALSE}
+DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text", "text", "text", 
+        "text", "text","text"))
+```
+
+1.  Se comienza analizando los departamentos que no se encuentran en la
+    lista de DIVIPOLA:
+
+```{r}
+data %>%
+  filter(!str_to_lower(departamento_notificacion) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% group_by(cod_dpto_n,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+En la mayoría de los casos no se encuentran porque tienen diferencia de
+escritura. Y en los demás, se trata de números que en caso de no corresponder a la codificación, se convierten a NA
+
+```{r}
+data <- data %>% 
+  mutate(
+    departamento_notificacion = case_when(
+      departamento_notificacion == "ATLANTICO" ~ "Atlántico",
+      departamento_notificacion %in% c("BOGOTA","11") ~ "Bogotá, D.c.",
+      departamento_notificacion == "BOLIVAR" ~ "Bolívar",
+      departamento_notificacion == "BOYACA" ~ "Boyacá",
+      departamento_notificacion == "CAQUETA" ~ "Caquetá",
+      departamento_notificacion == "CORDOBA" ~ "Córdoba",
+      departamento_notificacion == "CHOCO" ~ "Chocó",
+      departamento_notificacion == "GUAJIRA" ~ "La Guajira",
+      departamento_notificacion == "NORTE SANTANDER" ~ "Norte De Santander",
+      departamento_notificacion == "QUINDIO" ~ "Quindío",
+      departamento_notificacion == "VALLE" ~ "Valle Del Cauca",
+      departamento_notificacion == "SAN ANDRES" ~ "Archipiélago De San Andrés, Providencia Y Santa Catalina",
+      departamento_notificacion == "GUAINIA" ~ "Guainía",
+      departamento_notificacion == "VAUPES" ~ "Vaupés",
+      departamento_notificacion %in% c("1","0","001","44093") ~ NA_character_,
+      TRUE ~ str_to_title(departamento_notificacion)
+    )
+  )
+```
+
+2.  Analizando que códigos no están en la lista. Se encontraron los
+    siguientes:
+
+```{r}
+data %>%
+  filter(!cod_dpto_n %in% DIVIPOLA$codigo_dane_departamento) %>% group_by(cod_dpto_n,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+Solo se encontró un caso donde el código no está en la lista oficial, se cambia a NA
+
+```{r}
+data <- data %>% mutate(cod_dpto_n = if_else(cod_dpto_n == "9996", NA, cod_dpto_n))
+```
+
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    departamento son:
+
+```{r}
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_departamento, .keep_all = TRUE),
+    by = c("cod_dpto_n" = "codigo_dane_departamento")
+    ) %>% filter(str_to_lower(departamento_notificacion) != str_to_lower(nombre_departamento)) %>% group_by(cod_dpto_n, departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+No hay discordancias.
+
+```{r}
+data %>% count(cod_dpto_r,departamento_residencia)
+```
 
 #### Municipio
+*municipio_residencia** representa el nombre del departamento y **cod_mun_r** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
 
-[30] "cod_mun_n"\
-[46] "municipio_notificacion"
+1.  Primero se verifica que códigos no están en la lista oficial, se encontraron los
+    siguientes:
+
+```{r}
+data %>% 
+  filter(!cod_mun_n %in% DIVIPOLA$codigo_dane_municipio)  %>% 
+  count(cod_mun_n, municipio_notificacion,departamento_notificacion, name = "cantidad")
+```
+
+Ese valor inconsistente se cambia a NA   
+
+```{r}
+data <- data %>% mutate(cod_mun_n = if_else(cod_mun_n %in% c("S"), NA_character_,cod_mun_n))
+```
+
+2.  Los municipios que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!str_to_lower(municipio_notificacion) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(cod_mun_n,municipio_notificacion,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+```{r}
+data <- data %>% mutate(municipio_notificacion = case_when(
+  municipio_notificacion %in% c("11","3102038727","44093") ~ NA_character_,
+  municipio_notificacion == "11001" ~ "Bogotá, D.c.",
+  TRUE ~ municipio_notificacion
+))
+
+data <- data %>% 
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE) %>% select(codigo_dane_municipio,nombre_municipio),
+    by = c("cod_mun_n" = "codigo_dane_municipio")
+  ) %>% mutate(municipio_notificacion = ifelse(!is.na(nombre_municipio),str_to_title(nombre_municipio),str_to_title(municipio_notificacion)))
+
+data <- data %>% select(-nombre_municipio)
+```
+
+3.  Verificar concordancia entre código y  nombre
+
+```{r}
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
+    by = c("cod_mun_n" = "codigo_dane_municipio")
+  ) %>% 
+  filter(str_to_lower(municipio_notificacion) != str_to_lower(nombre_municipio)) %>%
+  count(cod_mun_n, municipio_notificacion,nombre_municipio, name = "cantidad")
+```
+
+```{r}
+data %>% count(municipio_notificacion,cod_mun_n,departamento_notificacion)
+```
 
 ### Tipo de seguridad social
+Representa el tipo de régimen en salud, donde: C = contributivo, S = subsidiado, P = excepción, E = especial, N = no asegurado e I = indeterminado/pendiente
 
-[13] "tip_ss"
+```{r}
+summary(as.factor(data$tip_ss))
+```
+
 
 ### Datos epidemiológicos
 
-[3] "semana"\
-[4] "ano"
+La base cuenta con una variable que presenta la semana epidemiológica (**semana**) y su respectivo año (**ano**)
 
 ```{r}
-data %>% count(month(fec_not),año_not,ano,origen)
+summary(as.factor(data$semana))
+```
+```{r}
+summary(as.factor(data$ano))
+```
+De acuerdo a lo investigado la semana epidemiológica se determina a partir de la fecha del hecho o notificación según el sistema o estudio. Sin embargo, en las fuentes de información disponible no se especifica. Por ende, buscando ser consistentes, se decide eliminar estas variables y quedarse con la variable **fec_not**, que hasta el momento parece ser la mejor opción para temporalidad
+
+```{r}
+data <- data %>% select(-c(ano,semana))
 ```
 
-NOTA: Hay casos donde el año de notificación difiere con el año de la
-semana epidemiologica, puede ser porque la última semana en algún
-calendario epidemiologico, incluye días de la primer semana del año
-siguiente. Pero cómo explicar inconsistencias en meses más avanzados?
-Porque así se tome o no días del meses sigueitne, esta en el mismo año
 
 ### Hospitalización
+Indica si la víctima requirió hospitalización
 
-[34] "pac_hos"
+```{r}
+summary(as.factor(data$pac_hos))
+```
 
 ### Atención en salud mental
+Indica si la víctima recibió o no atención en salud mental
 
-[62] "ac_mental"
+```{r}
+summary(as.factor(data$ac_mental))
+```
+Se cambia a NA los casos donde la variable toma valores diferentes a *1* y *2*
+
+```{r}
+data <- data %>% mutate(ac_mental = if_else(ac_mental %in% c("24","31"), NA, ac_mental))
+```
+
 
 ### Laboratorios
 
-[63] "sp_its"\
-[64] "prof_hep_b"\
-[65] "prof_otras"
+En la base se encuentran tres variables que representan cada uno si se realizó o no un exámen de laboratorio: Profilaxis ITS-VIH (**sp_its**), Hepatitis B (**prof_hep_b**) y Profilaxis Otras ITS (**prof_otras**). Sin embargo, estas variables aplican únicamente para los casos donde la modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10 = Trata de personas y 14 = Otras violencias sexuales
+
+```{r}
+data %>% count(sp_its, def_naturaleza)
+```
+
+```{r}
+data %>% count(prof_hep_b, def_naturaleza)
+```
+
+```{r}
+data %>% count(prof_otras, def_naturaleza)
+```
+
+Se cambia a NA los valores incorrectos y a "No aplica" los casos de violencia diferente a los mencionados
+
+```{r}
+data <- data %>%
+  mutate(across(
+    all_of(c("prof_otras","prof_hep_b","sp_its")),
+    ~ case_when(
+        .x %in% c("0", "3") ~ NA_character_,
+        def_naturaleza %in% c("1", "2", "3", "5", "12", "15") ~ "No aplica",
+        TRUE ~ .x
+      ),
+    .names = "{.col}"
+  ))
+```
 
 ### Anticoncepción de emergencia
 
 Esta variable **ac_anticon** indica si la víctima requirió anticoncepción de emergencia. Aplica únicamente para los casos donde la modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10 = Trata de personas y 14 = Otras violencias sexuales
 
 ```{r}
-data_aux %>% count(ac_anticon, def_naturaleza)
+data %>% count(ac_anticon, def_naturaleza)
 ```
 
 Se cambia a NA los valores incorrectos y a "No aplica" los casos de violencia diferente a los mencionados
 
 ```{r}
-data_aux <- data %>% mutate(ac_anticon = case_when(
+data <- data %>% mutate(ac_anticon = case_when(
   ac_anticon == "26" ~ NA_character_,
   def_naturaleza %in% c("1","2","3","5","12","15") ~ "No aplica",
   TRUE ~ ac_anticon
