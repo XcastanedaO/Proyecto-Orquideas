@@ -740,4 +740,16 @@ plot(roc_obj_2, col = "#AE86D3")
 
 ***Figura 4.*** *Curva ROC del modelo 2 de atención en salud mental (AUC =*0.8727*).*
 
-**FALTA MIRAR CUÁLES DEJARON DE SER SIGNIFICATIVAS O PASARON A SERLO**
+**LAS SIGUIENTES SON LAS VARIABLES QUE NO DIERON SIGNIFICATIVAS EN EL PRIMER MODELO**
+[8] "sexo_agreF"                                               
+ [9] "sexo_agreM"                                               
+[10] "parentezco_agresorPareja"                                 
+[11] "parentezco_agresorFamiliar"                               
+[12] "parentezco_agresorEx_Pareja"                              
+[13] "parentezco_agresorPadre" 
+[19] "pac_hos_1" 
+[21] "escenarioComercio y áreas de servicios"                   
+[22] "escenarioEspacios abiertos"                               
+[23] "escenarioEstablecimiento educativo"      
+[27] "escenarioVía Pública"                                     
+[28] "escenarioVivienda"
