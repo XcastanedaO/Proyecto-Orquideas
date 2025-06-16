@@ -1380,7 +1380,8 @@ Estos códigos no existen. El primer caso se cambia a NA y el segundo a
 
 
 
-#### Municipio [10] "cod_mun_o" [42] "municipio_ocurrencia"
+#### Municipio 
+[10] "cod_mun_o" [42] "municipio_ocurrencia"
 
 
 
@@ -1464,11 +1465,15 @@ data <- data %>% select(-c(naturaleza,nat_viosex))
 
 ### Mecanismo o arma
 
-El diccionario de datos indica que la variable **armas** indica el mecanismo utilizado en la agresión y que es dependiente si la variable "Modalidad" es 
-1= Violencia física. Sin embargo, en esta base se encuentran otras variables que parecen representar la misma característica: **otra_arma**,**otro_mec**,**cual_o_mec**, **arma** y **mecanismo_utilizado_para_la_agresion**
+El diccionario de datos indica que la variable **armas** indica el mecanismo utilizado en la agresión y que es dependiente si la variable "Modalidad" es 1 = Violencia física. Sin embargo, en esta base se encuentran otras variables que parecen representar la misma característica: **otra_arma**,**otro_mec**,**cual_o_mec**, **arma** y **mecanismo_utilizado_para_la_agresion**
 
 ```{r}
-lapply(data_aux[, c("armas","otra_arma", "otro_mec", "cual_o_mec", "arma", "mecanismo_utilizado_para_la_agresion")], unique, useNA = "ifany")
+summary(as.factor(data$armas))
+```
+
+
+```{r}
+lapply(data[, c("otra_arma", "otro_mec", "cual_o_mec", "arma", "mecanismo_utilizado_para_la_agresion")], unique, useNA = "ifany")
 ```
 
 Se observa que la variable **armas** está tomando valores en NA y valores inconsistentes según el diccionario: *5*,*6*,*7*,*8*,*9* y *10*
@@ -1477,20 +1482,31 @@ Se observa que la variable **armas** está tomando valores en NA y valores incon
 data %>% filter(is.na(armas) | armas %in% c("5","6","7","8","9","10")) %>% count(armas,arma,cual_o_mec,otra_arma,otro_mec,mecanismo_utilizado_para_la_agresion)
 ```
 
+Sin embargo, ninguna de las otras variables toma valor en estos casos como para reemplazar información. Entonces lo que se hace es que se completa información para los casos de NA en **armas** con el valor de las demás variables a excepción de **cual_o_mec**, porque en los casos que esta última variable toma valor también toma valor **otro_mec** y ya está en la codificación requerida. A su vez, también se convierte a NA los valores inconsistentes y se garantiza que **armas** tome valor solo si la modalidad de violencia es 1, en caso contrario, se pone "No aplica"
+
+```{r}
+data <- data %>%
+  mutate(
+    armas = coalesce(armas, arma, otra_arma, otro_mec, mecanismo_utilizado_para_la_agresion),
+    armas = ifelse(def_naturaleza != 1, "No aplica", armas)
+  )
+
+data <- data %>% mutate(armas = if_else(armas %in% c(5, 6, 7, 8, 9, 10, 7300000),NA,armas))
+```
 
 
 #### Quemaduras
 
-Este conjunto de variables deben tomar valor en caso de que el mecanismo de agresión haya sido 12 = Quemaduras por fuego o llama, 13 = Quemaduras por ácido, álcalis, o sustancias corrosivas y 14 = Quemadura por líquido hirviente. La mayoría de variables indican la parte de la quemadura (**que_[]**), y las demás del grado (**cla_gra**) y extensión (**ext_que**) de la misma.
+Este conjunto de variables deben tomar valor en caso de que el mecanismo de agresión haya sido 12 = Quemaduras por fuego o llama, 13 = Quemaduras por ácido, álcalis, o sustancias corrosivas y 14 = Quemadura por líquido hirviente. La mayoría de variables indican la parte de la quemadura (**que_[]**), y las demás, el grado (**cla_gra**) y extensión (**ext_que**) de la misma.
 
 ```{r}
-lapply(data_aux[, c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")], table, useNA = "ifany")
+lapply(data[, c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")], table, useNA = "ifany")
 ```
 
 Se observa que hay casos donde las variables están tomando valores inconsistentes, estos casos se cambian a NA
 
 ```{r}
-data_aux <- data %>%
+data <- data %>%
   mutate(across(
     all_of(c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")),
     ~ case_when(
@@ -1515,10 +1531,30 @@ data <- data %>%
   ))
 ```
 
-**FALTA TERMINAR PORQUE SE NECESITA ORGANIZAR PRIMERO MECANISMO**
+Lo mismo se hace con la variable **cla_gra**, se cambia a "No aplica" los casos donde el mecanismo no es 12,13 o 14. Esta variable toma los siguientes valores: 1 = primer grado, 2 = segundo grado  y 3 = tercer grado
 
-[93] "cla_gra"\
-[94] "ext_que"
+```{r}
+summary(as.factor(data$cla_gra))
+```
+
+```{r}
+data <- data %>%
+  mutate(cla_gra = ifelse(armas %in% c(12, 13, 14), cla_gra, "No aplica"))
+```
+
+Finalmente, se encontró que la variable **ext_que** está tomando valores inconsistentes. Los valores que debe tomar son  1 = menor o igual a 5%, 2 = 6%-14%, 3 = mayor o igual a 15%. Se cambia estos valores a NA y se garantiza que esta variable solo tenga valor cuando mecanismo sea 12,13 o 14
+
+```{r}
+summary(as.factor(data$ext_que))
+```
+
+```{r}
+data <- data %>%
+  mutate(ext_que = case_when(ext_que == "31" ~ NA_character_,
+                             armas %in% c(12, 13, 14) ~ ext_que,
+                             TRUE ~ "No aplica"
+  ))
+```
 
 ### Escenario
 

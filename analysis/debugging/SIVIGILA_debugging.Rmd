@@ -1557,49 +1557,204 @@ data <- data %>% select(-c(naturaleza,nat_viosex))
 
 ### Mecanismo o arma
 
-otra_arma, arma, otro_mec, mecanismo_utilizado... para completar a armas
-[53] "otra_arma" [99] "arma"\
-[54] "otro_mec" [108] "mecanismo_utilizado_para_la_agresion"\
-[55] "cual_o_mec" [52] "armas"
+El diccionario de datos indica que la variable **armas** indica el mecanismo utilizado en la agresión y que es dependiente si la variable "Modalidad" es 1 = Violencia física. Sin embargo, en esta base se encuentran otras variables que parecen representar la misma característica: **otra_arma**,**otro_mec**,**cual_o_mec**, **arma** y **mecanismo_utilizado_para_la_agresion**
+
+```{r}
+summary(as.factor(data$armas))
+```
+
+
+```{r}
+lapply(data[, c("otra_arma", "otro_mec", "cual_o_mec", "arma", "mecanismo_utilizado_para_la_agresion")], unique, useNA = "ifany")
+```
+
+Se observa que la variable **armas** está tomando valores en NA y valores inconsistentes según el diccionario: *5*,*6*,*7*,*8*,*9* y *10*
+
+```{r}
+data %>% filter(is.na(armas) | armas %in% c("5","6","7","8","9","10")) %>% count(armas,arma,cual_o_mec,otra_arma,otro_mec,mecanismo_utilizado_para_la_agresion)
+```
+
+Sin embargo, ninguna de las otras variables toma valor en estos casos como para reemplazar información. Entonces lo que se hace es que se completa información para los casos de NA en **armas** con el valor de las demás variables a excepción de **cual_o_mec**, porque en los casos que esta última variable toma valor también toma valor **otro_mec** y ya está en la codificación requerida. A su vez, también se convierte a NA los valores inconsistentes y se garantiza que **armas** tome valor solo si la modalidad de violencia es 1, en caso contrario, se pone "No aplica"
+
+```{r}
+data <- data %>%
+  mutate(
+    armas = coalesce(armas, arma, otra_arma, otro_mec, mecanismo_utilizado_para_la_agresion),
+    armas = ifelse(def_naturaleza != 1, "No aplica", armas)
+  )
+
+data <- data %>% mutate(armas = if_else(armas %in% c(5, 6, 7, 8, 9, 10, 7300000),NA,armas))
+```
+
 
 #### Quemaduras
 
-[84] "que_cara"\
-[85] "que_cuello"\
-[86] "que_mano"\
-[87] "que_pie"\
-[88] "que_pliegu"\
-[89] "que_genita"\
-[90] "que_tronco"\
-[91] "que_miesup"\
-[92] "que_mieinf"\
-[93] "cla_gra"\
-[94] "ext_que"
+Este conjunto de variables deben tomar valor en caso de que el mecanismo de agresión haya sido 12 = Quemaduras por fuego o llama, 13 = Quemaduras por ácido, álcalis, o sustancias corrosivas y 14 = Quemadura por líquido hirviente. La mayoría de variables indican la parte de la quemadura (**que_[]**), y las demás, el grado (**cla_gra**) y extensión (**ext_que**) de la misma.
+
+```{r}
+lapply(data[, c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")], table, useNA = "ifany")
+```
+
+Se observa que hay casos donde las variables están tomando valores inconsistentes, estos casos se cambian a NA
+
+```{r}
+data <- data %>%
+  mutate(across(
+    all_of(c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")),
+    ~ case_when(
+        !(.x %in% c("1", "2")) ~ NA_character_,
+        TRUE ~ .x
+      ),
+    .names = "{.col}"
+  ))
+
+```
+
+Ahora bien, se observa que en los casos en que no hay quemaduras, estas variables
+contienen valores faltantes (NA), lo que puede generar dificultades en
+los análisis. Entonces, se transforman los valores NA en una categoría
+explícita como "No aplica". Y a su vez, se garantiza que estas variables tomen valor únicamente en los mecanismos de agresión correctos
+
+```{r}
+data <- data %>%
+  mutate(across(
+    all_of(c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf")),
+    ~ ifelse(is.na(armas) | armas %in% c(12, 13, 14), ., "No aplica")
+  ))
+```
+
+Lo mismo se hace con la variable **cla_gra**, se cambia a "No aplica" los casos donde el mecanismo no es 12,13 o 14. Esta variable toma los siguientes valores: 1 = primer grado, 2 = segundo grado  y 3 = tercer grado
+
+```{r}
+summary(as.factor(data$cla_gra))
+```
+
+```{r}
+data <- data %>%
+  mutate(cla_gra = ifelse(armas %in% c(12, 13, 14), cla_gra, "No aplica"))
+```
+
+Finalmente, se encontró que la variable **ext_que** está tomando valores inconsistentes. Los valores que debe tomar son  1 = menor o igual a 5%, 2 = 6%-14%, 3 = mayor o igual a 15%. Se cambia estos valores a NA y se garantiza que esta variable solo tenga valor cuando mecanismo sea 12,13 o 14
+
+```{r}
+summary(as.factor(data$ext_que))
+```
+
+```{r}
+data <- data %>%
+  mutate(ext_que = case_when(ext_que == "31" ~ NA_character_,
+                             armas %in% c(12, 13, 14) ~ ext_que,
+                             TRUE ~ "No aplica"
+  ))
+```
 
 ### Escenario
 
-otro_esce puede completar a escenario [59] "escenario" [60] "otro_esce"
+Corresponde al lugar donde ocurrió la agresión. Toma valores como: 1 = Vía Pública, 2 = Vivienda, 3 = Establecimiento educativo, 4 = Lugar de trabajo, 7 = Otro, 8 = 
+Comercio y áreas de servicios (Tienda, centro comercial, etc), 9 = otros Espacios abiertos (bosques, potreros, etc), 10 = Lugares de esparcimiento con expendio de alcohol, 11 = Institución de salud y 12 = Área deportiva y recreativa.
+
+La base de datos tiene dos variables que  aparentemente representa esta características:
+
+-   **escenario**
+
+```{r}
+summary(as.factor(data$escenario))
+```
+Se observa que esta variable toma valores *5* y *6* que no aparecen definidos en el diccionario ni fichas de notificación.
+
+-   **otro_esce**
+
+```{r}
+summary(as.factor(data$otro_esce))
+```
+
+Se observa que esta variable no está normalizada, por ende, se utilizará para completar información de la variable **escenario**. Al analizar los casos donde **escenario** es *5*, *6* y NA, se obtiene:
+
+```{r}
+data %>% filter(is.na(escenario) | escenario %in% c("5","6")) %>% count(escenario,otro_esce)
+```
+Solo se podría recuperar información para *7* casos. Entonces se completa esta información y los casos con valor *5* y *6* se cambia a NA
+
+```{r}
+data <- data %>% mutate(escenario = case_when(
+  escenario %in% c("5","6") ~ NA_character_,
+  is.na(escenario) ~ otro_esce,
+  TRUE ~ escenario
+))
+```
+
+Luego, se elimina la variable **otro_esce**
+
+```{r}
+data <- data %>% select(-otro_esce)
+```
+
+
 
 ### Ámbito lugar
+Representa el ámbito de la violencia según lugar de ocurrencia. Puede tomar valores como: 1 = Escolar, 2 = Laboral, 3 = Institucional, 4 = Virtual, 5 = Comunitario, 6 = Hogar y 7 = Otros ámbitos. Es una variable obligatoria
 
-[100] "ambito_lug"
+```{r}
+summary(as.factor(data$ambito_lug))
+```
+
 
 ### Presencia de alcohol o sustancias
 
-presencia_de_alcohol completar a sust_vict [56] "sust_vict" [107]
-"presencia_de_alcohol_u_otra_sustancia_en_la_victima"
+En la base de datos se encuentran dos variables que indican si había presencia de alcohol u otra sustancia en la Víctima: **sust_vict** y **presencia_de_alcohol_u_otra_sustancia_en_la_victima**. La primer variable tiene el nombre que aparece en el diccionario de datos y es obligatoria
+
+```{r}
+data %>% count(sust_vict,presencia_de_alcohol_u_otra_sustancia_en_la_victima)
+```
+Se observa que hay *28653* casos que toma valor sí(1) y *556310* no(2) en **presencia_de_alcohol_u_otra_sustancia_en_la_victima** pero NA en **sust_vict**, entonces se completará esta última variable con ellos. Las inconsistencias se cambian a NA
+
+```{r}
+data <- data %>% mutate(sust_vict = case_when(
+  sust_vict == "M" ~ NA_character_,
+  presencia_de_alcohol_u_otra_sustancia_en_la_victima %in% c("1","2") & is.na(sust_vict) ~ presencia_de_alcohol_u_otra_sustancia_en_la_victima,
+  TRUE ~ sust_vict
+))
+```
+
+Luego, se elimina la variable **presencia_de_alcohol_u_otra_sustancia_en_la_victima**
+
+```{r}
+data <- data %>% select(-presencia_de_alcohol_u_otra_sustancia_en_la_victima)
+```
+
+
 
 ### Atencedente de violencia
 
-[48] "antec"
+Indica si la persona ha sido violentada con anterioridad. Es una variable obligatoria.
+
+```{r}
+summary(as.factor(data$antec))
+```
+Los valores con inconsistencia se cambian a NA
+
+```{r}
+data <- data %>% mutate(antec = if_else(antec %in% c("43880","0","3","4","5","6"), NA_character_, antec))
+```
 
 ### Hecho dentro del conflicto armado
+Representa si el caso se dio en el marco del conflicto armado
 
-[61] "zona_conf"
+```{r}
+summary(as.factor(data_aux$zona_conf))
+```
+
+Los valores con inconsistencia se cambian a NA
+
+```{r}
+data_aux <- data %>% mutate(zona_conf = if_else(zona_conf %in% c("44000","44097","E","M","V"), NA_character_, zona_conf))
+```
+
 
 ## Información del agresor
 
 Es importante mencionar que en las bases de datos proporcionadas no hay información respecto al parentesco con la víctima, como sí la hay en MEData y las fichas indican que se pide. 
+
 
 ### Edad agresor
 
@@ -1631,14 +1786,30 @@ data <- data %>%
   select(-edad_agre)
 ```
 
-
 ### Sexo
 
-[50] "sexo_agre"
+```{r}
+summary(as.factor(data$sexo_agre))
+```
+Se observa que tres registros están tomando valores numéricos, estos casos puede correpsonder a fechas en la base original y que al cargar se convirtieron en número. Además, se encuentran registros con valor *SD*, que pueden significar "Sin dato". En todos los casos se convierte a NA
+
+```{r}
+data <- data %>% mutate(sexo_agre = if_else(sexo_agre %in% c("21792","3218244774","38240","SD"), NA_character_, sexo_agre))
+```
 
 ### Convivencia con la víctima
 
-[51] "conv_agre"
+Esta variable indica si la víctima tenía o no convivencia con el agresor
+
+```{r}
+summary(as.factor(data$conv_agre))
+```
+Solo se encuentra un registro con un valor inconsistente, se cambia a NA
+
+```{r}
+data <- data %>% mutate(conv_agre = if_else(conv_agre == "78783", NA_character_, conv_agre))
+```
+
 
 ## Información de la atención
 
@@ -1646,53 +1817,249 @@ data <- data %>%
 
 #### Departamento
 
-[29] "cod_dpto_n" [45] "departamento_notificacion"
+**departamento_notificacion** representa el nombre del departamento donde se notificó el caso y
+**cod_dpto_n** su respectivo código. Para verificar la concordancia de los códigos y nombres se utiliza la base oficial de DIVIPOLA:
+
+```{r, message=FALSE, warning=FALSE}
+DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text", "text", "text", 
+        "text", "text","text"))
+```
+
+1.  Se comienza analizando los departamentos que no se encuentran en la
+    lista de DIVIPOLA:
+
+```{r}
+data %>%
+  filter(!str_to_lower(departamento_notificacion) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% group_by(cod_dpto_n,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+En la mayoría de los casos no se encuentran porque tienen diferencia de
+escritura. Y en los demás, se trata de números que en caso de no corresponder a la codificación, se convierten a NA
+
+```{r}
+data <- data %>% 
+  mutate(
+    departamento_notificacion = case_when(
+      departamento_notificacion == "ATLANTICO" ~ "Atlántico",
+      departamento_notificacion %in% c("BOGOTA","11") ~ "Bogotá, D.c.",
+      departamento_notificacion == "BOLIVAR" ~ "Bolívar",
+      departamento_notificacion == "BOYACA" ~ "Boyacá",
+      departamento_notificacion == "CAQUETA" ~ "Caquetá",
+      departamento_notificacion == "CORDOBA" ~ "Córdoba",
+      departamento_notificacion == "CHOCO" ~ "Chocó",
+      departamento_notificacion == "GUAJIRA" ~ "La Guajira",
+      departamento_notificacion == "NORTE SANTANDER" ~ "Norte De Santander",
+      departamento_notificacion == "QUINDIO" ~ "Quindío",
+      departamento_notificacion == "VALLE" ~ "Valle Del Cauca",
+      departamento_notificacion == "SAN ANDRES" ~ "Archipiélago De San Andrés, Providencia Y Santa Catalina",
+      departamento_notificacion == "GUAINIA" ~ "Guainía",
+      departamento_notificacion == "VAUPES" ~ "Vaupés",
+      departamento_notificacion %in% c("1","0","001","44093") ~ NA_character_,
+      TRUE ~ str_to_title(departamento_notificacion)
+    )
+  )
+```
+
+2.  Analizando que códigos no están en la lista. Se encontraron los
+    siguientes:
+
+```{r}
+data %>%
+  filter(!cod_dpto_n %in% DIVIPOLA$codigo_dane_departamento) %>% group_by(cod_dpto_n,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+Solo se encontró un caso donde el código no está en la lista oficial, se cambia a NA
+
+```{r}
+data <- data %>% mutate(cod_dpto_n = if_else(cod_dpto_n == "9996", NA, cod_dpto_n))
+```
+
+3.  Los casos donde hay discordancia entre el código y el nombre del
+    departamento son:
+
+```{r}
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_departamento, .keep_all = TRUE),
+    by = c("cod_dpto_n" = "codigo_dane_departamento")
+    ) %>% filter(str_to_lower(departamento_notificacion) != str_to_lower(nombre_departamento)) %>% group_by(cod_dpto_n, departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+No hay discordancias.
+
+```{r}
+data %>% count(cod_dpto_r,departamento_residencia)
+```
 
 #### Municipio
+*municipio_residencia** representa el nombre del departamento y **cod_mun_r** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
 
-[30] "cod_mun_n"\
-[46] "municipio_notificacion"
+1.  Primero se verifica que códigos no están en la lista oficial, se encontraron los
+    siguientes:
+
+```{r}
+data %>% 
+  filter(!cod_mun_n %in% DIVIPOLA$codigo_dane_municipio)  %>% 
+  count(cod_mun_n, municipio_notificacion,departamento_notificacion, name = "cantidad")
+```
+
+Ese valor inconsistente se cambia a NA   
+
+```{r}
+data <- data %>% mutate(cod_mun_n = if_else(cod_mun_n %in% c("S"), NA_character_,cod_mun_n))
+```
+
+2.  Los municipios que no se encuentran en la lista son:
+
+```{r}
+data %>%
+  filter(!str_to_lower(municipio_notificacion) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(cod_mun_n,municipio_notificacion,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+```
+
+```{r}
+data <- data %>% mutate(municipio_notificacion = case_when(
+  municipio_notificacion %in% c("11","3102038727","44093") ~ NA_character_,
+  municipio_notificacion == "11001" ~ "Bogotá, D.c.",
+  TRUE ~ municipio_notificacion
+))
+
+data <- data %>% 
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE) %>% select(codigo_dane_municipio,nombre_municipio),
+    by = c("cod_mun_n" = "codigo_dane_municipio")
+  ) %>% mutate(municipio_notificacion = ifelse(!is.na(nombre_municipio),str_to_title(nombre_municipio),str_to_title(municipio_notificacion)))
+
+data <- data %>% select(-nombre_municipio)
+```
+
+3.  Verificar concordancia entre código y  nombre
+
+```{r}
+data %>%
+  left_join(
+    DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE),
+    by = c("cod_mun_n" = "codigo_dane_municipio")
+  ) %>% 
+  filter(str_to_lower(municipio_notificacion) != str_to_lower(nombre_municipio)) %>%
+  count(cod_mun_n, municipio_notificacion,nombre_municipio, name = "cantidad")
+```
+
+```{r}
+data %>% count(municipio_notificacion,cod_mun_n,departamento_notificacion)
+```
 
 ### Tipo de seguridad social
+Representa el tipo de régimen en salud, donde: C = contributivo, S = subsidiado, P = excepción, E = especial, N = no asegurado e I = indeterminado/pendiente
 
-[13] "tip_ss"
+```{r}
+summary(as.factor(data$tip_ss))
+```
+
 
 ### Datos epidemiológicos
 
-[3] "semana"\
-[4] "ano"
+La base cuenta con una variable que presenta la semana epidemiológica (**semana**) y su respectivo año (**ano**)
 
 ```{r}
-data %>% count(month(fec_not),año_not,ano,origen)
+summary(as.factor(data$semana))
+```
+```{r}
+summary(as.factor(data$ano))
+```
+De acuerdo a lo investigado la semana epidemiológica se determina a partir de la fecha del hecho o notificación según el sistema o estudio. Sin embargo, en las fuentes de información disponible no se especifica. Por ende, buscando ser consistentes, se decide eliminar estas variables y quedarse con la variable **fec_not**, que hasta el momento parece ser la mejor opción para temporalidad
+
+```{r}
+data <- data %>% select(-c(ano,semana))
 ```
 
-NOTA: Hay casos donde el año de notificación difiere con el año de la
-semana epidemiologica, puede ser porque la última semana en algún
-calendario epidemiologico, incluye días de la primer semana del año
-sigueinte. Pero cómo explicar inconsistencias en meses más avanzados?
-Porque así se tome o no días del meses sigueitne, esta en el mismo año
 
 ### Hospitalización
+Indica si la víctima requirió hospitalización
 
-[34] "pac_hos"
+```{r}
+summary(as.factor(data$pac_hos))
+```
 
 ### Atención en salud mental
+Indica si la víctima recibió o no atención en salud mental
 
-[62] "ac_mental"
+```{r}
+summary(as.factor(data$ac_mental))
+```
+Se cambia a NA los casos donde la variable toma valores diferentes a *1* y *2*
+
+```{r}
+data <- data %>% mutate(ac_mental = if_else(ac_mental %in% c("24","31"), NA, ac_mental))
+```
+
 
 ### Laboratorios
 
-[63] "sp_its"\
-[64] "prof_hep_b"\
-[65] "prof_otras"
+En la base se encuentran tres variables que representan cada uno si se realizó o no un exámen de laboratorio: Profilaxis ITS-VIH (**sp_its**), Hepatitis B (**prof_hep_b**) y Profilaxis Otras ITS (**prof_otras**). Sin embargo, estas variables aplican únicamente para los casos donde la modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10 = Trata de personas y 14 = Otras violencias sexuales
+
+```{r}
+data %>% count(sp_its, def_naturaleza)
+```
+
+```{r}
+data %>% count(prof_hep_b, def_naturaleza)
+```
+
+```{r}
+data %>% count(prof_otras, def_naturaleza)
+```
+
+Se cambia a NA los valores incorrectos y a "No aplica" los casos de violencia diferente a los mencionados
+
+```{r}
+data <- data %>%
+  mutate(across(
+    all_of(c("prof_otras","prof_hep_b","sp_its")),
+    ~ case_when(
+        .x %in% c("0", "3") ~ NA_character_,
+        def_naturaleza %in% c("1", "2", "3", "5", "12", "15") ~ "No aplica",
+        TRUE ~ .x
+      ),
+    .names = "{.col}"
+  ))
+```
 
 ### Anticoncepción de emergencia
 
-[66] "ac_anticon"
+Esta variable **ac_anticon** indica si la víctima requirió anticoncepción de emergencia. Aplica únicamente para los casos donde la modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10 = Trata de personas y 14 = Otras violencias sexuales
+
+```{r}
+data %>% count(ac_anticon, def_naturaleza)
+```
+
+Se cambia a NA los valores incorrectos y a "No aplica" los casos de violencia diferente a los mencionados
+
+```{r}
+data <- data %>% mutate(ac_anticon = case_when(
+  ac_anticon == "26" ~ NA_character_,
+  def_naturaleza %in% c("1","2","3","5","12","15") ~ "No aplica",
+  TRUE ~ ac_anticon
+))
+```
 
 ### Orientación
 
-[67] "ac_ive"
+Esta variable **ac_ive** indica si la víctima recibió orientación para Interrupción Voluntaria del Embarazo (IVE). Aplica únicamente para los casos donde la modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10 = Trata de personas y 14 = Otras violencias sexuales
+
+```{r}
+data %>% count(ac_ive, def_naturaleza)
+```
+Se cambia a NA los valores incorrectos y a "No aplica" los casos de violencia diferente a los mencionados
+
+```{r}
+data <- data %>% mutate(ac_ive = case_when(
+  ac_ive == "23" ~ NA_character_,
+  def_naturaleza %in% c("1","2","3","5","12","15") ~ "No aplica",
+  TRUE ~ ac_ive
+))
+```
+
+
 
 ### Informe a autoridades competente
 
@@ -1704,22 +2071,37 @@ Sin embargo, en la base de datos del 2013 se encontraron dos variables adicional
 data %>% count(inf_aut,inf_autpj,inf_autfis)
 ```
 
-Aún así, se observa que cuando las dos variables toman valores, **inf_aut** toma valor de 1 (sí) porque alguna de las otras dos toma valor de 1 (sí). Lo que da a entender que **inf_aut** es más general y realmente no se necesita la unión de las tres variables. Solo hay 32 casos donde **inf_autpj** y **inf_autfis** son 2 (No) y **inf_aut** es 1 (Sí), se decide dejarlo así teniendo en cuenta que puede trarse de que no reportaron a esas autoridades sino a otra. 
+Aún así, se observa que cuando las dos variables toman valores, **inf_aut** toma valor de 1 (sí) porque alguna de las otras dos toma valor de 1 (sí). Lo que da a entender que **inf_aut** es más general y realmente no se necesita la unión de las tres variables. Solo hay 32 casos donde **inf_autpj** y **inf_autfis** son 2 (No) y **inf_aut** es 1 (Sí), se decide dejarlo así teniendo en cuenta que puede tratarse de que no reportaron a esas autoridades sino a otra. 
 
-Luego, se convierte a NA los valores **inf_aut** que no son correctos y se elimina entonces las otros dos variables
+Luego, se convierte a NA los valores **inf_aut** que no son correctos y se elimina entonces las otras dos variables
+
 ```{r}
-data <- data %>% mutate(inf_aut == ifelse(inf_aut %in% c("B","P","p","3","5"),NA_character_,inf_aut))
+data <- data %>% mutate(inf_aut = ifelse(inf_aut %in% c("B","P","p","3","5"),NA_character_,inf_aut))
 ```
 
- 
-r_protect completar a
-remit_prot
+```{r}
+data <- data %>% select(-c(inf_autpj,inf_autfis))
+```
 
-[68] "inf_aut"\
-[69] "inf_autpj"\
-[70] "inf_autfis"\
-[71] "remit_prot"\
-[72] "r_protec"
+Ahora bien, el diccionario de datos indica que la variable **remit_prot** toma como valor si la víctima fue remitida o no a protección. Pero en la base también se encuentra otra variable llamada **r_protect**
+
+```{r}
+data %>% count(remit_prot,r_protec)
+```
+
+Se encontró que los casos con valor en **r_protec** corresponde a casos de la base del 2013, pero algunos de estos también están tomando valor en **remit_prot**. Se decide conservar la variable **remit_prot** pero eliminando los valores incorrectos, y cambiando los casos al valor de **r_protec** cuando esta última variable no es NA. Luego, se elimina la variable **r_protec**
+
+```{r}
+data <- data %>% mutate(remit_prot = case_when(
+  remit_prot %in% c("31","5") ~ NA_character_,
+  !is.na(r_protec) ~ r_protec,
+  TRUE ~ remit_prot
+))
+```
+
+```{r}
+data <- data %>% select(-r_protec)
+```
 
 ### Recolección evidencia medicina legal
 
@@ -1728,7 +2110,7 @@ data %>% count(def_naturaleza,evi_mlegal)
 ```
 
 Esta variable indica si se recolectó o no evidencia médico legal y solo se
-realiza en caso de violencias sexuales, en opciones 6, 7, 10, 14 y 15, según el diccionario de datos. Por lo tanto, en los casos que no son violencia sexual y esta variable es NA se asigna "No aplica" y se cambia a NA el caso con valor de *3*.
+realiza en caso de violencias sexuales, en opciones 6, 7, 10, 14 y 15, según el diccionario de datos. Por lo tanto, en los casos que no son violencia sexual se asigna "No aplica" y se cambia a NA el caso con valor de *3*.
 
 Se observa también que hay casos que no fueron violencia sexual pero indican que sí se recogió evidencia, ante estos casos se dejan tal cual
 
@@ -1736,7 +2118,7 @@ Se observa también que hay casos que no fueron violencia sexual pero indican qu
 # Transformar los NA en las columnas seleccionadas a "No aplica"
 data <- data %>%
   mutate(evi_mlegal = case_when(
-   !is.na(def_naturaleza) & is.na(evi_mlegal) & !(def_naturaleza %in% c("6", "7", "10", "14", "15")) ~ "No aplica",
+   !is.na(def_naturaleza) & !(def_naturaleza %in% c("6", "7", "10", "14", "15")) ~ "No aplica",
     evi_mlegal == 3 ~ NA,
     TRUE ~ evi_mlegal
   ))
@@ -1761,8 +2143,9 @@ data <- data %>% mutate(
 )
 ```
 
-
-
+```{r}
+colnames(data)
+```
 
 ## Valores faltantes
 
