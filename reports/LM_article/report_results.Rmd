@@ -27,18 +27,18 @@ library(stringi)
 library(knitr)
 library(readr)
 library(sf)
-library(gmodels)   
+library(gmodels)
 library(DescTools)
 library(kableExtra)
 library(pROC)
 
-# Lectura y adeucación de la base de datos
+# Lectura y adecuación de la base de datos
 base_datos <- load_data("data_model.csv", type = "processed")
 
 base_datos <- base_datos %>% select(c("ac_mental",
                                 "edad", "mujer_cabf","def_naturaleza",
-                                "area_", "sexo_agre", "parentezco_agresor", 
-                                "conv_agre", "pac_hos_" , "escenario", 
+                                "area_", "sexo_agre", "parentezco_agresor",
+                                "conv_agre", "pac_hos_" , "escenario",
                                 "tip_ss_"))
 
 base_datos <- base_datos[!apply(is.na(base_datos), 1, any), ]
@@ -81,7 +81,7 @@ Para ello, se aplicó una prueba estadística de asociación para cada variable 
 Además, para cuantificar la fuerza de la asociación entre las variables, se calculó el coeficiente V de Cramér, que varía entre 0 (sin asociación) y 1 (asociación fuerte). Con base en los resultados de estas pruebas estadísticas, y considerando la relevancia teórica de cada variable dentro del contexto de la violencia de género, se seleccionaron como variables predictoras nueve variables cualitativas que presentaron asociación estadísticamente significativa con la atención en salud mental.
 
 ```{r, echo=FALSE}
-aux_data <- base_datos %>% select(-all_of(c("edad"))) 
+aux_data <- base_datos %>% select(-all_of(c("edad")))
 
 # Crear dataframe vacío para guardar resultados
 results <- data.frame(
@@ -105,12 +105,12 @@ for (var in colnames(aux_data)) {
   total_general <- sum(table_)
   total_rows <- rowSums(table_)
   total_columns <- colSums(table_)
-  
-  exp_values <- matrix(0, 
-                      nrow = nrow(table_), 
+
+  exp_values <- matrix(0,
+                      nrow = nrow(table_),
                       ncol = ncol(table_),
                       dimnames = dimnames(table_))
-  
+
   for (i in 1:nrow(table_)) {
     for (j in 1:ncol(table_)) {
       exp_values[i, j] <- (total_rows[i] * total_columns[j]) / total_general
@@ -122,7 +122,7 @@ for (var in colnames(aux_data)) {
   statistic <- NA
   p_value <- NA
   decision <- NA
-  
+
   # prueba estadística adecuada
   if (all(exp_values >= 5)) {
     chi_test <- chisq.test(table_)
@@ -131,9 +131,9 @@ for (var in colnames(aux_data)) {
     statistic <- chi_test$statistic
     p_value <- chi_test$p.value
     decision <- ifelse(p_value < 0.05, "Rechazo", "No rechazo")
-    
+
   } else {
-    
+
     # Verificar si es tabla 2x2
     if (nrow(table_) == 2 && ncol(table_) == 2) {
       fisher_test <- fisher.test(table_)
@@ -142,7 +142,7 @@ for (var in colnames(aux_data)) {
       statistic <- NA  # Fisher no devuelve un estadístico
       p_value <- fisher_test$p.value
       decision <- ifelse(p_value < 0.05, "Rechazo", "No rechazo")
-      
+
     } else {
       chi_test_mc <- chisq.test(table_, simulate.p.value = TRUE)
 
@@ -152,10 +152,10 @@ for (var in colnames(aux_data)) {
       decision <- ifelse(p_value < 0.05, "Rechazo", "No rechazo")
     }
   }
-  
+
   # Cálculo de fuerza de asociación: V de Cramer
   v_cramer <- DescTools::CramerV(table_)
-  
+
   # Guardar los resultados en el dataframe
   results <- rbind(results, data.frame(
     predictor = var,
@@ -181,7 +181,7 @@ tabla_1 <- data.frame(
 )
 
 # Generar la tabla
-kable(tabla_1, format = "markdown", col.names = c("Predictora", "Prueba estadística", "Estadístico","Valor P", "Coef.V de crámer")) 
+kable(tabla_1, format = "markdown", col.names = c("Predictora", "Prueba estadística", "Estadístico","Valor P", "Coef.V de crámer"))
 ```
 
 ***Tabla 1.** Resultados de las pruebas de asociación entre atención en salud y variables cualitativas seleccionadas.*
@@ -206,10 +206,10 @@ A continuación, se describen estas variables y su composición en la base de da
 
 -   **Parentesco agresor:** indica el tipo de vínculo o relación de la víctima con el agresor. Entre ellas se encuentra: pareja(12.433; 26,8%), familiar(9.491; 20,5%), ex-pareja(4.664; 10,1%), conocido(4.193; 9%), desconocido(3.895; 8,4%), madre(3.480; 7,5%), padre(3.040; 6,6%), amigo(1.628; 3,5%), y otro(3.549; 7,7%).
 
-```{r, echo=FALSE, fig.align = "center",fig.width = 14, fig.height = 7}
+```{r, echo=FALSE, fig.width = 14, fig.height = 7, fig.align = "center"}
 ###### Atención en salud mental ######
 base_datos <- base_datos %>% mutate(ac_mental = case_when(
-  is.na(ac_mental) ~ "Sin información", 
+  is.na(ac_mental) ~ "Sin información",
   ac_mental == "1" ~ "Sí",
   ac_mental == "0" ~ "No",
   TRUE ~ ac_mental
@@ -217,7 +217,7 @@ base_datos <- base_datos %>% mutate(ac_mental = case_when(
 
 ###### Tipo de seguridad ######
 base_datos <- base_datos %>% mutate(tip_ss_ = case_when(
-  is.na(tip_ss_) ~ "Sin información", 
+  is.na(tip_ss_) ~ "Sin información",
   tip_ss_ == "S" ~ "Subsidiado",
   tip_ss_ == "C" ~ "Contributivo",
   tip_ss_ == "I" ~ "Indeterminado",
@@ -234,7 +234,7 @@ tip_ss <- base_datos %>%
   mutate(prop = n / sum(n)) %>%
   ggplot(aes(x = tip_ss_, y = prop, fill = ac_mental)) +
   geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
-  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
             position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
   labs(
     x = "Tipo de seguridad social",
@@ -247,7 +247,7 @@ tip_ss <- base_datos %>%
   theme(legend.position = "none")
 
 ###### Hospitalización ######
-base_datos <- base_datos %>% 
+base_datos <- base_datos %>%
   mutate(pac_hos_ = case_when(
     pac_hos_ == 1 ~ "Sí",
     pac_hos_ == 2 ~ "No"
@@ -260,7 +260,7 @@ hosp <- base_datos %>%
   mutate(prop = n / sum(n)) %>%
   ggplot(aes(x = pac_hos_, y = prop, fill = ac_mental)) +
   geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
-  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
             position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
   scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
@@ -274,7 +274,7 @@ hosp <- base_datos %>%
 
 ###### Jefatura del hogar ######
 base_datos <- base_datos %>% mutate(mujer_cabf = case_when(
-  is.na(mujer_cabf) ~ "Sin información", 
+  is.na(mujer_cabf) ~ "Sin información",
   mujer_cabf == "1" ~ "Sí",
   mujer_cabf == "2" ~ "No",
   TRUE ~ mujer_cabf
@@ -287,7 +287,7 @@ cabf <- base_datos %>%
   mutate(prop = n / sum(n)) %>%
   ggplot(aes(x = mujer_cabf, y = prop, fill = ac_mental)) +
   geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
-  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
             position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
   scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
   labs(
@@ -306,7 +306,7 @@ tip_v <- base_datos %>%
   mutate(prop = n / sum(n)) %>%
   ggplot(aes(x = def_naturaleza, y = prop, fill = ac_mental)) +
   geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
-  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
             position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
   labs(
     x = "Tipo de violencia",
@@ -330,7 +330,7 @@ En relación con las demás variables de interés, la proporción de víctimas q
 
 Ahora bien, también se incluyó una variable cuantitativa: la edad cumplida de la víctima al momento del registro del caso. En la Figura 2 se observa que las víctimas que sí recibieron atención en salud mental tienden a ser más jóvenes en comparación con aquellas que no la recibieron. Esto se evidencia en una mediana de edad más baja y en una mayor concentración de casos aproximadamente entre los 11 y 28 años. En contraste, las víctimas que no accedieron a esta atención presentan una distribución de edades más amplia, con mayor densidad en edades intermedias (20-40 años). Estos resultados sugieren que la edad podría influir en la posibilidad de recibir atención psicológica.
 
-```{r, echo=FALSE, fig.align = "center",fig.width = 14, fig.height = 7}
+```{r, echo=FALSE, fig.width = 14, fig.height = 7}
 estadisticas <- base_datos %>%
   group_by(ac_mental) %>%
   summarise(
@@ -456,14 +456,14 @@ La interpretación del odds ratio es sencilla y se realiza de la siguiente maner
 
 Lo anterior es útil para evaluar de qué forma es la influencia de cada característica en la probabilidad. Sin embargo, el valor del odds ratio obtenido se interpreta como cuántas veces más (o menos) probable es que ocurra el evento (recibir atención) en presencia de dicha característica, en comparación con su ausencia o con la categoría de referencia.
 
-A continuación se presentan las razones de odds estimadas para las variables más relevantes del modelo.
+A continuación se presentan las razones de odds estimadas para todas las variables del modelo, pero antes es importante mencionar que variables como agresor femenino o masculino no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual. Lo mismo sucede respecto a su nivel de referencia cuando el agresor es pareja, familiar, ex-pareja o padre, cuando la víctima es hospitalizada o el escenario del hecho es *comercio y áreas de servicios, espacios abiertos*, *establecimiento educativo*, *vía pública* y *vivienda*.
 
 ```{r, echo=FALSE, warning=FALSE, message= FALSE}
 data_model <- load_data("data_model.csv", type = "processed")
 data <- data_model %>% select(c("ac_mental",
                                 "edad", "mujer_cabf","def_naturaleza",
-                                "area_", "sexo_agre", "parentezco_agresor", 
-                                "conv_agre", "pac_hos_" , "escenario", 
+                                "area_", "sexo_agre", "parentezco_agresor",
+                                "conv_agre", "pac_hos_" , "escenario",
                                  "tip_ss_"))
 
 data <- data[!apply(is.na(data), 1, any), ]
@@ -472,24 +472,24 @@ data <- data %>%
   mutate(
     mujer_cabf = factor(mujer_cabf, levels = c(2, 1)),
     def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Violencia física", "Violencia psicológica", "Violencia sexual")),
-    
+
     area_ = factor(area_, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
-    
+
     sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
-    
+
     parentezco_agresor = factor(parentezco_agresor, levels = c("Otro", "Pareja", "Familiar", "Ex_Pareja", "Padre", "Madre", "Conocido(a)", "Amigo(a)", "Desconocido(a)")),
-    
+
     escenario = factor(escenario, levels = c("Otro", "Área deportiva y recreativa", "Comercio y áreas de servicios", "Espacios abiertos", "Establecimiento educativo", "Institución de salud", "Lugar de trabajo", "Lugares de esparcimiento con expendio de alcohol", "Vía Pública", "Vivienda")),
     tip_ss_ =factor(tip_ss_, levels = c("I","C","E", "N", "P", "S")),
     conv_agre = factor(conv_agre, levels = c(2, 1)),
-    pac_hos_ = factor(pac_hos_, levels = c(2, 1)), 
+    pac_hos_ = factor(pac_hos_, levels = c(2, 1)),
   )
 
 ##### Matriz de diseño modelo 3
-X_3 <- model.matrix(ac_mental ~ 
+X_3 <- model.matrix(ac_mental ~
                       edad + mujer_cabf + def_naturaleza +
-                      area_ + sexo_agre + 
-                      parentezco_agresor + conv_agre  + 
+                      area_ + sexo_agre +
+                      parentezco_agresor + conv_agre  +
                       pac_hos_ + escenario + tip_ss_,
                     data = data)[, -1]
 
@@ -497,8 +497,8 @@ X_3 <- model.matrix(ac_mental ~
 posterior_samples <- readRDS(file.path(here(),"models","posterior_sample_model_3.rds"))
 
 # Calcular la media de los coeficientes estimados
-alpha_hat <- mean(posterior_samples$alpha)  
-beta_hat <- colMeans(posterior_samples$beta)  
+alpha_hat <- mean(posterior_samples$alpha)
+beta_hat <- colMeans(posterior_samples$beta)
 
 # Calcular Odds Ratios
 odds_ratios <- exp(beta_hat)
@@ -523,7 +523,7 @@ kable(tabla_resultados, format = "markdown", col.names = rep(c("Parámetro", "Ca
 
 En Tabla 2 se especifican con detalle las características que aumentan o disminuyen la probabilidad de que una víctima reciba atención en salud mental tras un evento de violencia de género.
 
-En general, se observa que la probabilidad de recibir atención en salud mental disminuye ligeramente a edades más altas. Por otra parte, esta probabilidad, aumenta significativamente en mujeres cabeza de familia, en casos de violencia sexual, cuando el hecho ocurre en centros poblados o en instituciones como hospitales o escuelas, y cuando el agresor es alguien cercano o identificable. Otro factor influyente es la característica de hospitalización de la víctima, pues esta eleva la probabilidad de atención.
+En general, se observa que la probabilidad de recibir atención en salud mental disminuye ligeramente a edades más altas. Por otra parte, esta probabilidad, aumenta significativamente en mujeres cabeza de familia, y cuando el agresor es alguien cercano o identificable. Otro factor influyente es la característica de hospitalización de la víctima, pues esta eleva la probabilidad de atención.
 
 Sin embargo, el factor que más efecto tiene en la probabilidad, es la afiliación a cualquier tipo de seguridad social, incluso en personas no aseguradas, lo que resalta la importancia del vínculo con el sistema de salud para garantizar el acceso a servicios psicológicos.
 
@@ -553,7 +553,7 @@ En este análisis, el modelo obtuvo un **AUC de 0.9088**, lo que refleja una muy
 
 En Figura 3 se presenta la curva ROC del modelo, que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia su buen desempeño.
 
-```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.align = "center",fig.width = 3, fig.height = 3}
+```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.width = 3, fig.height = 3}
 # Calcular probabilidades predichas
 probs_predichas <- plogis(alpha_hat + X_3 %*% beta_hat)
 
@@ -597,11 +597,11 @@ El modelo mostró una alta capacidad predictiva (AUC = 0.9088), lo que refuerza 
 Estos hallazgos son claves para diseñar estrategias que mejoren la cobertura y eficacia de los programas de atención, así como para fortalecer políticas públicas que promuevan la denuncia y garanticen el acceso oportuno a los servicios de salud mental, especialmente en poblaciones vulnerables.
 
 # Resultados modelo de regresión logístico 2
-En este segundo modelo se mantiene como variable de respuesta la **remisión a atención en salud mental** como en el modelo anterior, pero se realizaron dos modificaciones para mejorar la interpretación de los resultados y evitar posibles sesgos por categorías con pocos casos: se excluyó la variable **tipo de seguridad social** y se reagruparon categorías de algunas variables predictoras para reducir su número de categorías y facilitar la interpretación de los resultados, asi:
+En este segundo modelo se mantiene como variable de respuesta la **remisión a atención en salud mental** como en el modelo anterior, pero se realizaron dos modificaciones para mejorar la interpretación de los resultados y evitar posibles sesgos por categorías con pocos casos: se excluyó la variable **tipo de seguridad social** y se reagruparon categorías de algunas variables predictoras para reducir su número de categorías, asi:
 
--     En la variable **escenario del hecho**, se agruparon las categorías: área deportiva y recreativa, comercio y áreas de servicios, espacios abiertos, establecimiento educativo, institución de salud, lugar de trabajo, lugares de esparcimiento con expendio de alcohol, otro y vía pública,  bajo una nueva categoría denominada *espacio público y social*.
+-     En la variable **escenario del hecho**, se agruparon las categorías: *área deportiva y recreativa, comercio y áreas de servicios, espacios abiertos, establecimiento educativo, institución de salud, lugar de trabajo, lugares de esparcimiento con expendio de alcohol, otro y vía pública*,  bajo una nueva categoría denominada *espacio público y social*.
 
--    En la variable **parentesco con el agresor**, se agregaron padre y madre en la categoría familiar; amigo se convirtió a conocido; y el nivel otro se integró con desconocido.
+-    En la variable **parentesco con el agresor**, se agregaron *padre* y *madre* en la categoría *familiar*; *amigo* se convirtió a *conocido*; y el nivel *otro* se integró con *desconocido*.
 
 Luego de estas modificaciones, los niveles de las variables predictoras cualitativas y su respectivo nivel de referencia en el modelo son:
 
@@ -621,7 +621,8 @@ Luego de estas modificaciones, los niveles de las variables predictoras cualitat
 
 -   **Parentesco agresor:** indica el tipo de vínculo o relación de la víctima con el agresor. Entre ellas se encuentra: pareja(12.433; 26,8%), familiar(16.011; 34,5%), ex-pareja(4.664; 10,1%), conocido(5.821; 12,6%), desconocido(7.444; 16,1%). *Referencia:* desconocido(a).
 
-A continuación, se presentan los resultados obtenidos del modelo:
+A continuación se presentan las razones de odds estimadas para todas las variables del modelo, pero es importante tener en cuenta que las categorías de sexo masculino y parentesco conocido no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual y agresor desconocido, respectivamente. Por lo tanto, la interpretación de odds ratios para estas categorías no es relevante:
+
 ```{r, echo=FALSE, warning=FALSE, message= FALSE}
 data_2 <- base_datos %>% select(c("ac_mental",
                                 "edad", "mujer_cabf","def_naturaleza",
@@ -672,84 +673,85 @@ X_4 <- model.matrix(ac_mental ~
 # Extraer muestras
 posterior_samples_2 <- readRDS(file.path(here(),"models","model_without_SS","posterior_sample_model_4.rds"))
 
-# Calcular la media de los coeficientes estimados
-alpha_hat_2 <- mean(posterior_samples_2$alpha)
-beta_hat_2 <- colMeans(posterior_samples_2$beta)
-
-# Calcular Odds Ratios
-odds_ratios_2 <- exp(beta_hat_2)
-intercepto_OR_2 <- exp(alpha_hat_2)
-
-# Crear tabla de resultados
-tabla_resultados_2 <- data.frame(
-  Parametro_1 = paste0("β", 1:13),
-  Variable_1 = c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)"),
-  Odds_Ratio_1 = round(odds_ratios_2[1:13],2)
-)
-
-tabla_resultados_2$Parametro_2 <- c(paste0("β", 14:16), rep("", nrow(tabla_resultados_2) - 3))
-tabla_resultados_2$Variable_2 <- c("Convivencia agresor", "Hospitalización", "Esc. Espacio público y social",rep(NA, nrow(tabla_resultados_2) - 3))
-tabla_resultados_2$Odds_Ratio_2 <- c(round(odds_ratios_2[14:16], 2), rep(NA, nrow(tabla_resultados_2) - 3))
-
-# Mostrar tabla
-kable(tabla_resultados_2, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2))
+# # Calcular la media de los coeficientes estimados
+# alpha_hat_2 <- mean(posterior_samples_2$alpha)
+# beta_hat_2 <- colMeans(posterior_samples_2$beta)
+# 
+# # Calcular Odds Ratios
+# odds_ratios_2 <- exp(beta_hat_2)
+# intercepto_OR_2 <- exp(alpha_hat_2)
+# 
+# # Crear tabla de resultados
+# tabla_resultados_2 <- data.frame(
+#   Parametro_1 = paste0("β", 1:13),
+#   Variable_1 = c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)"),
+#   Odds_Ratio_1 = round(odds_ratios_2[1:13],2)
+# )
+# 
+# tabla_resultados_2$Parametro_2 <- c(paste0("β", 14:16), rep("", nrow(tabla_resultados_2) - 3))
+# tabla_resultados_2$Variable_2 <- c("Convivencia agresor", "Hospitalización", "Esc. Espacio público y social",rep(NA, nrow(tabla_resultados_2) - 3))
+# tabla_resultados_2$Odds_Ratio_2 <- c(round(odds_ratios_2[14:16], 2), rep(NA, nrow(tabla_resultados_2) - 3))
+# 
+# # Mostrar tabla
+# kable(tabla_resultados_2, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2))
 ```
 
 ***Tabla 3.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo 2 de atención en salud mental.*
 
-Entre mujeres con características similares, aquellas que son cabeza de familia son un 60% más propensas a recibir atención en salud mental que las que no lo son y vivir en un centro poblado o en zona rural dispersa se asocia con una mayor probabilidad relativa de atención del 78% y 80%, respectivamente, en comparación con vivir en una cabecera municipal. De forma similar, haber sido agredida en un espacio público o social con un 41% más de probabilidad relativa en relación con quienes fueron agredidas en su vivienda. 
+Entre mujeres con características similares, aquellas que son cabeza de familia son un 160% más propensas a recibir atención en salud mental que las que no lo son, al igual que aquellas mujeres que viven en un centro poblado o en zona rural dispersa, con una mayor probabilidad relativa de atención del 78% y 80%, respectivamente, en comparación con vivir en una cabecera municipal. De forma similar, haber sido agredida en un espacio público o social tiene un 41% más de probabilidad relativa en relación con quienes fueron agredidas en su vivienda. 
 
 En contraste, cuando el agresor es una persona cercana, como un familiar (28% menos propensas), pareja (20% menos) o ex-pareja (12% menos),  las mujeres son menos propensas a recibir atención, en comparación con casos donde no se conoce al agresor. Además, convivir con el agresor también reduce en un 9% las probabilidades de recibir atención y en cuanto a la edad, por cada año adicional, las mujeres son 1% menos propensas. 
 
-Finalmente, un hallazgo relevante es que las mujeres que fueron hospitalizadas tras el hecho de violencia son 704% más propensas a recibir atención psicológica pero se debe tener en cuenta que en la base de datos el 89,2% (41.358) de las mujeres no fueron hospitalizadas, lo que puede influir en este resultado. Asimismo, se observa una fuerte asociación entre el tipo de violencia y el acceso a atención mental. En comparación con negligencia y abandono, las mujeres víctimas de violencia física, psicológica y sexual son más propensas a recibir atención, con aumentos relativos del 303%, 50% y 4191%, respectivamente. 
+Finalmente, un hallazgo relevante es que las mujeres que fueron hospitalizadas tras el hecho de violencia son 704% más propensas a recibir atención psicológica pero se debe tener en cuenta que en la base de datos el 89,2% (41.358) de las mujeres no fueron hospitalizadas, lo que puede influir en este resultado. Asimismo, se observa una fuerte asociación entre el tipo de violencia y el acceso a atención mental. En comparación con negligencia y abandono, las mujeres víctimas de violencia física, psicológica y sexual son más propensas a recibir atención, con aumentos relativos del 303%, 50% y 4191%, respectivamente. Teniendo en cuenta la cantidad de casos que recibieron atención en salud mental por tipo de violencia, es de esperar este resultado, porque la proporción es mayor en violencia sexual o física. Sin embargo, a luz del contexto, se podría esperar que el hecho de ser víctima de violencia psicológica sea causa suficiente para recibir este tipo de atención y que por ende, sea mayor la posibilidad de recibirla que en caso de que la violencia sea negligencia o abandono, comparando con las otros dos tipos de violencia.
 
-**Nota:** Las cifras expresadas en porcentajes corresponden a razones de odds.
-**Nota 2:** Las categorías de sexo masculino y parentesco conocido no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual y agresor desconocido, respectivamente. 
+**Nota:** Las cifras expresadas en porcentajes corresponden al aumento/disminución de los odds de una categoría en comparado con los odds de su categoría de referencia, es decir, cuánto aumentó o disminuyó las posibilidades de recibir atención frente a no recibirla de una categoría especifica en comparación con las posibilidades de su categoría de referencia. 
 
-Ahora bien, este modelo obtuvo un **AUC de 0.8727**, menor al modelo anterior pero también identifica correctamente, en la gran mayoría de los casos, si una víctima de violencia de género recibió atención psicológica a partir de las características observadas. Asimismo, en Figura 4 se presenta la curva ROC, que también que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia el buen desempeño del modelo
+Ahora bien, este modelo obtuvo un **AUC de 0.8727**, menor al modelo anterior pero también identifica correctamente, en la gran mayoría de los casos, si una víctima de violencia de género recibió atención psicológica a partir de las características observadas. Asimismo, en Figura 4 se presenta la curva ROC, que también que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia el buen desempeño del modelo.
 
-```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.align = "center",fig.width = 3, fig.height = 3}
-# Calcular probabilidades predichas
-probs_predichas_2 <- plogis(alpha_hat_2 + X_4 %*% beta_hat_2)
+<!-- ```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.width = 3, fig.height = 3}} -->
+<!-- #  Calcular probabilidades predichas -->
+<!--  probs_predichas_2 <- plogis(alpha_hat_2 + X_4 %*% beta_hat_2) -->
 
-# Convertir a clases (umbral de 0.5)
-predicciones_binarias_2 <- ifelse(probs_predichas_2 > 0.5, 1, 0)
+<!-- #  Convertir a clases (umbral de 0.5) -->
+<!--  predicciones_binarias_2 <- ifelse(probs_predichas_2 > 0.5, 1, 0) -->
 
-# Matriz de confusión
-confusion_matrix_2 <- table(Real = base_datos$ac_mental, Predicho = predicciones_binarias_2)
+<!--  # Matriz de confusión -->
+<!--  confusion_matrix_2 <- table(Real = base_datos$ac_mental, Predicho = predicciones_binarias_2) -->
 
-TN_2 <- confusion_matrix_2[1,1]
-FP_2 <- confusion_matrix_2[1,2]
-FN_2 <- confusion_matrix_2[2,1]
-TP_2 <- confusion_matrix_2[2,2]
+<!--  TN_2 <- confusion_matrix_2[1,1] -->
+<!--  FP_2 <- confusion_matrix_2[1,2] -->
+<!--  FN_2 <- confusion_matrix_2[2,1] -->
+<!--  TP_2 <- confusion_matrix_2[2,2] -->
 
-accuracy_2 <- (TP_2 + TN_2) / (TP_2 + TN_2 + FP_2 + FN_2)
-precision_2 <- TP_2 / (TP_2 + FP_2)
-recall_2 <- TP_2 / (TP_2 + FN_2)
-f1_score_2 <- 2 * (precision_2 * recall_2) / (precision_2 + recall_2)
+<!--  accuracy_2 <- (TP_2 + TN_2) / (TP_2 + TN_2 + FP_2 + FN_2) -->
+<!--  precision_2 <- TP_2 / (TP_2 + FP_2) -->
+<!--  recall_2 <- TP_2 / (TP_2 + FN_2) -->
+<!--  f1_score_2 <- 2 * (precision_2 * recall_2) / (precision_2 + recall_2) -->
 
-cat("Accuracy:", accuracy_2, "\n")
-cat("Precision:", precision_2, "\n")
-cat("Recall (Sensibilidad):", recall_2, "\n")
-cat("F1-Score:", f1_score_2, "\n")
+<!--  cat("Accuracy:", accuracy_2, "\n") -->
+<!--  cat("Precision:", precision_2, "\n") -->
+<!--  cat("Recall (Sensibilidad):", recall_2, "\n") -->
+<!--  cat("F1-Score:", f1_score_2, "\n") -->
 
-roc_obj_2 <- roc(base_datos$ac_mental, as.numeric(probs_predichas_2))
-auc(roc_obj_2)
-plot(roc_obj_2, col = "#AE86D3")
-```
+<!--  roc_obj_2 <- roc(base_datos$ac_mental, as.numeric(probs_predichas_2)) -->
+<!--  auc(roc_obj_2) -->
+<!--  plot(roc_obj_2, col = "AE86D3") -->
+<!-- ``` -->
 
 ***Figura 4.*** *Curva ROC del modelo 2 de atención en salud mental (AUC =*0.8727*).*
 
-**LAS SIGUIENTES SON LAS VARIABLES QUE NO DIERON SIGNIFICATIVAS EN EL PRIMER MODELO**
-[8] "sexo_agreF"                                               
- [9] "sexo_agreM"                                               
-[10] "parentezco_agresorPareja"                                 
-[11] "parentezco_agresorFamiliar"                               
-[12] "parentezco_agresorEx_Pareja"                              
-[13] "parentezco_agresorPadre" 
-[19] "pac_hos_1" 
-[21] "escenarioComercio y áreas de servicios"                   
-[22] "escenarioEspacios abiertos"                               
-[23] "escenarioEstablecimiento educativo"      
-[27] "escenarioVía Pública"                                     
-[28] "escenarioVivienda"
+# Comparación  y resumen de los modelos
+
+-   El modelo 1 se ajustó con 10 variables predictoras, que dieron lugar a la estimación de 34 parámetros (33 coeficientes y un intercepto) mientras que el modelo 2 se ajustó con nueve variables predictoras y estimó 16 parámetros incluyendo el intercepto. 
+
+-   En ambos modelos, la edad de la víctima, ser mujer cabeza de familia, el tipo de violencia, el lugar donde ocurrió la agresión y el sexo del agresor muestran patrones similares en la posibilidad de recibir atención psicológica en comparación con no recibirla. 
+
+-   En ambos modelos el hecho de que el agresor sea masculino no se asocia con mayor ni menor probabilidad de recibir atención en salud mental respecto a que el agresor sea intersexual. 
+
+-   En el modelo 1 si la víctima fue hospitalizada no dio significativa. Pero en el modelo 2 esta categoría sí es significativa
+
+-  Ambos modelos predicen adecuadamente, pero el modelo original muestra un rendimiento ligeramente mejor de acuerdo al valor obtenido al **AUC**
+
+-  En el modelo 2, los valores que indican cuántas veces es más probable recibir atención psicológica (odds ratio) para los casos de violencia sexual y hospitalización son casi el doble de los obtenidos en el modelo 1.
+
+**Nota:** Es importante tener en cuenta que por los cambios realizados no es totalmente adecuado comparar los dos modelos de esta manera, incluso comparar variables especificas como *parentezco* y *escenario* donde se cambió el nivel de referencia. Este ejercicio se hace solo para comprender bien los resultados de ambos modelos y el posible efecto de los cambios realizados al modelo 1
