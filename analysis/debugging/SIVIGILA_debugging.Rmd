@@ -24,6 +24,7 @@ editor_options:
 knitr::opts_chunk$set(echo=FALSE)
 
 source("../../utils/load_data.R")
+library(data.table)
 library(here)
 library(hms)
 library(dplyr)
@@ -1239,94 +1240,164 @@ summary(as.factor(data$consum_spa))
 data <- data %>% mutate(consum_spa = case_when(consum_spa %in% c("0", "7300000") ~ NA_character_, TRUE ~ consum_spa))
 ```
 
+
 ### Ocupación de la víctima (ocupacion)
+
+De acuerdo al diccionario esta variable indica la ocupación de la víctima a partir de la codificación establecida en el decreto 654 del Ministerio de Trabajo y la resolución 0771 del 2021. Tanto en el decreto como en la resolución se establece la [*Clasificación Única de Ocupaciones para Colombia
+(CUOC)*](https://ocupacol.mintrabajo.gov.co/Jerarquias/Jerarquias) que es una adaptación de la [*Clasificación Internacional Uniforme de
+Ocupaciones(CIUO-88)*](https://ilostat.ilo.org/es/methods/concepts-and-definitions/classification-occupation/), la cual es utilizada a nivel internacional para clasificar las
+ocupaciones de manera estandarizada.
+
+El valor que toma el código puede ser de hasta 5 dígitos, con cada
+dígito añadiendo un nivel de precisión sobre la ocupación. El **primer dígito** indica la **gran grupo** o sector de ocupación. El **segundo y tercer dígito** proporcionan una **subdivisión** dentro de la categoría. El **cuarto dígito** indica el **grupo primario** de la ocupación y el **el quinto dígito** define de manera más precisa la **ocupación específica** dentro de esa subdivisión.
+
+Por ejemplo:
+
+-   *2* corresponde a profesionales, científicos e intelectuales
+
+-   *25* incluye a profesionales de tecnología de la información y las comunicaciones
+
+-   **251** abarca el grupo más general de Desarrolladores y analistas de software y multimedia.
+
+-   **2512** corresponde a Desarrolladores de software y aplicaciones
+
+-   **25120** corresponde a Desarrolladores de software
 
 ```{r}
 summary(as.factor(data$ocupacion))
 ```
+Sin embargo, en algunos registros el valor que está tomando esta variable no tienen ningún tipo de relación con la codificación. En estos casos los valores se convierten a NA
 
-De acuerdo al diccionario la codificación de está variable corresponde a
-la [*Clasificación Internacional Uniforme de
-Ocupaciones(CIUO-88)*](https://ilostat.ilo.org/es/methods/concepts-and-definitions/classification-occupation/), la cual es utilizada a nivel internacional para clasificar las
-ocupaciones de manera estandarizada.
-
-El valor que toma el código puede ser de hasta 4 dígitos, con cada
-dígito añadiendo un nivel de precisión sobre la ocupación. El **primer
-dígito** indica la **gran categoría** o sector de ocupación. El
-**segundo y tercer dígito** proporcionan una **subdivisión** dentro de
-la categoría. El **cuarto dígito** define de manera más precisa la
-**ocupación específica** dentro de esa subdivisión.
-
-Por ejemplo:
-
--   **"2512"** corresponde a "Desarrolladores de software y
-    aplicaciones"
-
--   **"251"** abarca el grupo más general de "Desarrolladores y
-    analistas de software y multimedia".
-
-Sin embargo, algunos registros no tienen ningún tipo de relación con la
-codificación.
+```{r}
+data %>% filter(ocupacion %in% c("9996", "9997", "9999", "99999.05", "99999.04", "9998", "99999.07", "99999.01", "9994", "9995", "99999.06", "99999.03")) %>% count(ocupacion)
+```
 
 ```{r}
 # Limpieza de datos y extracción de los primeros dos dígitos
 data <- data %>%
   mutate(
     ocupacion = case_when(
-      ocupacion %in% c(9996, 9997, 9999, 99999.05, 99999.04, 9998, 99999.07, 99999.01, 9994, 9995, 99999.06, 99999.03) ~ NA_character_,
-      TRUE ~ as.character(ocupacion)),
-    
-    # Extraer solo los primeros dos dígitos del código
-    ocupacion = substr(ocupacion, 1, 1))
+      ocupacion %in% c("9996", "9997", "9999", "99999.05", "99999.04", "9998", "99999.07", "99999.01", "9994", "9995", "99999.06", "99999.03") ~ NA_character_,
+      TRUE ~ ocupacion))
+```
 
+Luego, se observa que algunos códigos no tienen los dígitos completos. Dado que se cuenta con una base auxiliar con las 676 ocupaciones posibles (código de 5 dígitos), se buscan los valores de nuestra base que no coinciden o no tiene similitud con la lista de códigos oficiales 
+
+```{r, warning=FALSE, message=FALSE}
+CUOC <- load_data("CUOC.csv", type = "auxiliary")
+colnames(CUOC) <- c("codigo","ocupacion","descripcion")
+# Convertir a data.table
+CUOC <- as.data.table(CUOC)
+
+# Extraer la codificación para cada grupo y subgrupo de la jerarquía
+CUOC <- CUOC %>%  select(codigo)
+CUOC <- CUOC[, .(
+  prefix2 = substr(codigo, 1, 2),
+  prefix3 = substr(codigo, 1, 3),
+  prefix4 = substr(codigo, 1, 4),
+  prefix5 = substr(codigo, 1, 5)
+), by = codigo]
+
+# Pasar CUOC a formato largo (prefijo por fila): Se tiene como resultado los 2,3,4,5 dígitos de cada código oficial
+CUOC <- melt(CUOC,
+    id.vars = "codigo",
+    measure.vars = patterns("^prefix"),
+    value.name = "prefix")[, .(codigo, prefix)]
 ```
 
 ```{r}
-# Cargar y filtrar la base de datos CIUO
-CIUO <- load_data("CIUO88.xlsx", type = "auxiliary")
-CIUO <- CIUO %>% filter(Level == "1")
+# Buscar valores en ocupacion que no están en ninguno de los prefijos de los códigos oficiales
+data %>% filter(!ocupacion %in% CUOC$prefix) %>%  count(ocupacion)
 ```
+Estos códigos se convierten en NA, a excepción de los valores `110`, `1100` `210` y `2100`, ya que por la lectura de los datos puede que se haya omitido el cero inicial. De ser así, de acuerdo a la codificación pueden corresponder a *oficiales y suboficiales de las Fuerzas Militares*, respectivamente. A estos casos se cambian para que tenga el dígito inicial
 
 ```{r}
-# Verificación de si el código de ocupación está en CIUO
-data <- data %>%
-  mutate(
-    ocupacion = ifelse(sapply(ocupacion, function(ocup) {
-      any(grepl(paste0("^", ocup), CIUO$`ISCO 08 Code`))  # Verificar si el código de ocupación está en CIUO
-    }), ocupacion, NA)  # Si el código es válido, mantener ocupacion; si no, asignar NA
-  )
+data <- data %>%  mutate(ocupacion = case_when(
+  ocupacion %in% c("110","1100") ~ "01100",
+  ocupacion %in% c("210","2100") ~ "02100",
+  !ocupacion %in% CUOC$prefix ~ NA_character_,
+  TRUE ~ ocupacion
+))
+```
 
-# Verificación
+Así, esta variable queda con
+`r sum(is.na(data$ocupacion) | data$ocupacion == "")` celdas vacías.
+Pero puede servir para completar información de los niveles 26 (Otro) y
+33 (Ninguna) de la variable **actividad**. Es importante resaltar que
+esta variable se pide en la ficha de datos básicos mientras que
+actividad en la ficha del evento.
+
+```{r}
+aux <- data %>% count(ocupacion)
+```
+
+
+
+Pero antes, se extrae de cada valor en ocupacion el primer dígito y luego se cambia el valor por el nombre del gran grupo correspondiente. Esto teniendo en cuenta que los valores no están tomando código completos y puede generar mucha cantidad de niveles que representen incluso el mismo gran grupo o subgrupo
+
+```{r}
+ocupaciones <- c(
+  "0" = "Fuerzas militares",
+  "1" = "Directores y gerentes",
+  "2" = "Profesionales, científicos e intelectuales",
+  "3" = "Técnicos y profesionales del nivel medio",
+  "4" = "Personal de apoyo administrativo",
+  "5" = "Trabajadores de los servicios y vendedores de comercios y mercados",
+  "6" = "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
+  "7" = "Oficiales, operarios, artesanos y oficios relacionados",
+  "8" = "Operadores de instalaciones y máquinas y emsambladores",
+  "9" = "Ocupaciones elementales"
+)
+
+data <- data %>% mutate(ocupacion = ocupaciones[str_sub(ocupacion, 1, 1)])
 summary(as.factor(data$ocupacion))
 ```
 
 ### Actividad
 
-La variable **actividad** toma los valores de: (13) Líderes(as) cívicos, (24) Estudiante, (26) Otro, (28) Trabajador(a) domestico(a), (29) Persona en situación de prostitución, (30)     Campesino/a, (31) Persona dedicada al cuidado del hogar, (32) Persona que cuida a otras y (33) Ninguna
+De acuerdo al diccionario, la variable **actividad** toma los valores de: (13) Líderes(as) cívicos, (24) Estudiante, (26) Otro, (28) Trabajador(a) domestico(a), (29) Persona en situación de prostitución, (30)  Campesino/a, (31) Persona dedicada al cuidado del hogar, (32) Persona que cuida a otras y (33) Ninguna.
 
 ```{r}
-# Resumen de las variables que pueden ayudar a completar actividad
+summary(as.factor(data$actividad))
+```
+Sin embargo, se observa que está tomando valores como `8`,`15`,`16`, `17`, que corresponde a reciclador(a), maestro(a),servidor(a) público y fuerza pública, respectivamente segú fichas de notificación más antiguas. Estos casos se cambian a valor `(26) Otro` por no tener una categoría semejante en los niveles definidos en el diccionario y los valores inconsistentes como `1` y `43813` se cambian a NA
 
-summary(as.factor(data$ama_de_cas))
-summary(as.factor(data$tra_sexual))
-summary(as.factor(data$campesino))
+```{r}
+data_aux <- data %>% mutate(actividad = case_when(
+  actividad %in% c("43813","1") ~ NA_character_,
+  actividad %in% c("8","15","16", "17") ~ "26",
+  TRUE ~ actividad  
+))
 ```
 
+Adicional a esta variable, se encuentran 3 más que pueden ayudar a completar actividad. Estas variables están presenten en la base del 2013 y toman como valores `1` o `2` para indicar si la víctima es o no la respectiva actividad, pero con esta información se asigna el valor correspondiente a la variable **actividad**, ya que esta última variable no está presente en el año 2013:
+
+
+-   **ama_de_cas**
+```{r}
+# Resumen de las variables que pueden ayudar a completar actividad
+summary(as.factor(data$ama_de_cas))
+```
+
+-   **tra_sexual**
+```{r}
+summary(as.factor(data$tra_sexual))
+```
+
+-   **campesino**
+```{r}
+summary(as.factor(data$campesino))
+```
+La cantidad de casos en los que se completó información porque **actividad** era NA y alguna de las otras variables tomaba un valor es:
 ```{r}
 # Filtrar registros donde 'actividad' es NA y 'ama_de_cas' o 'tra_sexual' tienen valores
-data %>% filter(is.na(actividad) & (!is.na(ama_de_cas)|!is.na(campesino)|!is.na(tra_sexual))) %>% select(actividad,ama_de_cas, tra_sexual, campesino)
+data %>% filter(is.na(actividad) & (!is.na(ama_de_cas)|!is.na(campesino)|!is.na(tra_sexual))) %>% select(actividad,ama_de_cas, tra_sexual, campesino) %>% nrow()
 ```
 
 ```{r}
 # Depuración de la variable actividad
-data <- data %>%
+data_aux <- data_aux %>%
   mutate(
-    # Reemplazar valores no válidos en 'actividad' por NA
-    actividad = case_when(
-      actividad %in% c(13, 24, 26, 28, 29, 30, 31, 32, 33) ~ as.character(actividad),  # Valores válidos
-      TRUE ~ NA_character_  # Reemplazar valores no válidos con NA
-    ),
-    
     # Completar la variable 'actividad' basada en 'ama_de_cas' y 'tra_sexual'
     actividad = case_when(
       is.na(actividad) & ama_de_cas == 1 ~ "31",  # Si 'ama_de_cas' es 1, asignar "31" (Persona dedicada al cuidado del hogar)
@@ -1335,18 +1406,14 @@ data <- data %>%
       TRUE ~ actividad  # Mantener los valores ya presentes en 'actividad'
     )
   )
-
-# Verificar la distribución de los valores en 'actividad' después de la depuración
-summary(as.factor(data$actividad))
-
 ```
+
+Luego, se cambia cada nivel por el nombre del indicativo correspondiente
 
 ```{r}
 # Convertir 'actividad' a carácter antes de asignar las categorías descriptivas
-data <- data %>%
+data_aux <- data_aux %>%
   mutate(
-    actividad = as.character(actividad),  # Asegurarse de que 'actividad' es un carácter
-    
     # Asignar nombres descriptivos a los valores de 'actividad'
     actividad = case_when(
       actividad == "13" ~ "Líderes(as) cívicos",
@@ -1360,13 +1427,15 @@ data <- data %>%
       actividad == "33" ~ "Ninguna",
       TRUE ~ actividad  # Mantener los valores ya presentes en 'actividad'
     ))
-
-# Verificación final de la distribución de los valores en 'actividad'
-summary(as.factor(data$actividad))
 ```
 
 ```{r, include=FALSE}
-aux_nrow <- data %>% filter((actividad == "Ninguna" |
+summary(as.factor(data_aux$actividad))
+```
+
+
+```{r, include=FALSE}
+aux_nrow <- data_aux %>% filter((actividad == "Ninguna" |
                                actividad == "Otro") &
                               (!is.na(ocupacion) &
                                  ocupacion != "")) %>%
@@ -1374,29 +1443,12 @@ aux_nrow <- data %>% filter((actividad == "Ninguna" |
 ```
 
 Son `r aux_nrow` registros con valor "Otro" o "Ninguna" en **actividad**
-y que tienen valor en **ocupación**. Por lo tanto, se completa entre sí.
-Para evitar tantas categorías, se extrae el primer dígito que representa
-los 10 grupos principales de ocupaciones:
+y que tienen valor en **ocupación**. Por lo tanto, se completa entre sí. Para ello, algunas categorías de **actividad** se cambian a su nombre equivalente en la CIUO:
 
-```{r, echo=TRUE}
-ocupaciones <- c(
-  "0" = "Armed Forces Occupations",
-  "1" = "Managers",
-  "2" = "Professionals",
-  "3" = "Technicians and Associate Professionals",
-  "4" = "Clerical Support Workers",
-  "5" = "Service and Sales Workers",
-  "6" = "Skilled Agricultural, Forestry and Fishery Workers",
-  "7" = "Craft and Related Trades Workers",
-  "8" = "Plant and Machine Operators, and Assemblers",
-  "9" = "Elementary Occupations")
-```
-
-Algunas categorías se cambian a su nombre equivalente en la CIUO:
-
--   Maestro(a) a Professionals
--   Trabajador(a) doméstico(a) a Elementary Occupations
--   Campesino/a a Skilled Agricultural, Forestry and Fishery Workers
+-   Trabajador(a) doméstico(a) a Ocupaciones elementales
+-   
+-   Campesino/a a Agricultores y trabajadores calificados
+    agropecuarios,forestales y pesqueros
 
 ```{r}
 data <- data %>%
@@ -2113,14 +2165,12 @@ data %>%
 No hay discordancias.
 
 ```{r}
-data %>% count(cod_dpto_r,departamento_residencia)
+unique(data$departamento_residencia)
 ```
 
-#### Municipio
+#### Municipio:
 
-\*municipio_residencia **representa el nombre del departamento y**
-cod_mun_r\*\* su respectivo código. Este código está compuesto por los
-últimos tres dígitos del código Divipola para cada municipio
+**municipio_residencia** representa el nombre del departamento y **cod_mun_r** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
 
 1.  Primero se verifica que códigos no están en la lista oficial, se
     encontraron los siguientes:
@@ -2137,11 +2187,11 @@ Ese valor inconsistente se cambia a NA
 data <- data %>% mutate(cod_mun_n = if_else(cod_mun_n %in% c("S"), NA_character_,cod_mun_n))
 ```
 
-2.  Los municipios que no se encuentran en la lista son:
+2.  Se verifica que nombres no están en la lista oficial. Por ejemplo:
 
 ```{r}
 data %>%
-  filter(!str_to_lower(municipio_notificacion) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(cod_mun_n,municipio_notificacion,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop")
+  filter(!str_to_lower(municipio_notificacion) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(cod_mun_n,municipio_notificacion,departamento_notificacion) %>% summarise(cantidad = n(), .groups = "drop") %>% slice_sample(n=10)
 ```
 
 ```{r}
@@ -2160,6 +2210,8 @@ data <- data %>%
 data <- data %>% select(-nombre_municipio)
 ```
 
+La mayoría de inconsistencias corresponden a diferencia en escritura, por lo tanto, se modifica la escritura igual a la lista oficial
+
 3.  Verificar concordancia entre código y nombre
 
 ```{r}
@@ -2172,8 +2224,10 @@ data %>%
   count(cod_mun_n, municipio_notificacion,nombre_municipio, name = "cantidad")
 ```
 
+No hay discordancias.
+
 ```{r}
-data %>% count(municipio_notificacion,cod_mun_n,departamento_notificacion)
+unique(municipio_notificacion)
 ```
 
 ### Tipo de seguridad social
@@ -2235,23 +2289,29 @@ data <- data %>% mutate(ac_mental = if_else(ac_mental %in% c("24","31"), NA, ac_
 
 ### Laboratorios
 
-En la base se encuentran tres variables que representan cada uno si se
-realizó o no un exámen de laboratorio: Profilaxis ITS-VIH (**sp_its**),
+En la base se encuentran tres variables que representan si se
+realizó o no un exámen de laboratorio específico: Profilaxis ITS-VIH (**sp_its**),
 Hepatitis B (**prof_hep_b**) y Profilaxis Otras ITS (**prof_otras**).
 Sin embargo, estas variables aplican únicamente para los casos donde la
 modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10
 = Trata de personas y 14 = Otras violencias sexuales
 
-```{r}
-data %>% count(sp_its, def_naturaleza)
-```
+-   **Profilaxis ITS-VIH:**
 
 ```{r}
-data %>% count(prof_hep_b, def_naturaleza)
+data %>% filter(!is.na(def_naturaleza)) %>% count(sp_its, def_naturaleza) %>% kable()
 ```
 
+-   **Hepatitis B:**
+
 ```{r}
-data %>% count(prof_otras, def_naturaleza)
+data %>% filter(!is.na(def_naturaleza)) %>% count(prof_hep_b, def_naturaleza) %>% kable()
+```
+
+-   **Profilaxis Otras ITS:**
+
+```{r}
+data %>% filter(!is.na(def_naturaleza)) %>% count(prof_otras, def_naturaleza) %>% kable()
 ```
 
 Se cambia a NA los valores incorrectos y a "No aplica" los casos de
@@ -2278,7 +2338,7 @@ modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10
 = Trata de personas y 14 = Otras violencias sexuales
 
 ```{r}
-data %>% count(ac_anticon, def_naturaleza)
+data %>% filter(!is.na(def_naturaleza)) %>% count(ac_anticon, def_naturaleza)
 ```
 
 Se cambia a NA los valores incorrectos y a "No aplica" los casos de
@@ -2301,7 +2361,7 @@ Explotación sexual, 10 = Trata de personas y 14 = Otras violencias
 sexuales
 
 ```{r}
-data %>% count(ac_ive, def_naturaleza)
+data %>% filter(!is.na(def_naturaleza)) %>% count(ac_ive, def_naturaleza)
 ```
 
 Se cambia a NA los valores incorrectos y a "No aplica" los casos de
@@ -2380,7 +2440,7 @@ data <- data %>% select(-r_protec)
 ### Recolección evidencia medicina legal
 
 ```{r}
-data %>% count(def_naturaleza,evi_mlegal)
+data %>% filter(!is.na(def_naturaleza)) %>% count(def_naturaleza,evi_mlegal) %>% kable()
 ```
 
 Esta variable indica si se recolectó o no evidencia médico legal y solo
@@ -2419,10 +2479,6 @@ data <- data %>% mutate(
     TRUE ~ con_fin
   )
 )
-```
-
-```{r}
-colnames(data)
 ```
 
 ## Valores faltantes
