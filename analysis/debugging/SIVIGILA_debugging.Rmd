@@ -1248,8 +1248,7 @@ De acuerdo al diccionario esta variable indica la ocupación de la víctima a pa
 Ocupaciones(CIUO-88)*](https://ilostat.ilo.org/es/methods/concepts-and-definitions/classification-occupation/), la cual es utilizada a nivel internacional para clasificar las
 ocupaciones de manera estandarizada.
 
-El valor que toma el código puede ser de hasta 5 dígitos, con cada
-dígito añadiendo un nivel de precisión sobre la ocupación. El **primer dígito** indica la **gran grupo** o sector de ocupación. El **segundo y tercer dígito** proporcionan una **subdivisión** dentro de la categoría. El **cuarto dígito** indica el **grupo primario** de la ocupación y el **el quinto dígito** define de manera más precisa la **ocupación específica** dentro de esa subdivisión.
+El valor que toma el código puede ser de hasta 5 dígitos, con cada dígito añadiendo un nivel de precisión sobre la ocupación. El **primer dígito** indica el **gran grupo** o sector de ocupación. El **segundo y tercer dígito** proporcionan una **subdivisión** dentro de la categoría. El **cuarto dígito** indica el **grupo primario** de la ocupación y  **el quinto dígito** define de manera más precisa la **ocupación específica** dentro de esa subdivisión.
 
 Por ejemplo:
 
@@ -1309,7 +1308,7 @@ CUOC <- melt(CUOC,
 # Buscar valores en ocupacion que no están en ninguno de los prefijos de los códigos oficiales
 data %>% filter(!ocupacion %in% CUOC$prefix) %>%  count(ocupacion)
 ```
-Estos códigos se convierten en NA, a excepción de los valores `110`, `1100` `210` y `2100`, ya que por la lectura de los datos puede que se haya omitido el cero inicial. De ser así, de acuerdo a la codificación pueden corresponder a *oficiales y suboficiales de las Fuerzas Militares*, respectivamente. A estos casos se cambian para que tenga el dígito inicial
+Estos códigos se convierten en NA, a excepción de los valores `110`, `1100` `210` y `2100`, ya que por la lectura de los datos puede que se haya omitido el cero inicial. De ser así, de acuerdo a la codificación pueden corresponder a *oficiales y suboficiales de las Fuerzas Militares*, respectivamente. A estos casos se cambian su valor para que tenga el dígito inicial
 
 ```{r}
 data <- data %>%  mutate(ocupacion = case_when(
@@ -1327,32 +1326,6 @@ Pero puede servir para completar información de los niveles 26 (Otro) y
 esta variable se pide en la ficha de datos básicos mientras que
 actividad en la ficha del evento.
 
-```{r}
-aux <- data %>% count(ocupacion)
-```
-
-
-
-Pero antes, se extrae de cada valor en ocupacion el primer dígito y luego se cambia el valor por el nombre del gran grupo correspondiente. Esto teniendo en cuenta que los valores no están tomando código completos y puede generar mucha cantidad de niveles que representen incluso el mismo gran grupo o subgrupo
-
-```{r}
-ocupaciones <- c(
-  "0" = "Fuerzas militares",
-  "1" = "Directores y gerentes",
-  "2" = "Profesionales, científicos e intelectuales",
-  "3" = "Técnicos y profesionales del nivel medio",
-  "4" = "Personal de apoyo administrativo",
-  "5" = "Trabajadores de los servicios y vendedores de comercios y mercados",
-  "6" = "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
-  "7" = "Oficiales, operarios, artesanos y oficios relacionados",
-  "8" = "Operadores de instalaciones y máquinas y emsambladores",
-  "9" = "Ocupaciones elementales"
-)
-
-data <- data %>% mutate(ocupacion = ocupaciones[str_sub(ocupacion, 1, 1)])
-summary(as.factor(data$ocupacion))
-```
-
 ### Actividad
 
 De acuerdo al diccionario, la variable **actividad** toma los valores de: (13) Líderes(as) cívicos, (24) Estudiante, (26) Otro, (28) Trabajador(a) domestico(a), (29) Persona en situación de prostitución, (30)  Campesino/a, (31) Persona dedicada al cuidado del hogar, (32) Persona que cuida a otras y (33) Ninguna.
@@ -1360,7 +1333,7 @@ De acuerdo al diccionario, la variable **actividad** toma los valores de: (13) L
 ```{r}
 summary(as.factor(data$actividad))
 ```
-Sin embargo, se observa que está tomando valores como `8`,`15`,`16`, `17`, que corresponde a reciclador(a), maestro(a),servidor(a) público y fuerza pública, respectivamente segú fichas de notificación más antiguas. Estos casos se cambian a valor `(26) Otro` por no tener una categoría semejante en los niveles definidos en el diccionario y los valores inconsistentes como `1` y `43813` se cambian a NA
+Sin embargo, se observa que está tomando valores como `8`,`15`,`16`, `17`, que corresponde a reciclador(a), maestro(a),servidor(a) público y fuerza pública, respectivamente, según fichas de notificación más antiguas. Estos casos se cambian a valor `(26) Otro` por no tener una categoría semejante en los niveles definidos en el diccionario, y los valores inconsistentes como `1` y `43813` se cambian a NA
 
 ```{r}
 data_aux <- data %>% mutate(actividad = case_when(
@@ -1388,6 +1361,7 @@ summary(as.factor(data$tra_sexual))
 ```{r}
 summary(as.factor(data$campesino))
 ```
+
 La cantidad de casos en los que se completó información porque **actividad** era NA y alguna de las otras variables tomaba un valor es:
 ```{r}
 # Filtrar registros donde 'actividad' es NA y 'ama_de_cas' o 'tra_sexual' tienen valores
@@ -1396,7 +1370,7 @@ data %>% filter(is.na(actividad) & (!is.na(ama_de_cas)|!is.na(campesino)|!is.na(
 
 ```{r}
 # Depuración de la variable actividad
-data_aux <- data_aux %>%
+data <- data %>%
   mutate(
     # Completar la variable 'actividad' basada en 'ama_de_cas' y 'tra_sexual'
     actividad = case_when(
@@ -1408,11 +1382,62 @@ data_aux <- data_aux %>%
   )
 ```
 
-Luego, se cambia cada nivel por el nombre del indicativo correspondiente
+
+```{r, include=FALSE}
+aux_nrow <- data %>% filter((actividad == "33" |
+                               actividad == "26" | is.na(actividad)) &
+                              (!is.na(ocupacion) &
+                                 ocupacion != "")) %>%
+nrow()
+```
+
+Luego, son `r aux_nrow` registros con valor "Otro", "Ninguna" o NA en **actividad**
+y que tienen valor en **ocupación**. Por lo tanto, se puede completar entre sí. Pero hay que tener en cuenta que **actividad** tiene actividades que pueden estar incluídas dentro de algún grupo de los representados en la variable **ocupacion**: 
+
+-   Líderes civicos en (11140) dirigentes de organizaciones con un interés específico (partidos políticos, sindicatos y organizaciones sociales) 
+-   Trabajador(a) doméstico(a) en (91110) personal de servicio doméstico
+-   Persona en situación de prostitución en (51690) otros trabajadores de servicios personales no clasificados en otras ocupaciones
+-   Campesino/a en (6) Agricultores y trabajadores calificados agropecuarios, forestales y pesqueros
+-   Personas que cuidan a otros en (532) trabajadores de los cuidados personales en servicios de salud
+
+Entonces lo que se hace es que en los casos donde **actividad** es NA, `otro` o `ninguna` y está tomando alguno de estos valores en **ocupacion**, se asigna  a **actividad** su equivalente en **ocupacion**. Por ejemplo: si **ocupacion** es `51690` se asigna a **actividad** `29`. 
+
+**Nota:** esta acción se hace pensando en que las categorías ya definidas en **actividad** son relevantes bajo el contexto del problema entonces puede influir en los resultados si al completar generalizamos con categorías como las definidas en el primer dígito de **ocupacion**
 
 ```{r}
-# Convertir 'actividad' a carácter antes de asignar las categorías descriptivas
-data_aux <- data_aux %>%
+data <- data %>% mutate(actividad = case_when(
+  (actividad == "33" | actividad == "26" | is.na(actividad)) & substr(ocupacion, 1, 4) == "1114" ~ "13",
+  (actividad == "33" | actividad == "26" | is.na(actividad)) & substr(ocupacion, 1, 4) == "9111" ~ "28",
+  (actividad == "33" | actividad == "26" | is.na(actividad)) & substr(ocupacion, 1, 1) == "6" ~ "30",
+  (actividad == "33" | actividad == "26" | is.na(actividad)) & substr(ocupacion, 1, 3) == "532" ~ "32",
+  (actividad == "33" | actividad == "26" | is.na(actividad)) & substr(ocupacion, 1, 5) == "5169" ~  "29",
+  TRUE ~ actividad
+))
+```
+
+Ahora, en caso de que **ocupacion** no tenga equivalente en las categorías **actividad**, se deja el valor de **ocupacion** pero antes para evitar muchas más categorías, se extrae de cada código el primer dígito para trabajar únicamente con el gran grupo de la clasificación de ocupaciones y luego se cambia el valor de **actividad** por el nombre del grupo 
+
+```{r}
+ocupaciones <- c(
+  "0" = "Fuerzas militares",
+  "1" = "Directores y gerentes",
+  "2" = "Profesionales, científicos e intelectuales",
+  "3" = "Técnicos y profesionales del nivel medio",
+  "4" = "Personal de apoyo administrativo",
+  "5" = "Trabajadores de los servicios y vendedores de comercios y mercados",
+  "6" = "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros",
+  "7" = "Oficiales, operarios, artesanos y oficios relacionados",
+  "8" = "Operadores de instalaciones y máquinas y emsambladores",
+  "9" = "Ocupaciones elementales"
+)
+
+data <- data %>% mutate(actividad = if_else((actividad == "33" | actividad == "26" | is.na(actividad)) & !is.na(ocupacion),ocupaciones[str_sub(ocupacion, 1, 1)],actividad))
+```
+
+Finalmente, se cambia cada categoría de **actividad** por el nombre del indicativo correspondiente y se elimina la variable **ocupacion**
+
+```{r}
+data <- data %>%
   mutate(
     # Asignar nombres descriptivos a los valores de 'actividad'
     actividad = case_when(
@@ -1430,42 +1455,6 @@ data_aux <- data_aux %>%
 ```
 
 ```{r, include=FALSE}
-summary(as.factor(data_aux$actividad))
-```
-
-
-```{r, include=FALSE}
-aux_nrow <- data_aux %>% filter((actividad == "Ninguna" |
-                               actividad == "Otro") &
-                              (!is.na(ocupacion) &
-                                 ocupacion != "")) %>%
-  nrow()
-```
-
-Son `r aux_nrow` registros con valor "Otro" o "Ninguna" en **actividad**
-y que tienen valor en **ocupación**. Por lo tanto, se completa entre sí. Para ello, algunas categorías de **actividad** se cambian a su nombre equivalente en la CIUO:
-
--   Trabajador(a) doméstico(a) a Ocupaciones elementales
--   
--   Campesino/a a Agricultores y trabajadores calificados
-    agropecuarios,forestales y pesqueros
-
-```{r}
-data <- data %>%
-  mutate(
-    actividad = case_when(
-      # Si 'actividad' es "Ninguna" o "Otro", asignar el primer dígito de 'ocupacion'
-      (actividad == "Ninguna" | actividad == "Otro") & (!is.na(ocupacion) & ocupacion != "") ~ 
-        ocupaciones[str_sub(ocupacion, 1, 1)],  
-      
-      # Cambiar valores específicos de 'actividad' por sus equivalentes CIUO
-      actividad == "Maestro(a)" ~ "Professionals",
-      actividad == "Trabajador(a) doméstico(a)" ~ "Elementary Occupations",
-      actividad == "Campesino/a" ~ "Skilled Agricultural, Forestry and Fishery Workers",
-      
-      # De lo contrario, mantener el valor original de 'actividad'
-      TRUE ~ actividad))
-
 summary(as.factor(data$actividad))
 ```
 
