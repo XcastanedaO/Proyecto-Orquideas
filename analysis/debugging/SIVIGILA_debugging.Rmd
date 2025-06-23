@@ -640,12 +640,12 @@ Se cuenta con el código (**nacionalidad**) y nombre de la nacionalidad
 pertenece la víctima según su documento de identificación.
 
 ```{r}
-nrow_data <- data %>% filter(is.na(nacionalidad) | is.na(nombre_nacionalidad)) %>% nrow()
+nrow_aux <- data %>% filter(is.na(nacionalidad) | is.na(nombre_nacionalidad)) %>% nrow()
 ```
 
-Sin embargo, `r nrow_data` registros tienen información faltante en
+Sin embargo, `r nrow_aux` registros tienen información faltante en
 ambas variables, lo que corresponde a un
-`r round((nrow_data*100)/nrow(data),2)`% de la base de datos. Dado que
+`r round((nrow_aux*100)/nrow(data),2)`% de la base de datos. Dado que
 es un porcentaje alto y se cuenta con lugar de residencia para rastrear
 a la víctima, se concluye que es preferible eliminar estas dos columnas
 a eliminar esa cantidad de registros
@@ -1384,14 +1384,14 @@ data <- data %>%
 
 
 ```{r, include=FALSE}
-aux_nrow <- data %>% filter((actividad == "33" |
+nrow_aux <- data %>% filter((actividad == "33" |
                                actividad == "26" | is.na(actividad)) &
                               (!is.na(ocupacion) &
                                  ocupacion != "")) %>%
 nrow()
 ```
 
-Luego, son `r aux_nrow` registros con valor "Otro", "Ninguna" o NA en **actividad**
+Luego, son `r nrow_aux` registros con valor "Otro", "Ninguna" o NA en **actividad**
 y que tienen valor en **ocupación**. Por lo tanto, se puede completar entre sí. Pero hay que tener en cuenta que **actividad** tiene actividades que pueden estar incluídas dentro de algún grupo de los representados en la variable **ocupacion**: 
 
 -   Líderes civicos en (11140) dirigentes de organizaciones con un interés específico (partidos políticos, sindicatos y organizaciones sociales) 
@@ -1459,7 +1459,7 @@ summary(as.factor(data$actividad))
 ```
 
 ```{r}
-data <- data %>% select(-ocupacion)
+data <- data %>% select(-c(ocupacion,ama_de_cas,tra_sexual,campesino))
 ```
 
 ## Información del hecho
@@ -1808,6 +1808,11 @@ data <- data %>%
 data <- data %>% mutate(armas = if_else(armas %in% c(5, 6, 7, 8, 9, 10, 7300000),NA,armas))
 ```
 
+```{r}
+data <- data %>% select(-c(otra_arma,otro_mec,cual_o_mec,arma,mecanismo_utilizado_para_la_agresion))
+```
+
+
 #### Quemaduras:
 
 este conjunto de variables deben tomar valor en caso de que el mecanismo
@@ -2034,9 +2039,9 @@ no se pregunta esto. Así, la variable tiene bastantes valores faltantes,
 por lo tanto es necesario eliminarla del análisis.
 
 ```{r, include=FALSE}
-aux_data <- data %>% filter(year(data$fec_not) >= 2015)
+data_aux <- data %>% filter(year(data$fec_not) >= 2015)
 
-table(as.factor(aux_data$edad_agre),as.factor(year(aux_data$fec_not)))
+table(as.factor(data_aux$edad_agre),as.factor(year(data_aux$fec_not)))
 ```
 
 ```{r}
@@ -2159,7 +2164,7 @@ unique(data$departamento_residencia)
 
 #### Municipio:
 
-**municipio_residencia** representa el nombre del departamento y **cod_mun_r** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
+**municipio_notificacion** representa el nombre del departamento y **cod_mun_n** su respectivo código. Este código está compuesto por los últimos tres dígitos del código Divipola para cada municipio
 
 1.  Primero se verifica que códigos no están en la lista oficial, se
     encontraron los siguientes:
@@ -2216,7 +2221,7 @@ data %>%
 No hay discordancias.
 
 ```{r}
-unique(municipio_notificacion)
+unique(data$municipio_notificacion)
 ```
 
 ### Tipo de seguridad social
@@ -2395,7 +2400,7 @@ data <- data %>% mutate(inf_aut = ifelse(inf_aut %in% c("B","P","p","3","5"),NA_
 ```
 
 ```{r}
-data <- data %>% select(-c(inf_autpj,inf_autfis))
+data <- data %>% select(-any_of(c("inf_autpj", "inf_autfis")))
 ```
 
 Ahora bien, el diccionario de datos indica que la variable
@@ -2423,7 +2428,7 @@ data <- data %>% mutate(remit_prot = case_when(
 ```
 
 ```{r}
-data <- data %>% select(-r_protec)
+data <- data %>% select(-any_of("r_protec"))
 ```
 
 ### Recolección evidencia medicina legal
@@ -2470,9 +2475,160 @@ data <- data %>% mutate(
 )
 ```
 
+#### Causa básica de defunción:
+Esta variable corresponde al diagnóstico CIE-10
+[(Ver)](https://web.sispro.gov.co/WebPublico/Consultas/ConsultarDetalleReferenciaBasica.aspx?Code=CIE10)
+que ocasionó la muerte de la víctima y que está relacionado con el
+evento de interés. Toma un valor si la variable **con_fin\_** es igual a
+2 (muerto), el diccionario indica que en este caso es obligatorio registrar esta información
+
+```{r}
+unique(data$cbmte)
+```
+Primero, se verifica que códigos no son válidos utilizando como apoyo una base que contiene los códigos oficiales
+
+```{r}
+CIE10 <- load_data("CIE10.xlsx", type = "auxiliary")
+```
+
+```{r}
+data %>% filter(!cbmte %in% CIE10$Codigo) %>% count(cbmte)
+```
+Se convierten estos valores a NA porque no hay manera de corregirlos sin sesgar.
+
+```{r}
+data <- data %>% mutate(
+  cbmte = case_when(
+    !(cbmte %in% CIE10$Codigo) ~ NA_character_, 
+    TRUE ~ cbmte))
+
+data %>% count(con_fin,cbmte)
+```
+
+Luego, en los casos en que **con_fin (condición final)** es igual a 1 (vivo), se cambia el valor de **cbmte** por "No aplica" para evitar inconsistencias y valores faltantes que realmente no son
+
+```{r}
+data <- data %>% mutate(
+  cbmte = case_when(
+    !is.na(con_fin) & con_fin == "1" ~ "No aplica", 
+    TRUE ~ cbmte
+  )
+)
+```
+
 ## Valores faltantes
 
+Para analizar los valores faltantes es necesario excluir la variable **sem_ges** porque es un evento que depende de otro evento, entonces tendrá mucha información faltante que no necesariamente lo sea, solo que por ser variable numérica no es posible asignar un valor a los casos que no aplican sin que se vea afectado el análisis posterior de esta variable
+
+```{r}
+# Se quita también sem_ges_ porque son eventos que dependen de otro evento, entonces tendrán muchos NA pero no es porque falte info sino que no aplica
+data_aux <- data %>% select(-all_of(c("sem_ges")))
+```
+
+```{r, echo=FALSE}
+# Buscar valores faltantes y celdas vacias ("")
+na_empty <- data.frame(
+  Column = names(data_aux),
+  total_na = sapply(data_aux, function(col)
+    sum(is.na(col))),
+  percent_na = sapply(data_aux, function(col)
+    round(sum(is.na(
+      col
+    )) / nrow(data_aux) * 100, 2)),
+    total_empty = sapply(data_aux, function(col)
+    sum(col == "", na.rm = TRUE)),
+  percent_empty = sapply(data_aux, function(col)
+    round(
+      sum(col == "", na.rm = TRUE) / nrow(data_aux) * 100, 2
+    )),
+  row.names = NULL
+)
+
+na_empty <- na_empty %>%
+  filter(total_na > 0 | total_empty > 0) %>% arrange(desc(percent_na))
+
+na_empty
+```
+
+```{r}
+NA_sem_ges <- data %>% filter(
+  (gp_gestan == 1 & is.na(sem_ges_))
+) %>% nrow()
+```
+
+Con respecto a la variable **sem_ges\_**, que toman un valor solo si la
+víctima estaba embarazada, `r NA_sem_ges` registros no cuentan con un
+valor en ella
+
+De acuerdo a lo anterior, son `r sum(na_empty$total_na) + NA_sem_ges`
+celdas NA y `r sum(na_empty$total_empty)` celdas que fueron definidas
+como vacías poniendo "".
+
+```{r, include=FALSE}
+# Filtrar filas con uno o más valores faltantes o celdas vacias
+row_na_empty <- data %>% 
+  filter(if_any(everything(), ~ is.na(.)) |
+           (gp_gestan == 1 & is.na(sem_ges_)))
+# %>%  nrow()
+```
+
+Para un total de `r nrow(row_na_empty)` registros con valores faltantes
+y celdas vacías, lo que corresponde al
+`r round((nrow(row_na_empty)*100)/nrow(aux_data),2)`% de la base de
+datos. Sin embargo, como hay columnas relacionadas, algunas celdas de
+una columna pueden recibir un valor a partir de otra columna.
+
+
 ### Relacionar valores
+
+#### Código país de residencia a partir de código departamento
+
+```{r}
+data %>% filter(is.na(cod_pais_r) & !is.na(cod_dpto_r)) %>% count(cod_pais_r,cod_dpto_r)
+```
+Todos los casos donde **cod_pais_r** es NA, corresponden a casos donde la víctima residía en Colombia, se cambia los valores faltantes al código `170`
+
+```{r}
+data <- data %>% mutate(cod_pais_r = if_else(is.na(cod_pais_r),"170",cod_pais_r))
+```
+
+#### Nombre del país de residencia a partir del código
+
+```{r}
+data %>% filter(is.na(pais_residencia) & !is.na(cod_pais_r)) %>% count(cod_pais_r,pais_residencia)
+```
+```{r}
+data <- data %>% mutate(pais_residencia = if_else(is.na(pais_residencia),"Colombia",pais_residencia))
+```
+
+#### Código municipio de residencia a partir del nombre
+```{r}
+data %>% filter(is.na(cod_mun_r) & !is.na(municipio_residencia)) %>% count(cod_mun_r,municipio_residencia,departamento_residencia)
+```
+Estos casos no se pueden completar porque no se conoce el departamento y en Colombia hay dos municipios con el mismo nombre
+
+#### Nombre del municipio de residencia a partir del código
+```{r}
+data %>% filter(is.na(municipio_residencia) & !is.na(cod_mun_r)) %>% count(cod_mun_r,municipio_residencia,departamento_residencia)
+```
+
+
+#### Código de departamento de residencia a partir de código municipio
+#### Nombre del departamento de residencia a partir de código departamento
+#### Código municipio de ocurrencia a partir de nombre
+#### Nombre municipio de ocurrencia a partir de código
+#### Código departamento de ocurrencia a partir de código municipio
+#### Nombre departamento de ocurrencia a partir de código
+#### Código municipio de notificación a partir de nombre municipio
+#### Nombre municipio de notificación a partir de código
+#### Código departamento notificación a partir de código municipio
+#### Nombre departamento notificación a partir de código
+#### Armas a partir de quemaduras, cla_gra, ext_que
+#### Grupos poblacionales
+#### Condición final a partir de cbmte
+#### Pertenencia étnica a partir de nom_grupo
+#### semana de gestación a partir de gp_gestan
+
 
 ## Registros duplicados
 
@@ -2486,3 +2642,5 @@ data <- data %>% mutate(
 Es importante mencionar que en las bases de datos proporcionadas no hay
 información respecto al parentesco con la víctima, como sí la hay en
 MEData y se piden en las fichas de notificación.
+
+lugar de notificación es la que información más completa tiene
