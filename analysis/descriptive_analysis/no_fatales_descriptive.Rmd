@@ -1,0 +1,205 @@
+```{r}
+knitr::opts_chunk$set(echo=FALSE, message = FALSE, warning = FALSE)
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(janitor)
+library(explore)
+library(ggplot2)
+```
+
+
+Dada la depuración inicial, en el siguiente documento se procede a realizar los ajustes necesarios para enfocar los modelos que se desarrollarán.
+
+```{r}
+nf_data <- load_data("INMLCF_no_fatales_debugged_2015_2024_v2.csv", type = "interim")
+```
+
+```{r}
+nf_data <- nf_data %>%
+  mutate(across(
+    .fns = as.factor                     
+  ))
+```
+
+
+```{r}
+nf_data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
+```
+```{r}
+nf_data %>% colnames()
+```
+### Escolaridad
+```{r}
+table(nf_data$escolaridad) %>% sort()
+```
+
+```{r, echo=FALSE, results='markup'}
+nf_data %>%
+  count(escolaridad) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = escolaridad, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por escolaridad", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  escolaridad = case_when(
+    escolaridad == "Educación básica primaria" ~ "Educación básica primaria y secundaria",
+    escolaridad == "Educación básica secundaria o secundaria baja" ~ "Educación básica primaria y secundaria",
+    escolaridad == "Doctorado o equivalente" ~ "Educación superior",
+    escolaridad == "Educación técnica profesional y tecnológica" ~ "Educación superior",
+    escolaridad == "Especialización, maestría o equivalente" ~ "Educación superior",
+    escolaridad == "Universitario" ~ "Educación superior",
+    escolaridad == "Educación media o secundaria alta" ~ "Educación superior",
+    TRUE ~ escolaridad
+  )
+)
+```
+
+
+```{r, echo=FALSE}
+nf_data %>%
+  count(escolaridad) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = escolaridad, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por escolaridad", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+### Agresor
+
+```{r, echo=FALSE, results='markup'}
+nf_data %>%
+  count(agresor_ag) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  # filter(proporcion >= 2) %>%
+  ggplot(aes(x = agresor_ag, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por presunto agresor", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() +scale_x_discrete(labels = function(x) str_wrap(x, width = 30))
+
+```
+
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  agresor_ag = case_when(
+    agresor_ag == "Amigo(a)" ~ "Conocido",
+    TRUE ~ agresor_ag
+  )
+)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% filter(agresor_ag %in% c("Pareja","Familiar","Ex-pareja","Conocido")) 
+```
+
+```{r, echo=FALSE, results='markup'}
+nf_data %>%
+  count(agresor_ag) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  # filter(proporcion >= 2) %>%
+  ggplot(aes(x = agresor_ag, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por presunto agresor", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() +scale_x_discrete(labels = function(x) str_wrap(x, width = 30))
+
+```
+
+### Escenario del hecho
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  escenario_del_hecho = case_when(
+    escenario_del_hecho != "vivienda" ~ "Espacios sociales",
+    TRUE ~ escenario_del_hecho
+  )
+)
+```
+
+```{r, echo=FALSE}
+nf_data %>%
+  count(escenario_del_hecho) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  # filter(proporcion >= 2) %>%
+  ggplot(aes(x = escenario_del_hecho, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por escenario_del_hecho", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() +scale_x_discrete(labels = function(x) str_wrap(x, width = 30))
+```
+
+```{r}
+table(nf_data$def_naturaleza)
+```
+### Circunstancia del hecho 
+
+```{r}
+nf_data <- nf_data %>% filter(def_naturaleza %in% c("Violencia sexual","Violencia interpersonal","Violencia intrafamiliar","Violencia sociopolítica")) 
+```
+
+
+```{r}
+nf_data %>%
+  count(def_naturaleza) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = def_naturaleza, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por contexto del hecho", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+nf_data %>% filter(pais_de_nacimiento_de_la_victima =="Venezuela") %>% group_by(def_naturaleza) %>% summarise(n=n())
+```
+
+```{r}
+nf_data %>% filter(pais_de_nacimiento_de_la_victima =="Venezuela") %>% explore()
+```
+
+
+

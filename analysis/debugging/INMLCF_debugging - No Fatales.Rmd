@@ -528,6 +528,11 @@ Se observa que efectivamente esta variable registra solo localidades y
 que para esta base solo está registrando localidades de Bogotá.
 
 ```{r}
+n_f_data %>% filter(!is.na(localidad_del_hecho) & localidad_del_hecho != "No aplica" & localidad_del_hecho != "Sin información") %>% select(departamento_del_hecho_dane,municipio_del_hecho_dane,localidad_del_hecho) %>% unique()
+```
+
+
+```{r}
 aux_data <- n_f_data %>% filter(!is.na(localidad_del_hecho) & localidad_del_hecho != "No aplica") %>% select(departamento_del_hecho_dane,municipio_del_hecho_dane,localidad_del_hecho)
 
 unique(aux_data$departamento_del_hecho_dane)
@@ -1118,6 +1123,7 @@ n_f_data <- n_f_data %>%
       ) ~ "Violencia intrafamiliar",
       
       circunstancia_del_hecho %in% c(
+        "Venganza o ajuste de cuentas",
         "Ajuste de cuentas",
         "Celos",
         "Abuso de autoridad",
@@ -1187,7 +1193,7 @@ n_f_data <- n_f_data %>%
       ) ~ "Violencia sociopolítica",
       
       circunstancia_del_hecho %in% c(
-       "Acceso carnal violento",  
+      "Acceso carnal violento",  
       "Acceso carnal violento/acto sexual violento con persona protegida",  
       "Agresión o ataque sexual",  
       "Explotación sexual y comercial",  
@@ -1207,7 +1213,10 @@ n_f_data <- n_f_data %>%
       "Tráfico o trata de personas",  
       "Violencia sexual en el contexto del conflicto armado",
       "Presunta explotación sexual de niños, niñas o adolescentes",
-      "Presunta explotación sexual y comercial"
+      "Presunta explotación sexual y comercial",
+      "Abuso dentro de establecimiento prestador de servicios de salud",
+      "Aborto forzado",
+      "Embarazo forzado"
       ) ~ "Violencia sexual",
       
       circunstancia_del_hecho == "Sin información" ~ "Sin informacion",
@@ -1228,19 +1237,98 @@ n_f_data <- n_f_data %>%
 ```{r}
 n_f_data %>% group_by(def_naturaleza) %>% summarise(n=n())
 ```
+```{r}
+n_f_data %>% filter(def_naturaleza %in% c("Aborto forzado", "Cambios forzados en la corporalidad y la performatividad del género","Embarazo forzado", "Matrimonio forzado", "Presunta responsabilidad en la prestación de servicios de salud","Abuso dentro de establecimiento prestador de servicios de salud" )) %>% group_by(bd, def_naturaleza, contexto_de_violencia) %>% summarise(n=n())
+```
 
+```{r}
+n_f_data %>% filter(def_naturaleza %in% c("Sin informacion" )) %>% group_by(contexto_de_violencia) %>% summarise(n=n())
+```
+
+```{r}
+n_f_data %>% filter(def_naturaleza %in% c("Otra" )) %>% group_by(contexto_de_violencia) %>% summarise(n=n())
+```
+No se desagrega los niveles de def_naturaleza de Otra y Sin Información según su contexto de violencia, porque por ahora se trabajará los tipos de violencia como circunstancia y no como contexto.
 
 ```{r}
 n_f_data %>% filter(contexto_de_violencia=="Violencia intrafamiliar") %>% group_by(def_naturaleza) %>% summarise(cantidad = n())
 ```
 
---------------
 
 
-```
+
 
 ```{r}
 # f_final_data %>% filter(def_naturaleza == "Violencia intrafamiliar") %>% group_by(circuns) %>% summarise(cantidad = n())
 ```
 
+```{r}
+n_f_data
+```
+```{r}
+n_f_data %>%
+  filter(duplicated(.)) 
+```
+## Save data 
+```{r}
+n_f_data <- n_f_data %>%
+  mutate(across(
+    .fns = as.factor                     
+  ))
+```
+
+```{r}
+n_f_data %>% colnames()
+```
+
+```{r}
+n_f_data <- n_f_data %>%
+  select(
+    pais_de_nacimiento_de_la_victima,
+    grupo_de_edad_de_la_victima,
+    grupo_mayor_menor_de_edad,
+    ciclo_vital,
+    estado_civil,
+    escolaridad,
+    pertenencia_grupal,
+    pertenencia_etnica,
+    ano_del_hecho,
+    mes_del_hecho,
+    dia_del_hecho,
+    rango_de_hora_del_hecho_x_3_horas,
+    codigo_dane_departamento,
+    departamento_del_hecho_dane,
+    codigo_dane_municipio,
+    municipio_del_hecho_dane,
+    zona_del_hecho,
+    circunstancia_del_hecho,
+    def_naturaleza,
+    contexto_de_violencia,
+    intrafamiliar_sub,
+    mecanismo_causal,
+    escenario_del_hecho,
+    actividad_durante_el_hecho,
+    diagnostico_topografico_de_la_lesion,
+    dias_de_incapacidad_medicolegal,
+    sexo_del_presunto_agresor,
+    presunto_agresor,
+    agresor_ag,
+    bd,
+  )
+```
+
+```{r}
+save_data(n_f_data, "INMLCF_no_fatales_debugged_2015_2024_v2", type = "interim", format = "csv")
+```
+
+##
+
+```{r}
+st <- n_f_data  %>% group_by(def_naturaleza, contexto_de_violencia) %>% summarise(n=n())
+save_data(st, "contexto_violencia", type = "interim", format = "xlsx", fileEncoding = "UTF-8")
+```
+
+```{r}
+write.csv(st, "contexto_violencia.csv", fileEncoding = "UTF-8", row.names = FALSE)
+```
 

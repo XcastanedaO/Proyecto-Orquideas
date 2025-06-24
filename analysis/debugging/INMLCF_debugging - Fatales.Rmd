@@ -1125,6 +1125,9 @@ f_data <- f_data %>%
   )
 ```
 
+```{r}
+f_data %>% explore()
+```
 
 ## Base de datos depurada
 
