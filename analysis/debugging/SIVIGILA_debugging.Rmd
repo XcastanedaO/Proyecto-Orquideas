@@ -844,7 +844,7 @@ data <- data %>%
       str_detect(municipio_residencia, "^\\*\\s+[A-ZÁÉÍÓÚÑ\\s]+SIN MUNICIPIO$") ~ NA_character_,  
       str_detect(str_trim(municipio_residencia), "^EXTERIOR_[A-ZÁÉÍÓÚÑ ]+$") ~ "0",
       municipio_residencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO","MAYOTTE","MALTA","MONTSERRAT") ~ "0",
-      municipio_residencia %in% c("* PROCEDENCIA DESCONOCIDA","MUNICIPIO EXTRANJERO DESCONOCIDO","11") ~ NA_character_,
+      municipio_residencia %in% c("* PROCEDENCIA DESCONOCIDA","11","MUNICIPIO EXTRANJERO DESCONOCIDO") ~ NA_character_,
       municipio_residencia == "ARMENIA" & is.na(departamento_residencia) ~ NA_character_,
       municipio_residencia == "BELÉN DE BAJIRA" ~ "493",
       municipio_residencia == "MAPIRIPANA (CD)" ~ "343",
@@ -887,11 +887,12 @@ data <- data %>% mutate(municipio_residencia = case_when(
       is.na(pais_residencia) & !is.na(aux_p) & aux_p %in% str_to_lower(unique(pais_residencia)) ~ paste0("Mun[", str_to_title(str_extract(municipio_residencia, "(?<=EXTERIOR_).+")), "]"),
       
       # Casos que no permiten determinar el municipio
-      municipio_residencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO","MAYOTTE","MONTSERRAT","* PROCEDENCIA DESCONOCIDA","11","MUNICIPIO EXTRANJERO DESCONOCIDO") ~ NA_character_,
+      municipio_residencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO","* PROCEDENCIA DESCONOCIDA","11","MUNICIPIO EXTRANJERO DESCONOCIDO") ~ NA_character_,
       str_detect(municipio_residencia, "^\\*\\s+[A-ZÁÉÍÓÚÑ\\s]+SIN MUNICIPIO$") ~ NA_character_,
       str_detect(municipio_residencia, "^\\*\\s+.+\\.\\s+MUNICIPIO DESCONOCIDO$") ~ NA_character_,
       
       # Modificar valores de casos específicos
+      municipio_residencia == "MAYOTTE" ~ "Mun[Mayotte]",
       municipio_residencia == "MALTA" ~ "Mun[Malta]",
       municipio_residencia == "MONTSERRAT" ~ "Mun[Montserrat]",
       departamento_residencia == "Bogotá, D.c." & municipio_residencia %in% c("001","11001") ~ "Bogotá, D.c.",
@@ -1130,18 +1131,26 @@ gp_ <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",
              "gp_desmovi", "gp_psiquia", "gp_vic_vio")
 ```
 
-Por lo tanto, si alguno de los grupos listados es NA y **gp_otros**
-tiene valor igual a 1 (Sí), se cambia ese NA por 2 (No). Mientras que sí
-es NA y **gp_otros** tiene valor igual a 2 (No), se deja igual. El
-resultado es el siguiente:
+Por lo tanto, si todos los grupos son *2* se cambia la variable **gp_otros** a *1*. Pero en caso de que al menos un grupo sea *1* o NA, se deja igual **gp_otros**
 
 ```{r}
 data <- data %>%
-  mutate(across(all_of(gp_), ~ ifelse(is.na(.x) & gp_otros == 1, 2, .x)))
+  mutate(
+    sin_grupo = if_else(
+      # todas no son NA Y todas igual a 2
+      rowSums(is.na(across(all_of(gp_)))) == 0 & 
+        rowSums(across(all_of(gp_), ~ . == "1")) == 0,
+      TRUE, FALSE
+    ),
+    gp_otros = if_else(sin_grupo, "1", gp_otros)
+  ) %>%
+  select(-sin_grupo)
 ```
 
 ```{r}
-lapply(data[, c(gp_, "gp_otros")], table, useNA = "ifany")
+data %>% count(gp_discapa, gp_desplaz, gp_migrant, gp_carcela,  
+             gp_gestan, gp_indigen, gp_pobicfb, gp_mad_com, 
+             gp_desmovi, gp_psiquia, gp_vic_vio,gp_otros)
 ```
 
 ```{r}
@@ -1156,7 +1165,9 @@ esperado en tiempo de gestación.
 
 ```{r, include=FALSE}
 # Verificar que los valores estén en el rango
-data <- data %>% filter(( sem_ges >= 1 & sem_ges <= 45) | (gp_gestan != 1) | is.na(sem_ges))
+data <- data %>% mutate(sem_ges = if_else(gp_gestan == "2" & !is.na(sem_ges),NA,as.numeric(sem_ges)))
+
+data <- data %>% filter((sem_ges >= 1 & sem_ges <= 45) | (gp_gestan != 1) | is.na(sem_ges))
 ```
 
 #### Madre cabeza de familia:
@@ -1562,7 +1573,11 @@ unique(sort(data$municipio_ocurrencia))
 ```{r}
 data <- data %>% mutate(
   municipio_ocurrencia = case_when(
-    municipio_ocurrencia %in% c("COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR","* ANTIOQUIA. MUNICIPIO DESCONOCIDO","* CHOCO. MUNICIPIO DESCONOCIDO","* MAGDALENA. MUNICIPIO DESCONOCIDO","* MAGDALENA. MUNICIPIO DESCONOCIDO","ANTIOQUIA") ~ NA_character_,
+    municipio_ocurrencia %in% c("COLOMBIA - SIN ESPECIFICACIÓN ADICIONAL DE LUGAR","* ANTIOQUIA. MUNICIPIO DESCONOCIDO","* CHOCO. MUNICIPIO DESCONOCIDO","* MAGDALENA. MUNICIPIO DESCONOCIDO","* MAGDALENA. MUNICIPIO DESCONOCIDO","ANTIOQUIA","MUNICIPIO EXTRANJERO DESCONOCIDO","* EXTERIOR. PAÍS DESCONOCIDO","* PROCEDENCIA DESCONOCIDA","1","001") ~ NA_character_,
+    str_detect(municipio_ocurrencia, "^\\*\\s+.+\\.\\s+MUNICIPIO DESCONOCIDO$") ~ NA_character_,
+   str_detect(municipio_ocurrencia, "^\\*\\s+[A-ZÁÉÍÓÚÑ\\s]+SIN MUNICIPIO$") ~ NA_character_,  
+  municipio_ocurrencia == "BELÉN DE BAJIRA" ~ "Nuevo Belén De Bajirá",
+  municipio_ocurrencia == "MAPIRIPANA (CD)" ~ "Barrancominas",
     municipio_ocurrencia == "MEDELLIN" ~ "Medellín",
     municipio_ocurrencia == "ACACIAS" ~ "Acacías",
     municipio_ocurrencia == "FUSAGASUGA" ~ "Fusagasugá",
@@ -1629,15 +1644,6 @@ data %>%
 La mayoría de inconsistencias se debe a escritura entonces se corrige escritura y los casos donde se especifica que no se conoce el municipio se convierten a NA
 
 ```{r}
-data <- data %>% mutate(municipio_ocurrencia = case_when(
-  # Cambiar a NA casos inconsistentes o que indican falta de info
-  str_detect(municipio_ocurrencia, "^\\*\\s+.+\\.\\s+MUNICIPIO DESCONOCIDO$") ~ NA_character_,   str_detect(municipio_ocurrencia, "^\\*\\s+[A-ZÁÉÍÓÚÑ\\s]+SIN MUNICIPIO$") ~ NA_character_,  
-  municipio_ocurrencia == "BELÉN DE BAJIRA" ~ "Nuevo Belén De Bajirá",
-  municipio_ocurrencia == "MAPIRIPANA (CD)" ~ "Barrancominas",
-  municipio_ocurrencia %in% c("* EXTERIOR. PAÍS DESCONOCIDO","* PROCEDENCIA DESCONOCIDA","1","MUNICIPIO EXTRANJERO DESCONOCIDO","001") ~ NA_character_,
-      TRUE ~ str_to_title(municipio_ocurrencia)
-))
-
 data <- data %>% 
   left_join(
     DIVIPOLA %>% distinct(codigo_dane_municipio, .keep_all = TRUE) %>% select(codigo_dane_municipio,nombre_municipio),
@@ -1868,7 +1874,7 @@ summary(as.factor(data$cla_gra))
 
 ```{r}
 data <- data %>%
-  mutate(cla_gra = ifelse(armas %in% c(12, 13, 14), cla_gra, "No aplica"))
+  mutate(cla_gra = if_else(is.na(armas) | armas %in% c(12, 13, 14), cla_gra, "No aplica"))
 ```
 
 Finalmente, se encontró que la variable **ext_que** está tomando valores
@@ -1884,7 +1890,7 @@ summary(as.factor(data$ext_que))
 ```{r}
 data <- data %>%
   mutate(ext_que = case_when(ext_que == "31" ~ NA_character_,
-                             armas %in% c(12, 13, 14) ~ ext_que,
+                             is.na(armas) | armas %in% c(12, 13, 14) ~ ext_que,
                              TRUE ~ "No aplica"
   ))
 ```
@@ -2552,7 +2558,7 @@ na_empty
 
 ```{r}
 NA_sem_ges <- data %>% filter(
-  (gp_gestan == 1 & is.na(sem_ges_))
+  (gp_gestan == 1 & is.na(sem_ges))
 ) %>% nrow()
 ```
 
@@ -2568,28 +2574,124 @@ como vacías poniendo "".
 # Filtrar filas con uno o más valores faltantes o celdas vacias
 row_na_empty <- data %>% 
   filter(if_any(everything(), ~ is.na(.)) |
-           (gp_gestan == 1 & is.na(sem_ges_)))
+           (gp_gestan == 1 & is.na(sem_ges)))
 # %>%  nrow()
 ```
 
 Para un total de `r nrow(row_na_empty)` registros con valores faltantes
 y celdas vacías, lo que corresponde al
-`r round((nrow(row_na_empty)*100)/nrow(aux_data),2)`% de la base de
+`r round((nrow(row_na_empty)*100)/nrow(data_aux),2)`% de la base de
 datos. Sin embargo, como hay columnas relacionadas, algunas celdas de
 una columna pueden recibir un valor a partir de otra columna.
 
 
 ### Relacionar valores
 
+#### Código municipio de residencia a partir del nombre
+```{r}
+data %>% filter(is.na(cod_mun_r) & !is.na(municipio_residencia)) %>% count(cod_mun_r,municipio_residencia,departamento_residencia)
+```
+
+Estos casos no se pueden completar porque no se conoce el departamento y en Colombia hay dos municipios con el mismo nombre
+
+#### Nombre del municipio de residencia a partir del código
+```{r}
+data %>% filter(is.na(municipio_residencia) & !is.na(cod_mun_r)) %>% count(cod_mun_r,municipio_residencia,departamento_residencia)
+```
+Se asigna a estos casos donde la víctima residía en el extranjero un valor con la siguiente estructura: *Mun[#]* donde # representa el país definido en **departamento_residencia**
+
+```{r}
+data <- data %>%
+  mutate(
+    municipio_residencia = if_else(
+      is.na(municipio_residencia) & str_detect(departamento_residencia, "^Depto\\[.*\\]$"),
+      paste0("Mun[", str_replace(departamento_residencia, ".*\\[(.*)\\]$", "\\1"), "]"),
+      municipio_residencia
+    )
+  )
+```
+
+#### Código de departamento de residencia a partir de código municipio
+
+```{r}
+data %>% filter(is.na(cod_dpto_r) & !is.na(cod_mun_r)) %>% count(cod_dpto_r,cod_mun_r,municipio_residencia)
+```
+
+Todos los casos corresponden a residencia en el extranjero entonces se asigna el valor *0*
+
+```{r}
+data <- data %>% mutate(cod_dpto_r = if_else(
+  is.na(cod_dpto_r) & cod_mun_r == "0", "0",cod_dpto_r
+)) 
+```
+
+#### Nombre del departamento de residencia a partir de municipio
+
+```{r}
+data %>% filter(is.na(departamento_residencia) & !is.na(cod_dpto_r)) %>% count(cod_dpto_r,departamento_residencia,municipio_residencia)
+```
+Se asigna a estos casos donde la víctima residía en el extranjero un valor con la siguiente estructura: *Depto[#]* donde # representa el país definido en **municipio_residencia**
+
+```{r}
+data <- data %>%
+  mutate(
+    departamento_residencia = if_else(
+      is.na(departamento_residencia) & str_detect(municipio_residencia, "^Mun\\[.*\\]$"),
+      paste0("Depto[", str_replace(municipio_residencia, ".*\\[(.*)\\]$", "\\1"), "]"),
+      departamento_residencia
+    )
+  )
+```
+
+
 #### Código país de residencia a partir de código departamento
 
 ```{r}
 data %>% filter(is.na(cod_pais_r) & !is.na(cod_dpto_r)) %>% count(cod_pais_r,cod_dpto_r)
 ```
-Todos los casos donde **cod_pais_r** es NA, corresponden a casos donde la víctima residía en Colombia, se cambia los valores faltantes al código `170`
+
+La mayoría de casos donde **cod_pais_r** es NA, corresponden a casos donde la víctima residía en Colombia, se cambia los valores faltantes al código `170`. Los demás valores son casos de residencia en el exterior entonces se asigna el código correspondiente al país que se indica en **departamento_residencia**
 
 ```{r}
-data <- data %>% mutate(cod_pais_r = if_else(is.na(cod_pais_r),"170",cod_pais_r))
+data <- data %>% mutate(cod_pais_r = case_when(
+                        is.na(cod_pais_r) & cod_dpto_r != "0" ~ "170",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Afganistán]" ~ "004",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Albania]" ~ "008",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Anguila]" ~ "660",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Australia]" ~ "036",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Bangladesh]" ~ "050",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Belice]" ~ "084",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Bolivia]" ~ "068",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Brasil]" ~ "076",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Catar]" ~ "634",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Chile]" ~ "152",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Comoras]" ~ "174",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Ecuador]" ~ "218",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[El Salvador]" ~ "222",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[España]" ~  "724",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Estados Unidos De América]" ~ "840", 
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Francia]" ~  "250",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Isla Mauricio]" ~ "480",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Islas Feroe]" ~  "234",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Israel]" ~  "376",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Liberia]" ~  "430",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Malta]" ~  "470",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Martinica]" ~  "474",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Montserrat]" ~  "500",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[México]" ~ "484",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Nauru]" ~ "520",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Noruega]" ~ "578",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Nueva Caledonia]" ~ "540",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Perú]" ~ "604",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[República Democrática Del Congo]" ~ "180",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Santa Elena, Ascensión y Tristán de Acuña]" ~ "654",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Santa Lucía]" ~ "662",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Siria]" ~ "760",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Suiza]" ~ "756",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Uruguay]" ~ "858",
+                        is.na(cod_pais_r) &  departamento_residencia == "Depto[Venezuela]" ~ "862",
+                        TRUE ~ cod_pais_r
+                        ))
 ```
 
 #### Nombre del país de residencia a partir del código
@@ -2597,38 +2699,67 @@ data <- data %>% mutate(cod_pais_r = if_else(is.na(cod_pais_r),"170",cod_pais_r)
 ```{r}
 data %>% filter(is.na(pais_residencia) & !is.na(cod_pais_r)) %>% count(cod_pais_r,pais_residencia)
 ```
+
 ```{r}
-data <- data %>% mutate(pais_residencia = if_else(is.na(pais_residencia),"Colombia",pais_residencia))
+data <- data %>% mutate(pais_residencia = case_when(
+                        cod_pais_r == "170" ~ "Colombia",
+                        cod_pais_r != "170" ~ str_replace(departamento_residencia, ".*\\[(.*)\\]$", "\\1"),
+                        TRUE ~ pais_residencia
+                        ))
 ```
 
-#### Código municipio de residencia a partir del nombre
+#### Código municipio de ocurrencia 
+
 ```{r}
-data %>% filter(is.na(cod_mun_r) & !is.na(municipio_residencia)) %>% count(cod_mun_r,municipio_residencia,departamento_residencia)
+data %>% filter(is.na(cod_mun_o)) %>% count(cod_mun_o,municipio_ocurrencia)
 ```
-Estos casos no se pueden completar porque no se conoce el departamento y en Colombia hay dos municipios con el mismo nombre
+No se puede completar porque tanto código como nombre de municipio son NA a la vez
 
-#### Nombre del municipio de residencia a partir del código
-```{r}
-data %>% filter(is.na(municipio_residencia) & !is.na(cod_mun_r)) %>% count(cod_mun_r,municipio_residencia,departamento_residencia)
-```
-
-
-#### Código de departamento de residencia a partir de código municipio
-#### Nombre del departamento de residencia a partir de código departamento
-#### Código municipio de ocurrencia a partir de nombre
-#### Nombre municipio de ocurrencia a partir de código
-#### Código departamento de ocurrencia a partir de código municipio
 #### Nombre departamento de ocurrencia a partir de código
-#### Código municipio de notificación a partir de nombre municipio
-#### Nombre municipio de notificación a partir de código
-#### Código departamento notificación a partir de código municipio
-#### Nombre departamento notificación a partir de código
-#### Armas a partir de quemaduras, cla_gra, ext_que
-#### Grupos poblacionales
-#### Condición final a partir de cbmte
-#### Pertenencia étnica a partir de nom_grupo
-#### semana de gestación a partir de gp_gestan
 
+```{r}
+data %>% filter(is.na(departamento_ocurrencia) & !is.na(cod_mun_o)) %>% count(cod_mun_o,cod_dpto_o,departamento_ocurrencia)
+```
+
+Los únicos casos para completar corresponden a **cod_mun_o**,es decir, se asigna *Bogotá, D.c.* a **departamento_ocurrencia**
+
+```{r}
+data <- data %>% mutate(departamento_ocurrencia = if_else(
+  cod_dpto_o == "11", "Bogotá, D.C.",departamento_ocurrencia
+))
+```
+
+#### Código municipio de notificación a partir de nombre municipio
+
+```{r}
+data %>% filter(is.na(cod_mun_n) & !is.na(municipio_notificacion)) %>% count(cod_mun_n,municipio_notificacion)
+```
+Se asigna a estos casos el valor de *11001*
+
+```{r}
+data <- data %>% mutate(cod_mun_n = if_else(
+  municipio_notificacion == "Bogotá, D.c.", "11001",cod_mun_n
+))
+```
+
+
+#### Código departamento notificación a partir de código municipio
+
+```{r}
+data %>% filter(is.na(cod_dpto_n) & !is.na(cod_mun_o)) %>% count(cod_dpto_n,cod_mun_o)
+```
+
+A estos casos se les asigna *11* en **cod_dpto_n**
+```{r}
+data <- data %>% mutate(cod_dpto_n = if_else(
+  cod_mun_o == "11001", "11",cod_dpto_n
+))
+```
+
+#### Nombre departamento notificación a partir de código
+```{r}
+aux <- data %>% count(cod_dpto_n,departamento_notificacion,cod_mun_n,municipio_notificacion)
+```
 
 ## Registros duplicados
 
