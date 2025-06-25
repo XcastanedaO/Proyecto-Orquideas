@@ -1218,14 +1218,19 @@ data <- data %>% select(-persona_con_jefatura_de_hogar)
 
 #### Pertenencia étnica:
 
-esta variable toma valor si la variable **Pertenencia étnica(per_etn)**
-es igual a 1 (indígena), en caso contrario, se asigna "No aplica".
-También es importante tener el cuenta que **nom_grupo** solo toma
-valores a partir del 2018.
+De acuerdo al diccionario de datos, indica la pertenencia de la víctima a alguna étnica que es considerada de interés para eventos en salud pública. Los valores que toma son: 1 = Indígena, 2 = ROM/Gitano, 3 = Raizal, 4 = Palenquero, 5 = Negro/Mulato/Afro Colombiano, 6 = Otro
+
+```{r}
+summary(as.factor(data$per_etn))
+```
+
+Luego, la variable **nom_grupo** corresponde al grupo índigena al que pertenece la víctima en caso de que **pertenencia étnica(per_etn)** sea igual a 1 (indígena). Por lo tanto, para evitar NA falsos, en caso contrario, se asigna "No aplica". Además, se corrige la escritura de algunos niveles para evitar repeticiones
 
 ```{r}
 summary(as.factor(str_to_title(tolower(data$nom_grupo))))
 ```
+
+
 
 ```{r}
 data <- data %>% mutate(
@@ -1234,10 +1239,22 @@ data <- data %>% mutate(
   nom_grupo = case_when(
     per_etn != 1 ~ "No aplica",  # Asignar "No aplica" si no es indígena
     grepl("^Embera", nom_grupo, ignore.case = TRUE) ~ "Emberá",  # Fusionar cualquier "Embera"
-    nom_grupo == "" ~ NA_character_,  # Asignar NA a valores vacíos
+    nom_grupo %in% c("Tanimuka") ~ "Tanimuca",
+    nom_grupo %in% c("Je´Eruriwa","Jeeruriwa") ~ "Je'eruriwa",
+    nom_grupo %in% c("Hitno") ~ "Hitnu",
+    nom_grupo %in% c("Muruy") ~ "Murui",
+    nom_grupo %in% c("Waunana","Waunan") ~ "Wounaan",
+    nom_grupo %in% c("Kamentsa", "Camentsa", "Kamsa") ~ "Kamentsá",
+    nom_grupo %in% c("Misak O Guambiano") ~ "Guambiano",
+    nom_grupo %in% c("Karapana") ~ "Carapana",
+    nom_grupo %in% c("Macahuan") ~ "Macaguán",
+    nom_grupo %in% c("Miraa") ~ "Miraña",
+    nom_grupo %in% c("","Kizgo") ~ NA_character_,  # Asignar NA a valores vacíos
     TRUE ~ nom_grupo  # Mantener el valor original si no aplica ninguna de las condiciones anteriores
   ))
 ```
+
+**Nota:** es importante tener el cuenta que **nom_grupo** aparece en la ficha de datos básicos y en estas bases solo toma valores a partir del año de notificación 2018
 
 #### Consumidora de SPA:
 
@@ -2720,7 +2737,6 @@ No se puede completar porque tanto código como nombre de municipio son NA a la 
 ```{r}
 data %>% filter(is.na(departamento_ocurrencia) & !is.na(cod_mun_o)) %>% count(cod_mun_o,cod_dpto_o,departamento_ocurrencia)
 ```
-
 Los únicos casos para completar corresponden a **cod_mun_o**,es decir, se asigna *Bogotá, D.c.* a **departamento_ocurrencia**
 
 ```{r}
@@ -2743,22 +2759,15 @@ data <- data %>% mutate(cod_mun_n = if_else(
 ```
 
 
-#### Código departamento notificación a partir de código municipio
+#### Código departamento notificación a partir de código municipio y nombre departamento
 
 ```{r}
-data %>% filter(is.na(cod_dpto_n) & !is.na(cod_mun_o)) %>% count(cod_dpto_n,cod_mun_o)
+data %>% filter(is.na(cod_dpto_n) & !is.na(cod_mun_n)) %>% count(cod_dpto_n,cod_mun_n,municipio_notificacion)
 ```
-
-A estos casos se les asigna *11* en **cod_dpto_n**
 ```{r}
 data <- data %>% mutate(cod_dpto_n = if_else(
-  cod_mun_o == "11001", "11",cod_dpto_n
+  cod_mun_n == "11001", "11",cod_dpto_n
 ))
-```
-
-#### Nombre departamento notificación a partir de código
-```{r}
-aux <- data %>% count(cod_dpto_n,departamento_notificacion,cod_mun_n,municipio_notificacion)
 ```
 
 ## Registros duplicados
@@ -2775,3 +2784,6 @@ información respecto al parentesco con la víctima, como sí la hay en
 MEData y se piden en las fichas de notificación.
 
 lugar de notificación es la que información más completa tiene
+
+También es importante tener el cuenta que **nom_grupo** solo toma
+valores a partir del 2018.
