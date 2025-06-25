@@ -249,10 +249,10 @@ variable está tomando valores de 5 o 4. Tratando de tener consistencia
 con las fichas y de contar con la mayor cantidad posible de registros,
 se seleccionan los siguientes casos:
 
--   Los casos ocurridos desde 2013-2016 y que el sexo sea femenino
--   Los casos desde 2017-2022 donde la víctima se identifique como mujer
+-   Los casos notificados desde 2013-2016 y que el sexo sea femenino
+-   Los casos notificados desde 2017-2022 donde la víctima se identifique como mujer
     o sea de sexo masculino y se identifique como transgénero
--   Los casos ocurridos en 2023-2024 y las víctimas se identifiquen como
+-   Los casos notificados en 2023-2024 y las víctimas se identifiquen como
     mujer o mujer trans
 -   Los casos donde no se conoce como se identifica la víctima pero que
     sea de sexo mujer
@@ -289,8 +289,13 @@ data %>% filter(is.na(pais_ocurrencia)) %>% count(year(fec_not),pais_ocurrencia)
 
 La variable **pais_ocurrencia** solo aparece en años 2022 y 2023
 mientras que el **cod_pais_o** (código del país de ocurrencia) está
-presente para todos los años sin ningún valor NA. Dado esto, se decide
-filtrar la base de datos para aquellos casos donde el valor de
+presente para todos los años sin ningún valor NA. 
+
+```{r}
+summary(as.factor(data$cod_pais_o))
+```
+
+Dado esto, se decide filtrar la base de datos para aquellos casos donde el valor de
 cod_pais_o sea igual a 170, lo que representa a Colombia.
 
 ```{r}
@@ -2182,7 +2187,7 @@ data %>%
 No hay discordancias.
 
 ```{r}
-unique(data$departamento_residencia)
+unique(data$departamento_notificacion)
 ```
 
 #### Municipio:
@@ -2557,12 +2562,12 @@ na_empty <- data.frame(
   percent_na = sapply(data_aux, function(col)
     round(sum(is.na(
       col
-    )) / nrow(data_aux) * 100, 2)),
+    )) / nrow(data_aux) * 100, 3)),
     total_empty = sapply(data_aux, function(col)
     sum(col == "", na.rm = TRUE)),
   percent_empty = sapply(data_aux, function(col)
     round(
-      sum(col == "", na.rm = TRUE) / nrow(data_aux) * 100, 2
+      sum(col == "", na.rm = TRUE) / nrow(data_aux) * 100, 3
     )),
   row.names = NULL
 )
@@ -2590,8 +2595,12 @@ como vacías poniendo "".
 ```{r, include=FALSE}
 # Filtrar filas con uno o más valores faltantes o celdas vacias
 row_na_empty <- data %>% 
-  filter(if_any(everything(), ~ is.na(.)) |
-           (gp_gestan == 1 & is.na(sem_ges)))
+    filter(
+    # 1. Algún NA en cualquier columna excepto sem_ges
+    if_any(-sem_ges, ~ is.na(.)) |
+    # 2. Gestante sin sem_ges
+    (gp_gestan == "1" & is.na(sem_ges))
+  )
 # %>%  nrow()
 ```
 
@@ -2770,13 +2779,196 @@ data <- data %>% mutate(cod_dpto_n = if_else(
 ))
 ```
 
+Luego de completar valores faltantes y crear las nuevas variables, se
+puede observar que disminuyó la cantidad de celdas vacías.
+
+```{r}
+data_aux <- data %>% select(-all_of(c("sem_ges")))
+```
+
+```{r, echo=FALSE}
+# Volver a calcular valores faltantes y celdas vacías ("")
+na_empty2 <- data.frame(
+  Column = names(data_aux),
+  total_na = sapply(data_aux, function(col)
+    sum(is.na(col))),
+    percent_na = sapply(data_aux, function(col)
+    round(sum(is.na(
+      col
+    )) / nrow(data_aux) * 100, 3)),
+  total_empty = sapply(data_aux, function(col)
+    sum(col == "", na.rm = TRUE)),
+  percent_empty = sapply(data_aux, function(col)
+    round(
+      sum(col == "", na.rm = TRUE) / nrow(data_aux) * 100, 3
+    )),
+  row.names = NULL
+)
+
+na_empty_aux <- na_empty %>% filter(Column %in% c("cod_pais_r", "pais_residencia", "cod_dpto_r", "departamento_residencia", "cod_mun_r", "municipio_residencia", "cod_dpto_n", "departamento_notificacion","cod_mun_n", "municipio_notificacion", "cod_dpto_o", "departamento_ocurrencia","cod_mun_o", "municipio_ocurrencia")) %>% 
+  select(total_na,Column,percent_na) %>% 
+  rename_with(~ paste0(., "_before"), -Column)
+
+na_empty2_aux <- na_empty2 %>% filter(Column %in% c("cod_pais_r", "pais_residencia", "cod_dpto_r", "departamento_residencia", "cod_mun_r", "municipio_residencia", "cod_dpto_n", "departamento_notificacion","cod_mun_n", "municipio_notificacion", "cod_dpto_o", "departamento_ocurrencia","cod_mun_o", "municipio_ocurrencia")) %>% 
+  select(Column,total_na,percent_na) %>% 
+  rename_with(~ paste0(., "_after"), -Column)
+
+full_join(na_empty_aux, na_empty2_aux, by = "Column")
+```
+
+```{r, include=FALSE}
+row_na_empty <- data %>% 
+    filter(
+    # 1. Algún NA en cualquier columna excepto sem_ges
+    if_any(-sem_ges, ~ is.na(.)) |
+    # 2. Gestante sin sem_ges
+    (gp_gestan == "1" & is.na(sem_ges))
+  )
+```
+
+Hecho esto queda un total de `r nrow(row_na_empty)` registros con celdas
+vacías, lo que corresponde al
+`r round((nrow(row_na_empty)*100)/nrow(data),2)`% de la base de datos.
+Es decir, se pueden utilizar `r nrow(data) - nrow(row_na_empty)`
+registros completos.
+
 ## Registros duplicados
+
+```{r}
+# Buscar registros duplicados
+data %>%
+  filter(duplicated(.)) %>%
+  nrow()
+```
+
+```{r}
+final_data <- data %>%
+    distinct()
+```
+
+Finalmente, al eliminar los registros duplicados se obtiene una base de
+datos depurada con **`r nrow(final_data)` registros.** y las siguientes
+variables:
+
+```{r}
+colnames(final_data)
+```
+
+```{r}
+nrow_data <-  final_data %>%   filter(
+    if_all(-sem_ges, ~ !is.na(.)) &  # todas las columnas excepto sem_ges completas
+    (
+      (gp_gestan == "1" & !is.na(sem_ges)) |  # si gestante, sem_ges debe tener dato
+      gp_gestan == "2"  # si no gestante, no importa sem_ges
+    )
+  )
+```
+
+**Importante 1:** Si se seleccionan las filas con registros totalmente
+completos se tiene una base de datos con **`r nrow_data` filas**.
 
 ## Conversión a factor
 
+Se convierten las columnas a factor a excepción de edad y fecha de notificación
+
+```{r}
+final_data <- final_data %>%
+  mutate(across(
+    .cols = !all_of(c("edad", "fec_not")),  
+    .fns = as.factor                     
+  ))
+```
+
 ## Orden de las columnas
 
+Se establece un nuevo orden en la base de datos para mayor facilidad en
+el proceso de análisis.
+
+```{r}
+final_data <- final_data %>%
+  select(
+    fec_not,
+    año_not,
+    sexo_,
+    ident_gene,
+    orient_sex,
+    edad,
+    grupo_edad,
+    actividad,
+    tip_ss_,
+    per_etn_,
+    nom_grupo_,
+    gp_discapa,
+    gp_desplaz,
+    gp_migrant,
+    gp_carcela,
+    gp_gestan,
+    sem_ges_,
+    gp_indigen,
+    gp_pobicbf,
+    gp_mad_com,
+    gp_desmovi,
+    gp_psiquia,
+    gp_vic_vio,
+    gp_otros,
+    mujer_cabf,
+    antec,
+    cod_pais_r,
+    npais_resi,
+    cod_dpto_r,
+    ndep_resi,
+    cod_mun_r,
+    nmun_resi,
+    codigo_barrio,
+    nombre_barrio,
+    codigo_comuna,
+    nombre_comuna,
+    def_naturaleza,
+    cod_pais_o,
+    npais_proce,
+    cod_dpto_o,
+    ndep_proce,
+    cod_mun_o,
+    nmun_proce,
+    area_,
+    lugar_hecho,
+    consum_spa,
+    sust_vict,
+    zona_conf,
+    escenario,
+    ambito_lug,
+    sexo_agre,
+    parentezco_agresor,
+    conv_agre,
+    pac_hos_,
+    con_fin_,
+    cbmte_,
+    sp_its,
+    prof_hep_b,
+    prof_otras,
+    ac_anticon,
+    ac_ive,
+    ac_mental,
+    remit_prot,
+    inf_aut,
+    evi_mlegal,
+    cod_barrio_nuevo,
+    barrio_nuevo,
+    cod_comuna_nuevo,
+    comuna_nuevo,
+    municipio_nuevo
+    )
+```
+
+
 # Base de datos depurada
+
+Se guarda como base final la base con los valores faltantes para implementar métodos de imputación
+
+```{r, warning=FALSE, message=FALSE}
+# Guardar base de datos con valores faltantes
+# save_data(final_data, "SIVIGILA_debugged", type = "interim", format = "csv")
+```
 
 # Resumen
 Es importante mencionar que en las bases de datos proporcionadas no hay
@@ -2787,3 +2979,17 @@ lugar de notificación es la que información más completa tiene
 
 También es importante tener el cuenta que **nom_grupo** solo toma
 valores a partir del 2018.
+
+En las bases no veo r_nofiliar ni r_fam_vic, tampoco como una variable común entre todas que puede referirse a esta característica.
+
+Edad agresor ya se elimino por cantidad de NA no se pide en todas las fichas
+ **estrato\_** no se pide en todas las fichas pero no tiene un porcentaje tan grande de N
+ y **hora
+del hecho** se eliminó por cantidad NA
+
+estrato orient_sex ambito_lug ident_gene tiene pocentajes de NA muy altos
+esa
+variable no es considerada en todas las fichas de notificación del
+SIVIGILA. Como es el caso de **edad agresor**, **hora del hecho** que según lo investigado no se piden en fichas recientes y ya fueron eliminadas en su respectiva sección.
+
+tener cuidado porque semana de gestación está tomando valores que relamente no son NA
