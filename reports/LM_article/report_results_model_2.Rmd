@@ -1,10 +1,10 @@
 ---
 title: "Modelo de regresión logístico bayesiano"
 output:
-  word_document: default
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
+  word_document: default
 date: "`r Sys.Date()`"
 always_allow_html: true
 ---
@@ -18,6 +18,7 @@ library(patchwork)
 library(dplyr)
 library(ggplot2)
 library(here)
+library(tibble)
 library(hms)
 library(forcats)
 library(lubridate)
@@ -77,8 +78,6 @@ Luego de estas modificaciones, los niveles de las variables predictoras cualitat
 
 -   **Parentesco agresor:** indica el tipo de vínculo o relación de la víctima con el agresor. Entre ellas se encuentra: pareja(12.433; 26,8%), familiar(16.011; 34,5%), ex-pareja(4.664; 10,1%), conocido(5.821; 12,6%), desconocido(7.444; 16,1%). *Referencia:* desconocido(a).
 
-A continuación se presentan las razones de odds estimadas para todas las variables del modelo, pero es importante tener en cuenta que las categorías de sexo masculino y parentesco conocido no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual y agresor desconocido, respectivamente. Por lo tanto, la interpretación de odds ratios para estas categorías no es relevante:
-
 ```{r, echo=FALSE, warning=FALSE, message= FALSE}
 data_2 <- base_datos %>% select(c("ac_mental",
                                 "edad", "mujer_cabf","def_naturaleza",
@@ -128,7 +127,79 @@ X_4 <- model.matrix(ac_mental ~
 
 # Extraer muestras
 posterior_samples_2 <- readRDS(file.path(here(),"models","model_without_SS","posterior_sample_model_4.rds"))
+```
 
+Para comenzar se presenta la media, mediana e intervalo de credibilidad al 95% para cada parámetro, **donde este último indica el rango dentro del cual hay un 95% de probabilidad de que se encuentre el verdadero valor del parámetro, según la distribución posterior obtenida**. Además, se agrega el ancho de cada intervalo
+
+```{r}
+nombres_parametros <- colnames(X_4)
+
+# Crear una lista vacía para guardar los resultados
+resumen <- list()
+
+# Iterar sobre cada parámetro en posterior_samples
+for (param_name in names(posterior_samples_2)) {
+  
+  # Omitir predicciones u otras salidas innecesarias
+  if (startsWith(param_name, "y_pred") || param_name %in% c("log_lik", "lp__")) next
+  
+  param_values <- posterior_samples_2[[param_name]]
+  
+  # Si es escalar (vector 1D)
+  if (is.vector(param_values)) {
+    resumen[[param_name]] <- data.frame(
+      Media = round(mean(param_values),3),
+      Mediana = round(median(param_values),3),
+      IC_2.5 = round(quantile(param_values, 0.025),3),
+      IC_97.5 = round(quantile(param_values, 0.975),3)
+    )
+  
+  # Si es vector/matriz (como beta[1], beta[2], ...)
+  } else if (is.matrix(param_values)) {
+    
+    # Si es beta y coincide con los nombres de la matriz de diseño
+    if (param_name == "beta" && ncol(param_values) == length(nombres_parametros)) {
+      for (j in 1:ncol(param_values)) {
+        muestras_j <- param_values[, j]
+        resumen[[nombres_parametros[j]]] <- data.frame(
+          Media = round(mean(muestras_j),3),
+          Mediana = round(median(muestras_j),3),
+          IC_2.5 = round(quantile(muestras_j, 0.025),3),
+          IC_97.5 = round(quantile(muestras_j, 0.975),3)
+        )
+      }
+    } else {
+      for (j in 1:ncol(param_values)) {
+        nombre_completo <- paste0(param_name, "[", j, "]")
+        muestras_j <- param_values[, j]
+        resumen[[nombre_completo]] <- data.frame(
+          Media = mean(muestras_j),
+          Mediana = median(muestras_j),
+          IC_2.5 = quantile(muestras_j, 0.025),
+          IC_97.5 = quantile(muestras_j, 0.975)
+        )
+      }
+    }
+  }
+}
+
+# Unir todos los resultados y convertir los nombres de la lista en columna
+df_parametros <- do.call(rbind, resumen) |> 
+  rownames_to_column(var = "param")
+
+df_parametros$Categoria <- c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)","Convivencia agresor", "Hospitalización", "Esc. vivienda")
+
+df_parametros$Ancho_IC <- df_parametros$IC_97.5 - df_parametros$IC_2.5
+
+df_parametros <- df_parametros %>% select(Categoria,Media,Mediana,IC_2.5,IC_97.5)
+
+df_parametros
+```
+***Tabla 2.*** *Media, mediana e intervalo de credibilidad al 95% para cada parámetro estimado.*
+
+Luego, se presentan las razones de odds estimadas para todas las variables del modelo para una mejor interpretación, pero es importante tener en cuenta que la tabla anterior indica que las categorías de sexo masculino y parentesco conocido no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual y agresor desconocido, respectivamente. Por lo tanto, la interpretación de odds ratios para estas categorías no es relevante:
+
+```{r, echo=FALSE, warning=FALSE, message= FALSE}
 # Calcular la media de los coeficientes estimados
 alpha_hat_2 <- mean(posterior_samples_2$alpha)
 beta_hat_2 <- colMeans(posterior_samples_2$beta)
@@ -145,16 +216,16 @@ tabla_resultados_2 <- data.frame(
 )
 
 tabla_resultados_2$Parametro_2 <- c(paste0("β", 14:16), rep("", nrow(tabla_resultados_2) - 3))
-tabla_resultados_2$Variable_2 <- c("Convivencia agresor", "Hospitalización", "Esc. Espacio público y social",rep(NA, nrow(tabla_resultados_2) - 3))
+tabla_resultados_2$Variable_2 <- c("Convivencia agresor", "Hospitalización", "Esc. vivienda",rep(NA, nrow(tabla_resultados_2) - 3))
 tabla_resultados_2$Odds_Ratio_2 <- c(round(odds_ratios_2[14:16], 2), rep(NA, nrow(tabla_resultados_2) - 3))
 
 # Mostrar tabla
 kable(tabla_resultados_2, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2))
 ```
 
-***Tabla 3.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo 2 de atención en salud mental.*
+***Tabla 2.*** *Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo 2 de atención en salud mental.*
 
-Entre mujeres con características similares, aquellas que son cabeza de familia son un 160% más propensas a recibir atención en salud mental que las que no lo son, al igual que aquellas mujeres que viven en un centro poblado o en zona rural dispersa, con una mayor probabilidad relativa de atención del 78% y 80%, respectivamente, en comparación con vivir en una cabecera municipal. De forma similar, haber sido agredida en un espacio público o social tiene un 41% más de probabilidad relativa en relación con quienes fueron agredidas en su vivienda.
+Entre mujeres con características similares, aquellas que son cabeza de familia son un 160% más propensas a recibir atención en salud mental que las que no lo son, al igual que aquellas mujeres que viven en un centro poblado o en zona rural dispersa, con una mayor probabilidad relativa de atención del 78% y 80%, respectivamente, en comparación con vivir en una cabecera municipal. De forma similar, haber sido agredida en su vivienda tiene un 41% más de probabilidad relativa en relación con quienes fueron agredidas en un espacio público y social.
 
 En contraste, cuando el agresor es una persona cercana, como un familiar (28% menos propensas), pareja (20% menos) o ex-pareja (12% menos), las mujeres son menos propensas a recibir atención, en comparación con casos donde no se conoce al agresor. Además, convivir con el agresor también reduce en un 9% las probabilidades de recibir atención y en cuanto a la edad, por cada año adicional, las mujeres son 1% menos propensas.
 
