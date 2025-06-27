@@ -1,10 +1,10 @@
 ---
 title: "Modelo de regresión logístico bayesiano"
 output:
-  pdf_document: default
+  word_document: default
   html_document:
     df_print: paged
-  word_document: default
+  pdf_document: default
 date: "`r Sys.Date()`"
 always_allow_html: true
 ---
@@ -131,7 +131,7 @@ posterior_samples_2 <- readRDS(file.path(here(),"models","model_without_SS","pos
 
 Para comenzar se presenta la media, mediana e intervalo de credibilidad al 95% para cada parámetro, **donde este último indica el rango dentro del cual hay un 95% de probabilidad de que se encuentre el verdadero valor del parámetro, según la distribución posterior obtenida**. Además, se agrega el ancho de cada intervalo
 
-```{r}
+```{r, echo=FALSE, warning=FALSE, message= FALSE}
 nombres_parametros <- colnames(X_4)
 
 # Crear una lista vacía para guardar los resultados
@@ -148,8 +148,8 @@ for (param_name in names(posterior_samples_2)) {
   # Si es escalar (vector 1D)
   if (is.vector(param_values)) {
     resumen[[param_name]] <- data.frame(
-      Media = round(mean(param_values),3),
-      Mediana = round(median(param_values),3),
+      media = round(mean(param_values),3),
+      mediana = round(median(param_values),3),
       IC_2.5 = round(quantile(param_values, 0.025),3),
       IC_97.5 = round(quantile(param_values, 0.975),3)
     )
@@ -162,8 +162,8 @@ for (param_name in names(posterior_samples_2)) {
       for (j in 1:ncol(param_values)) {
         muestras_j <- param_values[, j]
         resumen[[nombres_parametros[j]]] <- data.frame(
-          Media = round(mean(muestras_j),3),
-          Mediana = round(median(muestras_j),3),
+          media = round(mean(muestras_j),3),
+          mediana = round(median(muestras_j),3),
           IC_2.5 = round(quantile(muestras_j, 0.025),3),
           IC_97.5 = round(quantile(muestras_j, 0.975),3)
         )
@@ -173,8 +173,8 @@ for (param_name in names(posterior_samples_2)) {
         nombre_completo <- paste0(param_name, "[", j, "]")
         muestras_j <- param_values[, j]
         resumen[[nombre_completo]] <- data.frame(
-          Media = mean(muestras_j),
-          Mediana = median(muestras_j),
+          media = mean(muestras_j),
+          mediana = median(muestras_j),
           IC_2.5 = quantile(muestras_j, 0.025),
           IC_97.5 = quantile(muestras_j, 0.975)
         )
@@ -184,18 +184,18 @@ for (param_name in names(posterior_samples_2)) {
 }
 
 # Unir todos los resultados y convertir los nombres de la lista en columna
-df_parametros <- do.call(rbind, resumen) |> 
+resumen <- do.call(rbind, resumen) |> 
   rownames_to_column(var = "param")
 
-df_parametros$Categoria <- c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)","Convivencia agresor", "Hospitalización", "Esc. vivienda")
+resumen$categoria <- c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)","Convivencia agresor", "Hospitalización", "Esc. vivienda")
 
-df_parametros$Ancho_IC <- df_parametros$IC_97.5 - df_parametros$IC_2.5
+resumen$ancho_IC <- resumen$IC_97.5 - resumen$IC_2.5
 
-df_parametros <- df_parametros %>% select(Categoria,Media,Mediana,IC_2.5,IC_97.5)
+resumen <- resumen %>% select(categoria,media,mediana,IC_2.5,IC_97.5,ancho_IC)
 
-df_parametros
+kable(resumen, format = "markdown", col.names = c("Categoría", "Media","Mediana","IC_2.5","IC_97.5","Ancho_IC"))
 ```
-***Tabla 2.*** *Media, mediana e intervalo de credibilidad al 95% para cada parámetro estimado.*
+***Tabla 1.*** *Media, mediana e intervalo de credibilidad al 95% para cada parámetro estimado.*
 
 Luego, se presentan las razones de odds estimadas para todas las variables del modelo para una mejor interpretación, pero es importante tener en cuenta que la tabla anterior indica que las categorías de sexo masculino y parentesco conocido no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual y agresor desconocido, respectivamente. Por lo tanto, la interpretación de odds ratios para estas categorías no es relevante:
 
@@ -210,12 +210,12 @@ intercepto_OR_2 <- exp(alpha_hat_2)
 
 # Crear tabla de resultados
 tabla_resultados_2 <- data.frame(
-  Parametro_1 = paste0("β", 1:13),
+  Parametro_1 = paste0("$\\beta_{", 1:13, "}$"),
   Variable_1 = c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)"),
   Odds_Ratio_1 = round(odds_ratios_2[1:13],2)
 )
 
-tabla_resultados_2$Parametro_2 <- c(paste0("β", 14:16), rep("", nrow(tabla_resultados_2) - 3))
+tabla_resultados_2$Parametro_2 <- c(paste0("$\\beta_{", 14:16, "}$"), rep("", nrow(tabla_resultados_2) - 3))
 tabla_resultados_2$Variable_2 <- c("Convivencia agresor", "Hospitalización", "Esc. vivienda",rep(NA, nrow(tabla_resultados_2) - 3))
 tabla_resultados_2$Odds_Ratio_2 <- c(round(odds_ratios_2[14:16], 2), rep(NA, nrow(tabla_resultados_2) - 3))
 
