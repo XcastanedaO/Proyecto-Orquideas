@@ -21,7 +21,7 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 
 
 ## Estructura del repositorio :file_folder:
-La siguiente estructura es general y puede variar entre ramas.
+La siguiente estructura es general y puede variar entre ramas:
 
 ```         
 ├── README.md          <- El archivo README para desarrolladores que utilizan este proyecto.
@@ -36,7 +36,7 @@ La siguiente estructura es general y puede variar entre ramas.
 │   ├── raw           <- Conjuntos de datos originales. 
 │   ├── interim         <- Conjuntos de datos intermedios, que han sido transformados.
 |   ├── processed       <- Conjuntos de datos finales para la modelación.
-│   └── auxiliary       <- Conjuntos de datos con codificaciones o información de apoyo para realizar os análisis
+│   └── auxiliary       <- Conjuntos de datos con codificaciones o información de apoyo para realizar los análisis
 │
 ├── models             <- Archivos para la implementación de los modelos.
 │
@@ -49,8 +49,8 @@ La siguiente estructura es general y puede variar entre ramas.
 
 ```
 
-## Ramas principales
-Este repositorio utiliza ramas para organizar distintas etapas o enfoques del proyecto. A continuación se describen las principales:
+## Ramas principales 🗂️
+Este repositorio utiliza ramas para organizar distintas etapas o enfoques del proyecto. A continuación se describen las ramas principales:
 
 - **main**: Versión final de proyecto.
 - **Dev-models**: Rama en desarrollo. Aquí se realizan los análisis relacionados con los casos de lesiones fatales y no fatales
