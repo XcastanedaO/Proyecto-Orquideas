@@ -3285,3 +3285,142 @@ implementar métodos de imputación
 ```
 
 # Resumen
+
+
+1.  Luego de juntar las bases, se filtró la base resultante por sexo e identidad de género de la víctima dado que no se pide identidad de género en todas las fichas, seleccionando los siguientes casos:
+-   Los casos notificados desde 2013-2016 y que el sexo sea femenino
+-   Los casos notificados en 2017-2022 donde la víctima se identifique como mujer
+    o sea de sexo masculino y se identifique como transgénero
+-   Los casos notificados en 2023-2024 y las víctimas se identifiquen como
+    mujer o mujer trans
+-   Los casos donde no se conoce como se identifica la víctima pero que
+    sea de sexo mujer
+Además, se seleccionaron los casos que ocurrieron ÚNICAMENTE en Colombia
+
+
+2.  Analizando la fecha del hecho se observó que la base filtrada tiene
+    registros de casos del 1899 al 2023. Mientras que los años de
+    notificación van desde 2013 hasta 2024. Sin embargo, dado a las inconsistencias encontradas en la fecha del hecho, se dejó solo la fecha de notificación
+
+
+3. Se cuenta con la variable **consecutive** una variable que puede servir de identificador de caso en caso de ser necesario ya que no tiene valor repetido entre los registros
+
+3. Es importante mencionar que en las bases de datos proporcionadas no hay
+información respecto al parentesco con el agresor (r_nofiliar, r_fam_vic) y localidad/centro poblado/vereda/barrio donde ocurrió el caso (localidad, cen_poblad, vereda, bar_ver). La primer característica aparece en MEData y las fichas de notificación mientras que las tres últimas aparece en MEData, fichas de notificación pero no en el diccionario. 
+
+11. La base de datos después de los filtros, tratar las variables y duplicados,
+    quedó compuesta por **`r nrow(final_data)` filas.** Las columnas se
+    especifican en [*inventario
+    variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing).
+    En esta base hay registros con algunos NA correspondientes a las
+    columnas con valores faltantes menos del 50% y a la columna de
+    semana de gestación
+
+    **Nota 1:** Se dejaron los NA de la semana de gestación porque esta variable toma
+    valores en un caso específico y dado al tipo de dato no es posible
+    asignar un valor característico a estos casos.
+    
+    **Nota 2:** Esta es la base final que se guarda
+    en data/interim con el nombre de *SIVIGILA_debugged*
+
+12. Si se quitan los registros con NA, la base
+    final quedaría con las mismas columnas pero **`r aux_nrow` registros
+    completos.**
+
+    **Nota 1:** Los únicos NA que se encontrarían son los presentes en la columna **sem_ges**
+
+13. **Variables con mayor cantidad de NA (<$50\%$ registros):**
+	- orientación sexual
+	- ámbito de lugar
+	- identidad de género
+ 
+14. De la información de georreferenciación: lugar de residencia víctima, ocurrencia hecho y notificación caso, la información más completa es el lugar de notificación
+
+**Variables que se crearon:**
+-	año de notificación
+-       origen: indica el registro a cuál base de datos de las proporcionadas pertenece
+        
+4.  **Variables que se re-codificaron:**
+
+    -   grupo étnico
+
+    -   zona del cuerpo en caso de quemadura
+
+    -   lugar de notificación, residencia y ocurrencia
+
+    -   variables relacionadas con la atención en salud 
+
+    -   condición final de la víctima y causa básica de defunción
+    -   orientación sexual
+
+5.  **Variables que se re-calcularon:**
+
+    -   edad: se convirtió a años
+
+6.  **Variables que se unificaron:**
+
+    -   ocupación y actividad de la víctima
+
+    -   modalidad de violencia
+
+7.  **Variables con inconsistencias o problemáticas:**
+
+    -   fechas a excepción de notificación. Es por esto que solo queda con la fecha de notificación
+
+    -   variables relacionadas con la edad de la víctima: se arregla
+
+    -   edad del agresor: termina eliminándose por NA
+
+    -   orientación sexual: se re-codifica para arreglarla
+
+8.  **Variables que NO están en todas las fichas:**
+
+    -   estrato de la víctima: esta variable no se elimina porque la cantidad de NA no supera el 50% de los registros. Se encontró una ficha del 2016 donde no se solicita y otra de 2019 donde sí, lo que explica esta cantidad de NA
+
+    -   hora del hecho: se eliminó por cantidad de NA, esta cantidad se debe a que a partir del 2018 no se solicita esta información 
+
+    -   edad del agresor: tenía gran cantidad de NA, por lo tanto, se eliminó. Esto dado a que esta información se dejó de pedir a partir del año 2018
+
+    -   nombre del grupo étnico: solo toma valores a partir del 2018, en años posteriores es NA o "No aplica". Esto se debe porque según las fichas que se tienen, solo hasta el año 2018 la ficha de datos básicos solicita indicar el nombre del grupo si la víctima tiene pertenencia étnica.
+
+9.  **Variables que se eliminaron:** [*inventario
+    variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing)
+
+10.  **Variables a las que no se les hizo modificaciones relevantes o solo se completaron con variables de igual representación:**
+
+    -   tipo de seguridad social
+
+    -   pertenencia étnica
+
+    -   hospitalización
+
+    -   consumo SPA
+
+    -   persona jefatura de hogar
+
+    -   antecedente de violencia
+
+    -   presencia de sustancias
+
+    -   escenario y ámbito del hecho
+
+**Variables obligatorias según diccionario:**
+ fecha de notificación, los códigos de los lugares, remit_prot
+
+
+auxiliares y luego eliminadas: uni_med,cod_pais_o, pais_ocurrencia, npais_proce
+
+eliminadas por na: nacionalidad,nombre_nacionalidad
+eliminadas: fechas diferentes a fecha de notificación
+-nom_upgd,-nombre_upgd,
+         -cod_eve,-evento,-nombre_evento,-cod_eve_old,
+         -cod_pre,
+         -cod_sub,
+         -cod_ase,
+         -cer_def,
+         -fec_aju,
+         -fm_fuerza,-fm_unidad, -fm_grado, 
+         -version,
+         -estadotran, -est_f_caso,-estado_final_de_caso,-nom_est_f_caso,
+         -fuente,
+         -fec_arc_xl, -confirmados, -va_sispro, -esc_vict, esc_agre, -fact_preci, -vulnerab, -otro_vuln, -grupos, -otro_grup, -sust_intx, -canal_pers, -tcampo,  -concat, -calculo, -consecutive_origen,-remit_aut,-remit_just,-gru_pob,-sust_agr,-sp_psic,tip_cas,ajuste
