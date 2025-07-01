@@ -17,9 +17,21 @@ editor_options:
 
 # Información de la base de datos
 
-Este reporte describe la depuración realizada a la información proporcionada por el Instituto Nacional de Salud de Colombia sobre los casos sospechosos de violencia de género que fueron reportados al SIVIGILA durante 2013 y 2023.
+Este reporte describe la depuración realizada a la información
+proporcionada por el Instituto Nacional de Salud de Colombia sobre los
+casos sospechosos o probables de violencia de género que fueron reportados al
+SIVIGILA durante 2013 y 2023.
 
--   **Información sobre las variables:** se cuenta con un diccionario de datos que enviaron junto a las bases [(Ver aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf). Este diccionario tiene varibales de todos los eventos notificados al SIVIGILA, por lo tanto, el diccionario solo con las variables de interés se encuentra en *data/raw/SIVIGILA/diccionario_red.pdf*. Adicional, se cuenta con algunas de las fichas de notificación al SIVIGILA que contienen indicaciones sobre muchas variables, la más actualizada es la ficha de 2024 [(Ver aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
+-   **Información sobre las variables:** se cuenta con un diccionario de
+    datos que enviaron junto a las bases [(Ver
+    aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf).
+    Este diccionario tiene varibales de todos los eventos notificados al
+    SIVIGILA, por lo tanto, el diccionario solo con las variables de
+    interés se encuentra en *data/raw/SIVIGILA/diccionario_red.pdf*.
+    Adicional, se cuenta con algunas de las fichas de notificación al
+    SIVIGILA que contienen indicaciones sobre muchas variables, la más
+    actualizada es la ficha de 2024 [(Ver
+    aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
 
 # Lectura de la base de datos
 
@@ -454,13 +466,18 @@ Se observa que la única columna fecha que no tiene valores faltantes es
 
 ### Inconsistencias
 
+```{r}
+data_aux <- data  %>% filter(
+  ((month(fecha_nto) == 1 & day(fecha_nto) == 1) | (month(fec_hecho) == 1 & day(fec_hecho) == 1)) & fec_hecho != fec_not) 
+```
+
+
 Se encontró que algunos registros parecen tomar fechas genéricas. Para
 ilustrarlo, se muestra algunos casos de fecha de nacimiento
-**(fecha_nto\_)** y fecha del hecho **(fec_hecho)**:
+**(fecha_nto\_)** y fecha del hecho **(fec_hecho)** que parecen ser génericas y donde la fecha del hecho no coincide con la fecha de notificación:
 
 ```{r}
-data  %>% filter(
-  ((month(fecha_nto) == 1 & day(fecha_nto) == 1) | (month(fec_hecho) == 1 & day(fec_hecho) == 1)) & fec_hecho != fec_not) %>% 
+data_aux %>% 
   select(fecha_nto,fec_hecho,fec_not) %>% head(5)
 ```
 
@@ -966,7 +983,7 @@ base:
 data %>% count(municipio_residencia)
 ```
 
-#### Distrito especial: 
+#### Distrito especial:
 
 se crea esta variable para identificar los casos donde la víctima
 residia en uno de los distrito especiales de Colombia, los cuales son:
@@ -1000,7 +1017,10 @@ residia en uno de los distrito especiales de Colombia, los cuales son:
 12. **Cali:** Distrito Especial, Deportivo, Cultural, Turístico,
     Empresarial y de Servicios.
 
-Cuando esta variable toma valor *1* significa que se trata a un distrito especial, cuando toma valor *2* significa que no se trata de un distrito especial y cuando es *No aplica* es porque el lugar de residencia es en el exterior. 
+Cuando esta variable toma valor *1* significa que se trata a un distrito
+especial, cuando toma valor *2* significa que no se trata de un distrito
+especial y cuando es *No aplica* es porque el lugar de residencia es en
+el exterior.
 
 ```{r}
 data <- data %>% mutate(dist_esp_r = case_when(
@@ -1010,8 +1030,6 @@ data <- data %>% mutate(dist_esp_r = case_when(
   TRUE ~ "2"
 ))
 ```
-
-
 
 ### Estrato (no obligatoria)
 
@@ -1790,8 +1808,8 @@ por el nombre y código del muncipio
 ```{r}
 data <- data %>% mutate(cod_mun_o = case_when(
   cod_mun_o %in% c("000","999") ~ NA_character_,
-  municipio_ocurrencia == "BELÉN DE BAJIRA" ~ "493",
-  municipio_ocurrencia == "MAPIRIPANA (CD)" ~ "343",
+  municipio_ocurrencia == "Nuevo Belén De Bajirá" ~ "493",
+  municipio_ocurrencia == "Barrancominas" ~ "343",
   TRUE ~ cod_mun_o
 ))
 ```
@@ -1844,10 +1862,10 @@ base:
 data %>% count(municipio_ocurrencia)
 ```
 
-
 #### Distrito especial:
 
-se crea esta variable para identificar los casos que courrieron en uno de los distrito especiales de Colombia, los cuales son:
+se crea esta variable para identificar los casos que courrieron en uno
+de los distrito especiales de Colombia, los cuales son:
 
 1.  **Bogotá:** Distrito Capital.
 
@@ -1878,7 +1896,10 @@ se crea esta variable para identificar los casos que courrieron en uno de los di
 12. **Cali:** Distrito Especial, Deportivo, Cultural, Turístico,
     Empresarial y de Servicios.
 
-Cuando esta variable toma valor *1* significa que se trata a un distrito especial, cuando toma valor *2* significa que no se trata de un distrito especial y cuando es *No aplica* es porque el lugar de residencia es en el exterior. 
+Cuando esta variable toma valor *1* significa que se trata a un distrito
+especial, cuando toma valor *2* significa que no se trata de un distrito
+especial y cuando es *No aplica* es porque el lugar de residencia es en
+el exterior.
 
 ```{r}
 data <- data %>% mutate(dist_esp_o = case_when(
@@ -1887,8 +1908,6 @@ data <- data %>% mutate(dist_esp_o = case_when(
   TRUE ~ "2"
 ))
 ```
-
-
 
 #### Área:
 
@@ -2461,7 +2480,6 @@ No hay discordancias.
 unique(data$municipio_notificacion)
 ```
 
-
 #### Distrito especial
 
 Se crea esta variable para identificar los casos donde la víctima
@@ -2496,7 +2514,10 @@ notificó en uno de los distrito especiales de Colombia, los cuales son:
 12. **Cali:** Distrito Especial, Deportivo, Cultural, Turístico,
     Empresarial y de Servicios.
 
-Cuando esta variable toma valor *1* significa que se trata a un distrito especial, cuando toma valor *2* significa que no se trata de un distrito especial y cuando es *No aplica* es porque el lugar de residencia es en el exterior. 
+Cuando esta variable toma valor *1* significa que se trata a un distrito
+especial, cuando toma valor *2* significa que no se trata de un distrito
+especial y cuando es *No aplica* es porque el lugar de residencia es en
+el exterior.
 
 ```{r}
 data <- data %>% mutate(dist_esp_n = case_when(
@@ -2505,8 +2526,6 @@ data <- data %>% mutate(dist_esp_n = case_when(
   TRUE ~ "2"
 ))
 ```
-
-
 
 ### Tipo de seguridad social (obligatoria)
 
@@ -3208,12 +3227,14 @@ final_data <- final_data %>%
     departamento_residencia,
     cod_mun_r,
     municipio_residencia,
+    dist_esp_r,
     estrato,
     def_naturaleza,
     cod_dpto_o,
     departamento_ocurrencia,
     cod_mun_o,
     municipio_ocurrencia,
+    dist_esp_o,
     area,
     zona_conf,
     escenario,
@@ -3236,7 +3257,8 @@ final_data <- final_data %>%
     cod_dpto_n,
     departamento_notificacion,
     cod_mun_n,
-    municipio_notificacion,	
+    municipio_notificacion,
+    dist_esp_n,
     pac_hos,
     con_fin,
     cbmte,
@@ -3263,4 +3285,3 @@ implementar métodos de imputación
 ```
 
 # Resumen
-
