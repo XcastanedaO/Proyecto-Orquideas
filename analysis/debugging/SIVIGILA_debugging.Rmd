@@ -644,7 +644,7 @@ summary(data$edad_)
 data <- data %>% select(-c(edad_hecho,edad_notif,uni_med,edad))
 ```
 
-### Fecha de notificación (no obligatoria)
+### Fecha de notificación (obligatoria)
 
 Se eliminan las columnas de fechas a excepción de fecha de notificación
 y se crea una nueva variable solo con el año de notificación llamada
@@ -3118,7 +3118,8 @@ na_empty2_aux <- na_empty2 %>% filter(Column %in% c("cod_pais_r", "pais_residenc
   select(Column,total_na,percent_na) %>% 
   rename_with(~ paste0(., "_after"), -Column)
 
-full_join(na_empty_aux, na_empty2_aux, by = "Column")
+data_aux <- full_join(na_empty_aux, na_empty2_aux, by = "Column") %>% 
+  select(Column,total_na_before,percent_na_before,total_na_after,percent_na_after)
 ```
 
 ```{r, include=FALSE}
@@ -3302,6 +3303,13 @@ Además, se seleccionaron los casos que ocurrieron ÚNICAMENTE en Colombia
     registros de casos del 1899 al 2023. Mientras que los años de
     notificación van desde 2013 hasta 2024. Sin embargo, dado a las inconsistencias encontradas en la fecha del hecho, se dejó solo la fecha de notificación
 
+```{r}
+summary(as.factor(year(final_data$fec_not)))
+```
+
+```{r}
+summary(as.factor(year(final_data$año_not)))
+```
 
 3. Se cuenta con la variable **consecutive** una variable que puede servir de identificador de caso en caso de ser necesario ya que no tiene valor repetido entre los registros
 
@@ -3375,7 +3383,18 @@ información respecto al parentesco con el agresor (r_nofiliar, r_fam_vic) y loc
 
 8.  **Variables que NO están en todas las fichas:**
 
-    -   estrato de la víctima: esta variable no se elimina porque la cantidad de NA no supera el 50% de los registros. Se encontró una ficha del 2016 donde no se solicita y otra de 2019 donde sí, lo que explica esta cantidad de NA
+```{r}
+nrow_aux <- final_data %>%
+  filter(
+    if_all(.cols = setdiff(names(.), c("sem_ges", "estrato")), ~ !is.na(.)) &
+      (
+        (gp_gestan == "1" & !is.na(sem_ges)) |
+          (gp_gestan == "2")
+      )
+  ) %>% filter(is.na(estrato)) %>% nrow()
+```
+
+    -   estrato de la víctima: esta variable no se elimina porque la cantidad de NA no supera el 50% de los registros. Se encontró una ficha del 2016 donde no se solicita y otra de 2019 donde sí, lo que explica esta cantidad de NA. Al quitar los NA en las dem´s columnas y dejar solo los registros con NA en estrato se tiene un total de `r nrow_aux` registros, es decir, si se considera trabajar con estrato se tendría `r nrow(final_data) - nrow_aux` registros completos.
 
     -   hora del hecho: se eliminó por cantidad de NA, esta cantidad se debe a que a partir del 2018 no se solicita esta información 
 
