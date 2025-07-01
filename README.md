@@ -11,6 +11,7 @@ El objetivo del proyecto es implementar metodologías estadísticas avanzadas y 
 - **Simón Ruiz Martínez** - *Experto* - [GitHub](https://github.com/simonruizm)
 - **Mariana Hernádez Giraldo** - *Estudiante auxiliar* - [GitHub](https://github.com/MarianaHernandezG)
 - **Ximena Castañeda Ochoa** - *Estudiante auxiliar* - [GitHub](https://github.com/XcastanedaO)
+- **Tomás Rodriguez Taborda** - *Estudiante auxiliar* - [GitHub](https://github.com/torodriguezt)
 
 ## Instalación :wrench:
 Las siguientes son configuraciones/librerías/lenguajes necesarios para el correcto funcionamiento del código:
@@ -20,6 +21,7 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 
 
 ## Estructura del repositorio :file_folder:
+La siguiente estructura es general y puede variar entre ramas.
 
 ```         
 ├── README.md          <- El archivo README para desarrolladores que utilizan este proyecto.
@@ -27,23 +29,14 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
 ├── analysis  
 │   ├── code_guide.Rmd   <- Archivo con explicación de funciones o acciones necesarias para el buen funcionamiento del código.
 │   ├── debugging        <- Archivos .R para depuración de los conjuntos de datos.
-│       ├── sivigila_debugging.R   <- Depuración de los datos provenientes del portal de sivigila.
-│       ├── medata_debugging.R   <- Depuración de los datos provenientes de MEData.
-│       ├── INMLCF_debugging.R   <- Depuración de ambas bases de datos provenientes del INMLCF.
-│       └── datos_abiertos_debugging.R   <- Depuración de los datos provenientes del portal de Datos Abiertos.
-│   └── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
-│       └── medata_descriptive.R   <- Análisis descriptivo de los datos provenientes de MEData.
+|   ├── descriptive_analysis   <- Archivos .R para el desarrollo del análisis descriptivo de los conjuntos de datos.
+│   └── imputation   <- Archivos .R para implementar método de imputación de datos.
 │
 ├── data
-│   ├── raw           <- Conjuntos de datos originales.
-|       ├── SIVIGILA <- Carpeta con datos del 2012 al 2023 provenientes del portal oficial de SIVIGILA 
-|       ├── medata_1900_2022.csv <- Datos orginales provenientes de MEData. 
-│       ├── INMLCF.zip <- Datos sobre casos de lesiones fatales y no fatales desde 2015 al 2024 provenientes del INMLCF
-|       ├── datos_abiertos_2015_2023.csv <- Datos orginales del 2015-2023 provenientes del portal de Datos Abiertos.
-|       └── CUOC.csv <- Base de datos con Clasificació Única de Ocupaciones adaptada para Colombia. 
+│   ├── raw           <- Conjuntos de datos originales. 
 │   ├── interim         <- Conjuntos de datos intermedios, que han sido transformados.
-│       └── medata_1900_2022_debugged.csv <- Datos depurados provenientes de MEData. 
-│   └── processed       <- Conjuntos de datos finales para la modelación.
+|   ├── processed       <- Conjuntos de datos finales para la modelación.
+│   └── auxiliary       <- Conjuntos de datos con codificaciones o información de apoyo para realizar os análisis
 │
 ├── models             <- Archivos para la implementación de los modelos.
 │
@@ -55,3 +48,14 @@ Las siguientes son configuraciones/librerías/lenguajes necesarios para el corre
     └── load_data.R    <- Funciones para lectura y guardado de conjuntos de datos.
 
 ```
+
+## Ramas principales
+Este repositorio utiliza ramas para organizar distintas etapas o enfoques del proyecto. A continuación se describen las principales:
+
+- **main**: Versión final de proyecto.
+- **Dev-models**: Rama en desarrollo. Aquí se realizan los análisis relacionados con los casos de lesiones fatales y no fatales
+de causa externa entre 01/enero y 30/noviembre del 2024 atendidos por Instituto Nacional de Medicina Legal y Ciencias Forenses.
+- **dev_medata**: Rama en desarrollo. Aquí se realizan los análisis relacionados con los casos sospechosos de violencia de género
+que fueron reportados al SIVIGILA en Medellín. 
+- **dev_sivigila**: Rama en desarrollo. Aquí se realizan los análisis relacionados con la información proporcionada por el Instituto Nacional de Salud de Colombia sobre los casos sospechosos o probables de violencia de género que fueron reportados al SIVIGILA durante 2013 y 2024.
+
