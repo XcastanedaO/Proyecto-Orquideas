@@ -3167,7 +3167,7 @@ nrow_data <-  final_data %>%   filter(
       (gp_gestan == "1" & !is.na(sem_ges)) |  # si gestante, sem_ges debe tener dato
       gp_gestan == "2"  # si no gestante, no importa sem_ges
     )
-  )
+  ) %>% nrow()
 ```
 
 **Importante 1:** Si se seleccionan las filas con registros totalmente
