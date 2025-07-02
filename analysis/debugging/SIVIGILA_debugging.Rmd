@@ -424,24 +424,24 @@ Finalmente, se continua con una base de datos de `r nrow(data)`
 
 Se cuenta con las siguientes fechas:
 
--   **Fecha de notificiación (fec_not)**: fecha en la que se está
+-   **Fecha de notificación (fec_not)**: fecha en la que se está
     informando el evento al siguiente nivel por cualquier mecanismo, en
-    especial para los eventos de notificación inmediata.
+    especial para los eventos de notificación inmediata. **Obligatoria**
 
--   **Consulta (fec_con)**: fecha en la que consultó el paciente.
+-   **Consulta (fec_con)**: fecha en la que consultó el paciente. **Según ficha 2024 Obligatoria pero en diccionario no**
 
 -   **Inicio de síntomas (ini_sin\_)**: fecha del primer día en que el
-    paciente inició síntomas.
+    paciente inició síntomas. **Según ficha 2024 Obligatoria pero en diccionario no**
 
 -   **Hospitalización (fec_hos\_)**: fecha en la que el paciente fue
-    hospitalizado como consecuencia del evento.
+    hospitalizado como consecuencia del evento. ***Según ficha 2024 Obligatoria pero en diccionario no**
 
 -   **Defunción (fec_def\_)**: fecha en la que el paciente fallece como
-    consecuencia del evento.
+    consecuencia del evento. **Según ficha 2024 Obligatoria pero en diccionario no**
 
--   **Nacimiento (fecha_nto\_)** fecha de nacimiento de la paciente
+-   **Nacimiento (fecha_nto\_)** fecha de nacimiento de la paciente. **No obligatoria**
 
--   **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento
+-   **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento. **Obligatoria**
 
 A continuación, se presenta la composición de estas variables:
 
@@ -460,35 +460,71 @@ resumen_fechas <- sapply(date_vars, function(x) {
 t(resumen_fechas)
 ```
 
-Se observa que la única columna fecha que no tiene valores faltantes es
-**fec_not**.
+Se observa que a pesar de que hay varias obligatorias, la única columna fecha que no tiene valores faltantes es **fec_not**. Además, las fechas con menor cantidad es **fec_con** y **fec_hecho**. Por lo tanto, se decide continuar el análisis con estas tres variables. Teniendo en cuenta también que las demás brindan la fecha de situaciones no tan relevantes para el interés del análisis o que se puede obtener su información desde otra variable, como es el caso de **fecha_nto** con edad de la víctima.
 
-### Inconsistencias
-
-```{r}
-data_aux <- data  %>% filter(
-  ((month(fecha_nto) == 1 & day(fecha_nto) == 1) | (month(fec_hecho) == 1 & day(fec_hecho) == 1)) & fec_hecho != fec_not) 
-```
-
-Se encontró que algunos registros parecen tomar fechas genéricas. Para
-ilustrarlo, se muestra algunos casos de fecha de nacimiento
-**(fecha_nto\_)** y fecha del hecho **(fec_hecho)** que parecen ser
-génericas y donde la fecha del hecho no coincide con la fecha de
-notificación:
+En estas tres fechas se encontró una gran cantidad de casos donde el mes es enero y el día 1:
 
 ```{r}
-data_aux %>% 
-  select(fecha_nto,fec_hecho,fec_not) %>% head(5)
+lapply(data %>% select(fec_hecho,fec_con ,fec_not), function(fechas) {
+  sum(format(fechas, "%d") == "01" & format(fechas, "%m") == "01", na.rm = TRUE)
+})
+```
+Puede ser que en muchos casos si hayan sucedido ese día del año pero revisando las bases originales, algunos de estos casos (pocos) corresponden a valores inconsistentes que tomaba el registro (números únicos o letras) y que al pasar a formato date se convirtieron en una fecha tipo `[año]-01-01`. **En la única fecha donde no pasa esto es en fec_not.**. Entonces para revisar la cantidad verdadera de casos donde las fechas no parecen consistentes se calcula lo siguiente:
+
+- Cantidad de registros donde **fec_hecho** es `[año]-01-01` y no coincide con **fec_not**, porque si coinciden puede indicar que realmente sucedió y se notificó ese día del año
+
+```{r}
+data %>% filter(
+  ((month(fec_hecho) == 1 & day(fec_hecho) == 1) & fec_hecho != fec_not)) %>% nrow()
+```
+- Cantidad de registros donde **fec_not** es `[año]-01-01` y no coincide con **fec_hecho**, porque si coinciden puede indicar que realmente sucedió y se notificó ese día del año
+
+
+```{r}
+data %>% filter(
+  ((month(fec_not) == 1 & day(fec_not) == 1) & fec_hecho != fec_not)) %>% nrow()
+```
+- Cantidad de registros donde **fec_con** es `[año]-01-01` 
+
+```{r}
+data %>% filter(
+  (month(fec_con) == 1 & day(fec_con) == 1)) %>% nrow()
+```
+Ahora bien, dado que se trata de cantidades pequeñas a comparación del total de registros, se decide continuar con estas variables, pero garantizando que tomen valores lógicos entre ellas para quitar el posible sesgo. Es por ello que se realizan las siguientes verificaciones según las indicaciones del diccionario de datos y fichas de notificación:
+
+```{r}
+data_aux <- data %>% filter(fec_hecho > fec_con)
 ```
 
-En algunos casos estas fechas genéricas corresponden a valores
-inconsistentes que tomaba el registro (números únicos o letras) y que al
-pasar a formato date se convirtieron también en fechas. **La única fecha en la que no pasa esto es en fec_not**.
+- La fecha del hecho debe ser anterior o igual a la fecha de consulta. Se encontraron `r nrow(data_aux)` casos que no cumplen esta condición
 
-Teniendo en cuenta todo lo anterior, se decide quedarse solo con la
-**fecha de notificación**, la cual es una variable obligatoria.
+```{r}
+data_aux  %>% count(fec_hecho,fec_con,fec_not) %>% slice_sample(n=10)
+```
 
-**Nota: no se eliminan aún para analizar la edad de la víctima**
+```{r}
+data <- data %>%
+  filter(is.na(fec_hecho) | is.na(fec_not) | fec_hecho <= fec_con)
+```
+
+Se eliminan estos registros quedando una base de `r nrow(data_)`
+
+```{r}
+data_aux <- data %>% filter(fec_con > fec_not)
+```
+
+- La fecha de consulta debe ser anterior o igual a la fecha de notificación. Se encontraron `r nrow(data_aux)` casos que no cumplen esta condición
+
+```{r}
+data_aux  %>% count(fec_hecho,fec_con,fec_not)
+```
+
+```{r}
+data <- data %>%
+  filter(is.na(fec_con) | is.na(fec_not) | fec_con <= fec_not)
+```
+
+Se eliminan estos registros quedando una base de `r nrow(data_)`
 
 ## Información de la víctima
 
@@ -643,21 +679,9 @@ summary(data$edad_)
 data <- data %>% select(-c(edad_hecho,edad_notif,uni_med,edad))
 ```
 
-### Fecha de notificación (obligatoria)
-
-Se eliminan las columnas de fechas a excepción de fecha de notificación
-y se crea una nueva variable solo con el año de notificación llamada
-**año_not**
-
 ```{r}
-data <- data %>% select(-c(fecha_nto,fec_def,fec_hos,fec_con,ini_sin,fec_hecho))
-```
-
-```{r}
-data <- data %>% mutate(
-  año_not = year(fec_not))
-
-summary(as.factor(data$año_not))
+# Eliminar fechs que no se utilizarán
+data <- data %>% select(-c(fecha_nto,fec_def,fec_hos,ini_sin))
 ```
 
 ### Nacionalidad (no obligatoria)
@@ -725,7 +749,7 @@ se cuenta con el código y el nombre del país donde reside la víctima al
 momento de la notificación. Por ejemplo:
 
 ```{r}
-data %>% count(cod_pais_r,pais_residencia) %>% slice_sample(10) %>% kable()
+data %>% count(cod_pais_r,pais_residencia) %>% slice_sample(n=10) %>% kable()
 ```
 
 A pesar de tener tantos registros con valores faltantes en ambas
@@ -830,7 +854,7 @@ data <- data %>%
 
 ```{r}
 data %>%
-  filter(!cod_dpto_r %in% DIVIPOLA$codigo_dane_departamento) %>% group_by(cod_dpto_r,departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop") %>% slice_sample(10) %>% kable()
+  filter(!cod_dpto_r %in% DIVIPOLA$codigo_dane_departamento) %>% group_by(cod_dpto_r,departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop") %>% slice_sample(n=10) %>% kable()
 ```
 
 Para los casos `5` y `8` se cambia a `05` y `08` respectivamente. Para
@@ -865,7 +889,7 @@ data %>%
 No hay discordancias. Entre los departamentos resultantes están:
 
 ```{r}
-data %>% count(departamento_residencia) %>% head(10) %>% 
+data %>% count(departamento_residencia) %>% head(10) 
 ```
 
 #### Municipio:
@@ -881,7 +905,7 @@ data %>% count(departamento_residencia) %>% head(10) %>%
 data %>% 
   mutate(cod_mun = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r)) %>%
   filter(!cod_mun %in% DIVIPOLA$codigo_dane_municipio)  %>% 
-  count(cod_mun_r, name = "cantidad") %>% slice_sampe(10)
+  count(cod_mun_r, name = "cantidad") %>% slice_sample(n=10)
 ```
 
 Se encontraron varias inconsistencias como:
@@ -930,7 +954,7 @@ data <- data %>%
 
 ```{r}
 data %>%
-  filter(!str_to_lower(municipio_residencia) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(municipio_residencia) %>% summarise(cantidad = n(), .groups = "drop") % slice_name(5)
+  filter(!str_to_lower(municipio_residencia) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(municipio_residencia) %>% summarise(cantidad = n(), .groups = "drop") %>%  slice_sample(n=5)
 ```
 
 Las inconsistencias se debe a escritura y a en los casos donde el
@@ -1011,7 +1035,7 @@ No hay discordancias. Los siguientes son algunos de los municipios que quedan en
 base:
 
 ```{r}
-data %>% count(municipio_residencia) %>% slice_sample(5)
+data %>% count(municipio_residencia) %>% slice_sample(n=5)
 ```
 
 #### Distrito especial:
@@ -1804,7 +1828,7 @@ la codificación Divipola:
 data %>%
   mutate(cod_mun = ifelse(!is.na(cod_mun_o) & !is.na(cod_dpto_o), paste0(cod_dpto_o, cod_mun_o), cod_mun_o)) %>%
   filter(!cod_mun %in% DIVIPOLA$codigo_dane_municipio)  %>% 
-  count(cod_mun,cod_mun_o, municipio_ocurrencia, departamento_ocurrencia, name = "cantidad") %>% slice_sample(10)
+  count(cod_mun,cod_mun_o, municipio_ocurrencia, departamento_ocurrencia, name = "cantidad") %>% slice_sample(n=10)
 ```
 
 La mayoría de códigos que no coinciden con los códigos de la lista,
@@ -2607,19 +2631,19 @@ modalidad de violencia sea 6 = Acceso carnal, 7 = Explotación sexual, 10
 -   **Profilaxis ITS-VIH:**
 
 ```{r}
-data %>% filter(!is.na(def_naturaleza)) %>% count(sp_its, def_naturaleza) %>% slie_sample(10) %>% kable()
+data %>% filter(!is.na(def_naturaleza)) %>% count(sp_its, def_naturaleza) %>% slice_sample(n=10) %>% kable()
 ```
 
 -   **Hepatitis B:**
 
 ```{r}
-data %>% filter(!is.na(def_naturaleza)) %>% count(prof_hep_b, def_naturaleza) %>% slie_sample(10) %>%  kable()
+data %>% filter(!is.na(def_naturaleza)) %>% count(prof_hep_b, def_naturaleza) %>%slice_sample(n = 10) %>%  kable()
 ```
 
 -   **Profilaxis Otras ITS:**
 
 ```{r}
-data %>% filter(!is.na(def_naturaleza)) %>% count(prof_otras, def_naturaleza) %>% slie_sample(10) %>% kable()
+data %>% filter(!is.na(def_naturaleza)) %>% count(prof_otras, def_naturaleza) %>% slice_sample(n = 10) %>% kable()
 ```
 
 Se cambia a NA los valores incorrectos y a "No aplica" los casos de
@@ -3187,12 +3211,12 @@ completos se tiene una base de datos con **`r nrow_data` filas**.
 ## Conversión a factor
 
 Se convierten las columnas a factor a excepción de edad, fecha de
-notificación y fecha del hecho
+notificación, fecha del hecho y fecha de consulta
 
 ```{r}
 final_data <- final_data %>%
   mutate(across(
-    .cols = !all_of(c("edad_", "fec_not")),  
+    .cols = !all_of(c("edad_", "fec_not","fec_con","fec_hecho")),  
     .fns = as.factor                     
   ))
 ```
@@ -3241,6 +3265,7 @@ final_data <- final_data %>%
     municipio_residencia,
     dist_esp_r,
     estrato,
+    fec_hecho,
     def_naturaleza,
     cod_dpto_o,
     departamento_ocurrencia,
@@ -3267,7 +3292,7 @@ final_data <- final_data %>%
     sexo_agre,
     conv_agre,
     fec_not,
-    año_not,
+    fec_con,
     cod_dpto_n,
     departamento_notificacion,
     cod_mun_n,
@@ -3312,6 +3337,8 @@ implementar métodos de imputación
 -   Los casos donde no se conoce como se identifica la víctima pero que
     sea de sexo mujer Además, se seleccionaron los casos que ocurrieron
     ÚNICAMENTE en Colombia
+    
+Además, se filtraron los casos donde fecha del hecho, consulta y notificación son consistentes entre sí
 
 2.  Analizando la fecha del hecho se observó que la base filtrada tiene
     registros de casos del 1899 al 2023. Mientras que los años de
@@ -3490,3 +3517,4 @@ nrow_aux <- final_data %>%
 -   laboratorios
 -   anticoncepción de emergencia
 -   orientación IVE
+-   fecha de consulta
