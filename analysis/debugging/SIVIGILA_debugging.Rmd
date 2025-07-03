@@ -1,6 +1,6 @@
 ---
 title: "Depuración información reportada al SIVIGILA desde 2013 hasta 2023."
-date: "2024-11-13"
+date: "2025-07-02"
 output:
   pdf_document:
     toc: true
@@ -256,8 +256,18 @@ partir del año 2017 (inclusive). Su estructura es:
     trans (4), otra (5)
 -   **Ficha específica:** masculino (1), femenino (2), transgénero (3)
 
-```{r}
-data %>% count(year(fec_not),ident_gene) %>% kable()
+```{r, message=FALSE,warning=FALSE}
+data_aux <- data %>% count(year(fec_not),ident_gene) 
+
+bind_cols(data_aux[1:23,],rbind(data_aux[24:45,],NA)) %>% 
+  rename("Año" = `year(fec_not)...1`,
+         "Identidad género" =  `ident_gene...2`,
+         "Cantidad" = `n...3`,
+         "Año_" = `year(fec_not)...4`,
+         "Identidad género_" = `ident_gene...5`,
+         "Cantidad_" = `n...6`,
+         ) %>% 
+  kable()
 ```
 
 Sin embargo, se puede observa que para años anteriores al 2022, la
@@ -286,7 +296,8 @@ data <- data %>% filter(
 De esta manera, se pasaría de una base de `r nrow_aux` filas a
 `r nrow(data)` filas.
 
-**Nota:** Si se consideran los casos antes del 2023 donde ident_gene == 4 se rescatarían solo 318 registros más.
+**Nota:** Si se consideran los casos antes del 2023 donde ident_gene ==
+4 se rescatarían solo 318 registros más.
 
 ### País de ocurrencia
 
@@ -300,10 +311,12 @@ encuentran las siguientes variables:
 -   **npais_proce**
 
 ```{r}
-data %>% filter(is.na(pais_ocurrencia)) %>% count(year(fec_not),pais_ocurrencia)
+data %>% filter(is.na(pais_ocurrencia)) %>% count(year(fec_not),pais_ocurrencia) %>%
+    rename("Año" = `year(fec_not)`,
+         "pais_ocurrencia" = `pais_ocurrencia`) %>% kable()
 ```
 
-La variable **pais_ocurrencia** solo aparece en años 2022 y 2023
+La variable **pais_ocurrencia** solo aparece en 2023
 mientras que el **cod_pais_o** (código del país de ocurrencia) está
 presente para todos los años sin ningún valor NA.
 
@@ -319,10 +332,10 @@ nrow_aux <- nrow(data)
 data <- data %>% filter(cod_pais_o == 170)
 ```
 
-Sin embargo, se sigue notando que, aunque la mayoría de los casos
+Además, se encuentra que, aunque la mayoría de los casos
 corresponden a Colombia, existen algunos valores de **npais_proce** que
 corresponden a Venezuela y valores NA. Aunque la cantidad de casos fuera
-de Colombia es baja, se decide eliminar estos registros para mantener la
+de Colombia es baja, se decide eliminar también estos registros para mantener la
 consistencia en la variable de ocurrencia, asegurando que solo se
 incluyan casos de Colombia.
 
@@ -332,7 +345,7 @@ summary(as.factor(data$npais_proce))
 data <- data %>% filter(npais_proce != "VENEZUELA" | is.na(npais_proce))
 ```
 
-Así, se pasaría de una base de `r nrow_aux` filas a `r nrow(data)`
+Así, luego de estas dos acciones se pasaría de una base de `r nrow_aux` filas a `r nrow(data)`
 filas. Como todos los casos corresponden a reportes hechos en Colombia,
 se eliminan las tres variables relacionadas pues no tienen variabilidad
 entre ellas.
@@ -428,20 +441,26 @@ Se cuenta con las siguientes fechas:
     informando el evento al siguiente nivel por cualquier mecanismo, en
     especial para los eventos de notificación inmediata. **Obligatoria**
 
--   **Consulta (fec_con)**: fecha en la que consultó el paciente. **Según ficha 2024 Obligatoria pero en diccionario no**
+-   **Consulta (fec_con)**: fecha en la que consultó el paciente.
+    **Según ficha 2024 Obligatoria pero en diccionario no**
 
 -   **Inicio de síntomas (ini_sin\_)**: fecha del primer día en que el
-    paciente inició síntomas. **Según ficha 2024 Obligatoria pero en diccionario no**
+    paciente inició síntomas. **Según ficha 2024 Obligatoria pero en
+    diccionario no**
 
 -   **Hospitalización (fec_hos\_)**: fecha en la que el paciente fue
-    hospitalizado como consecuencia del evento. ***Según ficha 2024 Obligatoria pero en diccionario no**
+    hospitalizado como consecuencia del evento. **Según ficha 2024
+    Obligatoria pero en diccionario no**
 
 -   **Defunción (fec_def\_)**: fecha en la que el paciente fallece como
-    consecuencia del evento. **Según ficha 2024 Obligatoria pero en diccionario no**
+    consecuencia del evento. **Según ficha 2024 Obligatoria pero en
+    diccionario no**
 
--   **Nacimiento (fecha_nto\_)** fecha de nacimiento de la paciente. **No obligatoria**
+-   **Nacimiento (fecha_nto\_)** fecha de nacimiento de la paciente.
+    **No obligatoria**
 
--   **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento. **Obligatoria**
+-   **Hecho (fec_hecho)**: fecha en que ocurrió el hecho o evento.
+    **Obligatoria**
 
 A continuación, se presenta la composición de estas variables:
 
@@ -457,74 +476,104 @@ resumen_fechas <- sapply(date_vars, function(x) {
   )
 })
 
-t(resumen_fechas)
+t(resumen_fechas) 
 ```
 
-Se observa que a pesar de que hay varias obligatorias, la única columna fecha que no tiene valores faltantes es **fec_not**. Además, las fechas con menor cantidad es **fec_con** y **fec_hecho**. Por lo tanto, se decide continuar el análisis con estas tres variables. Teniendo en cuenta también que las demás brindan la fecha de situaciones no tan relevantes para el interés del análisis o que se puede obtener su información desde otra variable, como es el caso de **fecha_nto** con edad de la víctima.
+Se observa que a pesar de que hay varias obligatorias, la única columna
+fecha que no tiene valores faltantes es **fec_not**. Además, las fechas
+con menor cantidad es **fec_con** y **fec_hecho**. Por lo tanto, se
+decide continuar el análisis con estas tres variables. Teniendo en
+cuenta también que las demás brindan la fecha de situaciones no tan
+relevantes para el interés del análisis o que se puede obtener su
+información desde otra variable, como es el caso de **fecha_nto** con
+edad de la víctima.
 
-En estas tres fechas se encontró una gran cantidad de casos donde el mes es enero y el día 1:
+En estas tres fechas se encontró una gran cantidad de casos donde el mes
+es enero y el día 1:
 
 ```{r}
 lapply(data %>% select(fec_hecho,fec_con ,fec_not), function(fechas) {
   sum(format(fechas, "%d") == "01" & format(fechas, "%m") == "01", na.rm = TRUE)
 })
 ```
-Puede ser que en muchos casos si hayan sucedido ese día del año pero revisando las bases originales, algunos de estos casos (pocos) corresponden a valores inconsistentes que tomaba el registro (números únicos o letras) y que al pasar a formato date se convirtieron en una fecha tipo `[año]-01-01`. **En la única fecha donde no pasa esto es en fec_not.**. Entonces para revisar la cantidad verdadera de casos donde las fechas no parecen consistentes se calcula lo siguiente:
 
-- Cantidad de registros donde **fec_hecho** es `[año]-01-01` y no coincide con **fec_not**, porque si coinciden puede indicar que realmente sucedió y se notificó ese día del año
+Puede ser que en muchos casos si hayan sucedido ese día del año pero
+revisando las bases originales, algunos de estos casos (pocos)
+corresponden a valores inconsistentes que tomaba el registro (números
+únicos o letras) y que al pasar a formato date se convirtieron en una
+fecha tipo `[año]-01-01`. **En la única fecha donde no pasa esto es en
+fec_not.** Entonces para revisar la cantidad verdadera de casos donde
+las fechas no parecen consistentes se calcula lo siguiente:
+
+-   Cantidad de registros donde **fec_hecho** es `[año]-01-01` y no
+    coincide con **fec_not**, porque si coinciden puede indicar que
+    realmente sucedió y se notificó ese día del año
 
 ```{r}
 data %>% filter(
-  ((month(fec_hecho) == 1 & day(fec_hecho) == 1) & fec_hecho != fec_not)) %>% nrow()
+  ((month(fec_hecho) == 1 & day(fec_hecho) == 1) & fec_hecho != fec_not)) %>% nrow() 
 ```
-- Cantidad de registros donde **fec_not** es `[año]-01-01` y no coincide con **fec_hecho**, porque si coinciden puede indicar que realmente sucedió y se notificó ese día del año
 
+-   Cantidad de registros donde **fec_not** es `[año]-01-01` y no
+    coincide con **fec_hecho**, porque si coinciden puede indicar que
+    realmente sucedió y se notificó ese día del año
 
 ```{r}
 data %>% filter(
   ((month(fec_not) == 1 & day(fec_not) == 1) & fec_hecho != fec_not)) %>% nrow()
 ```
-- Cantidad de registros donde **fec_con** es `[año]-01-01` 
+
+-   Cantidad de registros donde **fec_con** es `[año]-01-01`
 
 ```{r}
 data %>% filter(
   (month(fec_con) == 1 & day(fec_con) == 1)) %>% nrow()
 ```
-Ahora bien, dado que se trata de cantidades pequeñas a comparación del total de registros, se decide continuar con estas variables, pero garantizando que tomen valores lógicos entre ellas para quitar el posible sesgo. Es por ello que se realizan las siguientes verificaciones según las indicaciones del diccionario de datos y fichas de notificación:
+
+Ahora bien, dado que se trata de cantidades pequeñas a comparación del
+total de registros, se decide continuar con estas variables, pero
+garantizando que tomen valores lógicos entre ellas para quitar el
+posible sesgo. Es por ello que se realizan las siguientes verificaciones
+según las indicaciones del diccionario de datos y fichas de
+notificación:
 
 ```{r}
 data_aux <- data %>% filter(fec_hecho > fec_con)
 ```
 
-- La fecha del hecho debe ser anterior o igual a la fecha de consulta. Se encontraron `r nrow(data_aux)` casos que no cumplen esta condición
+-   La fecha del hecho debe ser anterior o igual a la fecha de consulta.
+    Se encontraron `r nrow(data_aux)` casos que no cumplen esta
+    condición. Por ejemplo:
 
 ```{r}
-data_aux  %>% count(fec_hecho,fec_con,fec_not) %>% slice_sample(n=10)
+data_aux  %>% count(fec_hecho,fec_con,fec_not) %>% slice_sample(n=10) 
+```
+
+```{r}
+data <-  data %>%
+  filter(!(fec_hecho > fec_con) | is.na(fec_hecho) | is.na(fec_con))
+```
+
+Se eliminan estos registros quedando una base de `r nrow(data)`
+
+```{r}
+data_aux <- data %>% filter(fec_con > fec_not) 
+```
+
+-   La fecha de consulta debe ser anterior o igual a la fecha de
+    notificación. Se encontraron `r nrow(data_aux)` casos que no cumplen
+    esta condición
+
+```{r}
+data_aux  %>% count(fec_hecho,fec_con,fec_not) 
 ```
 
 ```{r}
 data <- data %>%
-  filter(is.na(fec_hecho) | is.na(fec_not) | fec_hecho <= fec_con)
+  filter(!(fec_con > fec_not) | is.na(fec_con) | is.na(fec_not))
 ```
 
-Se eliminan estos registros quedando una base de `r nrow(data_)`
-
-```{r}
-data_aux <- data %>% filter(fec_con > fec_not)
-```
-
-- La fecha de consulta debe ser anterior o igual a la fecha de notificación. Se encontraron `r nrow(data_aux)` casos que no cumplen esta condición
-
-```{r}
-data_aux  %>% count(fec_hecho,fec_con,fec_not)
-```
-
-```{r}
-data <- data %>%
-  filter(is.na(fec_con) | is.na(fec_not) | fec_con <= fec_not)
-```
-
-Se eliminan estos registros quedando una base de `r nrow(data_)`
+Se eliminan estos registros quedando una base de `r nrow(data)`
 
 ## Información de la víctima
 
@@ -535,7 +584,7 @@ años(1), meses(2), días(3), horas(4), minutos(5). Existen algunos casos
 donde la unidad de medida o la edad son 0:
 
 ```{r}
-data %>% filter(uni_med == 0 | edad == 0) %>% count(uni_med,edad,con_fin,origen)
+data %>% filter(uni_med == 0 | edad == 0) %>% count(uni_med,edad,con_fin,origen) 
 ```
 
 El diccionario de datos indica que se registra 0 en la edad solo para
@@ -694,8 +743,10 @@ pertenece la víctima según su documento de identificación.
 nrow_aux <- data %>% filter(is.na(nacionalidad) | is.na(nombre_nacionalidad)) %>% nrow()
 ```
 
-Sin embargo, `r nrow_aux` registros tienen información faltante en ambas variables, lo que corresponde a un
-`r round((nrow_aux*100)/nrow(data),2)`% de la base de datos. A pesar de este porcentaje, se decide continuar con esta variable
+Sin embargo, `r nrow_aux` registros tienen información faltante en ambas
+variables, lo que corresponde a un
+`r round((nrow_aux*100)/nrow(data),2)`% de la base de datos. A pesar de
+este porcentaje, se decide continuar con esta variable
 
 ```{r}
 data <- data %>% mutate(
@@ -815,7 +866,7 @@ DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text",
 
 ```{r}
 data %>%
-  filter(!str_to_lower(departamento_residencia) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% group_by(cod_dpto_r,departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop")
+  filter(!str_to_lower(departamento_residencia) %in% str_to_lower(DIVIPOLA$nombre_departamento))  %>% group_by(cod_dpto_r,departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop") 
 ```
 
 En la mayoría de los casos no se encuentran porque tienen diferencia de
@@ -883,7 +934,7 @@ data %>%
   left_join(
     DIVIPOLA %>% distinct(codigo_dane_departamento, .keep_all = TRUE),
     by = c("cod_dpto_r" = "codigo_dane_departamento")
-  ) %>% filter(str_to_lower(departamento_residencia) != str_to_lower(nombre_departamento)) %>% group_by(cod_dpto_r, departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop")
+  ) %>% filter(str_to_lower(departamento_residencia) != str_to_lower(nombre_departamento)) %>% group_by(cod_dpto_r, departamento_residencia) %>% summarise(cantidad = n(), .groups = "drop") 
 ```
 
 No hay discordancias. Entre los departamentos resultantes están:
@@ -905,14 +956,16 @@ data %>% count(departamento_residencia) %>% head(10)
 data %>% 
   mutate(cod_mun = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r)) %>%
   filter(!cod_mun %in% DIVIPOLA$codigo_dane_municipio)  %>% 
-  count(cod_mun_r, name = "cantidad") %>% slice_sample(n=10)
+  count(cod_mun_r, name = "cantidad") %>% slice_sample(n=10) 
 ```
 
 Se encontraron varias inconsistencias como:
 
 -   Valor `000` que corresponde a casos donde el valor en
     **municipio_residencia** indicaban el departamento pero que el
-    municipio es desconocido, por ejemplo: `* VALLE. MUNICIPIO DESCONOCIDO`. En estos casos se cambia el valor de `cod_mun_r` a NA
+    municipio es desconocido, por ejemplo:
+    `* VALLE. MUNICIPIO DESCONOCIDO`. En estos casos se cambia el valor
+    de `cod_mun_r` a NA
 -   Valor `000` u otros, que corresponden a casos donde el valor en
     **municipio_residencia** es `EXTERIOR. PAÍS DESCONOCIDO`,
     `EXTERIOR\_[País:]` o nombres de otros países. En estos casos se
@@ -950,11 +1003,12 @@ data <- data %>%
   mutate(cod_mun_r = ifelse(!is.na(cod_mun_r) & cod_mun_r != "0" & !is.na(cod_dpto_r) & cod_dpto_r != "0", paste0(cod_dpto_r, cod_mun_r), cod_mun_r))
 ```
 
-2.  Los nombres de municipios que no se encuentran en la lista son, por ejemplo:
+2.  Los nombres de municipios que no se encuentran en la lista son, por
+    ejemplo:
 
 ```{r}
 data %>%
-  filter(!str_to_lower(municipio_residencia) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(municipio_residencia) %>% summarise(cantidad = n(), .groups = "drop") %>%  slice_sample(n=5)
+  filter(!str_to_lower(municipio_residencia) %in% str_to_lower(DIVIPOLA$nombre_municipio))  %>% group_by(municipio_residencia) %>% summarise(cantidad = n(), .groups = "drop") %>%  slice_sample(n=5) 
 ```
 
 Las inconsistencias se debe a escritura y a en los casos donde el
@@ -1028,11 +1082,11 @@ data %>%
     by = c("cod_mun_r" = "codigo_dane_municipio")
   ) %>% 
   filter(str_to_lower(municipio_residencia) != str_to_lower(nombre_municipio)) %>%
-  count(cod_mun_r, municipio_residencia,nombre_municipio, name = "cantidad")
+  count(cod_mun_r, municipio_residencia,nombre_municipio, name = "cantidad") 
 ```
 
-No hay discordancias. Los siguientes son algunos de los municipios que quedan en la
-base:
+No hay discordancias. Los siguientes son algunos de los municipios que
+quedan en la base:
 
 ```{r}
 data %>% count(municipio_residencia) %>% slice_sample(n=5)
@@ -1138,7 +1192,8 @@ orientación sexual. Sin embargo, la clasificación en la ficha de datos
 tiene una codificación diferente: heterosexual(1), gay/lesbiana(2),
 bisexual(3) y otra(4). Para evitar cruces se reduce a dos categorías:
 
--   **Orientación Sexual, Identidad y expresiones de género no hegemónicas (OSIEG no Hegemónicas):** incluye los casos con valor
+-   **Orientación Sexual, Identidad y expresiones de género no
+    hegemónicas (OSIEG no Hegemónicas):** incluye los casos con valor
     1,2,3 y 6
 
 -   **Heterosexual:** incluye los casos con valor 5
@@ -1172,7 +1227,7 @@ víctima de violencia (**gp_vic_vio**) o perteneciente a otro grupo
 ```{r}
 lapply(data[, c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
-             "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")], table, useNA = "ifany") %>%  kable()
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")], table, useNA = "ifany") 
 ```
 
 Sin embargo, en las bases de datos de 2014-2017 se encontraron otras
@@ -1191,14 +1246,14 @@ información, una por tipo de ficha. Esto explica porque en algunos casos
 estas variables y las variables **gp\_** toman valor al tiempo.
 
 ```{r}
-lapply(data[, c("desmov_rei","nna_snbf","priv_liber","otra_situa","vic_confli")], table, useNA = "ifany") %>%  kable()
+lapply(data[, c("desmov_rei","nna_snbf","priv_liber","otra_situa","vic_confli")], table, useNA = "ifany") 
 ```
 
 Por lo anterior, se verificó si habían valores faltantes en las
 variables **gp\_** que se pudieran completar con estas variables, pero
 no. Son NA en los mismos casos.Pero se identificó que en algunos casos
-estas variables son `1` y su semejante **gp\_** es `2`. Entonces se modifica
-el valor de **gp\_** para estos casos:
+estas variables son `1` y su semejante **gp\_** es `2`. Entonces se
+modifica el valor de **gp\_** para estos casos:
 
 -   **Población privada de la libertad:**
 
@@ -1283,12 +1338,6 @@ data <- data %>%
 ```
 
 ```{r}
-data %>% count(gp_discapa, gp_desplaz, gp_migrant, gp_carcela,  
-             gp_gestan, gp_indigen, gp_pobicfb, gp_mad_com, 
-             gp_desmovi, gp_psiquia, gp_vic_vio,gp_otros)
-```
-
-```{r}
 data <- data %>% select(-c(desmov_rei,nna_snbf,priv_liber,otra_situa,vic_confli))
 ```
 
@@ -1334,10 +1383,11 @@ data <- data %>% mutate(
   TRUE ~ persona_con_jefatura_de_hogar))
 ```
 
-Entonces se completa **mujer_cabf** usando los valores de **persona_con_jefatura_de_hogar** 
+Entonces se completa **mujer_cabf** usando los valores de
+**persona_con_jefatura_de_hogar**
 
 ```{r}
-data %>% filter(is.na(mujer_cabf) & !is.na(persona_con_jefatura_de_hogar)) %>% count(mujer_cabf, persona_con_jefatura_de_hogar)
+data %>% filter(is.na(mujer_cabf) & !is.na(persona_con_jefatura_de_hogar)) %>% count(mujer_cabf, persona_con_jefatura_de_hogar) 
 
 data <- data %>% mutate(mujer_cabf = ifelse(is.na(mujer_cabf), persona_con_jefatura_de_hogar, mujer_cabf))
 ```
@@ -1412,14 +1462,20 @@ data <- data %>% mutate(consum_spa = case_when(consum_spa %in% c("0", "7300000")
 De acuerdo al diccionario esta variable indica la ocupación de la
 víctima a partir de la codificación establecida en el decreto 654 del
 Ministerio de Trabajo y la resolución 0771 del 2021. Tanto en el decreto
-como en la resolución se establece la [*Clasificación Única Ocupaciones para Colombia (CUOC)*](https://ocupacol.mintrabajo.gov.co/Jerarquias/Jerarquias) que
-es una adaptación de la [*Clasificación Internacional Uniforme de Ocupaciones(CIUO-88)*](https://ilostat.ilo.org/es/methods/concepts-and-definitions/classification-occupation/),
+como en la resolución se establece la [*Clasificación Única Ocupaciones
+para Colombia
+(CUOC)*](https://ocupacol.mintrabajo.gov.co/Jerarquias/Jerarquias) que
+es una adaptación de la [*Clasificación Internacional Uniforme de
+Ocupaciones(CIUO-88)*](https://ilostat.ilo.org/es/methods/concepts-and-definitions/classification-occupation/),
 la cual es utilizada a nivel internacional para clasificar las
 ocupaciones de manera estandarizada.
 
 El valor que toma el código puede ser de hasta 5 dígitos, con cada
-dígito añadiendo un nivel de precisión sobre la ocupación. El **primer dígito** indica el **gran grupo** o sector de ocupación. El **segundo y tercer dígito** proporcionan una **subdivisión** dentro de la categoría.
-El **cuarto dígito** indica el **grupo primario** de la ocupación y **el quinto dígito** define de manera más precisa la **ocupación específica**
+dígito añadiendo un nivel de precisión sobre la ocupación. El **primer
+dígito** indica el **gran grupo** o sector de ocupación. El **segundo y
+tercer dígito** proporcionan una **subdivisión** dentro de la categoría.
+El **cuarto dígito** indica el **grupo primario** de la ocupación y **el
+quinto dígito** define de manera más precisa la **ocupación específica**
 dentro de esa subdivisión.
 
 Por ejemplo:
@@ -1429,8 +1485,8 @@ Por ejemplo:
 -   `25` incluye a profesionales de tecnología de la información y las
     comunicaciones
 
--   `251` abarca el grupo más general de Desarrolladores y analistas
-    de software y multimedia.
+-   `251` abarca el grupo más general de Desarrolladores y analistas de
+    software y multimedia.
 
 -   `2512` corresponde a Desarrolladores de software y aplicaciones
 
@@ -1492,8 +1548,9 @@ data %>% filter(!ocupacion %in% CUOC$prefix) %>%  count(ocupacion)
 Estos códigos se convierten en NA, a excepción de los valores `110`,
 `1100` `210` y `2100`, ya que por la lectura de los datos puede que se
 haya omitido el cero inicial. De ser así, de acuerdo a la codificación
-pueden corresponder a `oficiales y suboficiales de las Fuerzas Militares`, respectivamente. A estos casos se cambian su valor para que
-tenga el dígito inicial
+pueden corresponder a
+`oficiales y suboficiales de las Fuerzas Militares`, respectivamente. A
+estos casos se cambian su valor para que tenga el dígito inicial
 
 ```{r}
 data <- data %>%  mutate(ocupacion = case_when(
@@ -1822,7 +1879,8 @@ data <- data %>% mutate(
 Luego, se verifica la concordancia de los códigos y nombres con ayuda de
 la codificación Divipola:
 
-1.  Al analizar que códigos no están en la lista, se encontraron por ejemplo:
+1.  Al analizar que códigos no están en la lista, se encontraron por
+    ejemplo:
 
 ```{r}
 data %>%
@@ -1892,12 +1950,7 @@ data %>%
   count(cod_mun_o, municipio_ocurrencia,nombre_municipio, name = "cantidad")
 ```
 
-No hay discordancias. Los siguientes son los municipios que quedan en la
-base:
-
-```{r}
-data %>% count(municipio_ocurrencia)
-```
+No hay discordancias. 
 
 #### Distrito especial:
 
@@ -1934,8 +1987,8 @@ de los distrito especiales de Colombia, los cuales son:
     Empresarial y de Servicios.
 
 Cuando esta variable toma valor `1` significa que se trata a un distrito
-especial y cuando toma valor `2` significa que no se trata de un distrito
-especial.
+especial y cuando toma valor `2` significa que no se trata de un
+distrito especial.
 
 ```{r}
 data <- data %>% mutate(dist_esp_o = case_when(
@@ -2005,9 +2058,9 @@ summary(as.factor(data$nat_viosex))
 Lo primero que se observa es que las variables están tomando valores que
 no son indicativos entonces se convierten a NA. También se encontraron
 indicativos que no están definidos en el diccionario como: `4,8,9,11`.
-Gracias a las fichas de años anteriores, se identifica que `4=abuso
-sexual` y `11=violencia sexual en conflicto armado`, entonces se
-convierten estos casos a `6` y `14` respectivamente. Para los demás
+Gracias a las fichas de años anteriores, se identifica que
+`4=abuso sexual` y `11=violencia sexual en conflicto armado`, entonces
+se convierten estos casos a `6` y `14` respectivamente. Para los demás
 casos no se pudo determinar que representa el indicativo entonces se
 convierten a NA
 
@@ -2547,8 +2600,8 @@ notificó en uno de los distrito especiales de Colombia, los cuales son:
     Empresarial y de Servicios.
 
 Cuando esta variable toma valor `1` significa que se trata a un distrito
-especial,y cuando toma valor `2` significa que no se trata de un distrito
-especial.
+especial,y cuando toma valor `2` significa que no se trata de un
+distrito especial.
 
 ```{r}
 data <- data %>% mutate(dist_esp_n = case_when(
@@ -2637,7 +2690,7 @@ data %>% filter(!is.na(def_naturaleza)) %>% count(sp_its, def_naturaleza) %>% sl
 -   **Hepatitis B:**
 
 ```{r}
-data %>% filter(!is.na(def_naturaleza)) %>% count(prof_hep_b, def_naturaleza) %>%slice_sample(n = 10) %>%  kable()
+data %>% filter(!is.na(def_naturaleza)) %>% count(prof_hep_b, def_naturaleza) %>%slice_sample(n = 10) 
 ```
 
 -   **Profilaxis Otras ITS:**
@@ -3210,13 +3263,13 @@ completos se tiene una base de datos con **`r nrow_data` filas**.
 
 ## Conversión a factor
 
-Se convierten las columnas a factor a excepción de edad, fecha de
+Se convierten las columnas a factor a excepción de fecha de
 notificación, fecha del hecho y fecha de consulta
 
 ```{r}
 final_data <- final_data %>%
   mutate(across(
-    .cols = !all_of(c("edad_", "fec_not","fec_con","fec_hecho")),  
+    .cols = !all_of(c("fec_not","fec_con","fec_hecho")),  
     .fns = as.factor                     
   ))
 ```
@@ -3337,12 +3390,13 @@ implementar métodos de imputación
 -   Los casos donde no se conoce como se identifica la víctima pero que
     sea de sexo mujer Además, se seleccionaron los casos que ocurrieron
     ÚNICAMENTE en Colombia
-    
-Además, se filtraron los casos donde fecha del hecho, consulta y notificación son consistentes entre sí
+
+Además, se filtraron los casos donde fecha del hecho, consulta y
+notificación son consistentes entre sí
 
 2.  Analizando la fecha del hecho se observó que la base filtrada tiene
     registros de casos del 1899 al 2023. Mientras que los años de
-    notificación van desde 2013 hasta 2024. 
+    notificación van desde 2013 hasta 2024.
 
 3.  Se cuenta con la variable **consecutive** una variable que puede
     servir de identificador de caso en caso de ser necesario ya que no
@@ -3358,7 +3412,8 @@ Además, se filtraron los casos donde fecha del hecho, consulta y notificación 
 
 5.  La base de datos después de los filtros, tratar las variables y
     duplicados, quedó compuesta por **`r nrow(final_data)` filas.** Las
-    columnas se especifican en [*inventario   variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing).
+    columnas se especifican en [*inventario
+    variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing).
     En esta base hay registros con algunos NA correspondientes a las
     columnas con valores faltantes menores del $50\%$ y a la columna de
     semana de gestación
@@ -3371,7 +3426,7 @@ Además, se filtraron los casos donde fecha del hecho, consulta y notificación 
     el nombre de *SIVIGILA_debugged*
 
 6.  Si se quitan los registros con NA, la base final quedaría con las
-    mismas columnas pero **`r aux_nrow` registros completos.**
+    mismas columnas pero **`r nrow_data` registros completos.**
 
     **Nota 1:** Los únicos NA que se encontrarían son los presentes en
     la columna **sem_ges**
@@ -3384,17 +3439,19 @@ Además, se filtraron los casos donde fecha del hecho, consulta y notificación 
     -   nacionalidad
     -   estrato
 
-
 8.  De la información de georreferenciación: lugar de residencia
     víctima, ocurrencia hecho y notificación caso, la información más
     completa es el lugar de notificación
-    
 
-9.  **Variables que se crearon:** 
+9.  **Variables que se crearon:**
 
-    -   año de notificación 
-    -   origen: indica el registro a cuál base de datos de las proporcionadas pertenece
-    -   Se crearon tres variables (dist_esp_r,dist_esp_o,dist_esp_n), las cuales indican si el municipio en que residía la víctima, ocurrió el hecho y fue notificado, respectivamente, corresponde a un municipio que es considerado distrito especial de Coombia. 
+    -   año de notificación
+    -   origen: indica el registro a cuál base de datos de las
+        proporcionadas pertenece
+    -   Se crearon tres variables (dist_esp_r,dist_esp_o,dist_esp_n),
+        las cuales indican si el municipio en que residía la víctima,
+        ocurrió el hecho y fue notificado, respectivamente, corresponde
+        a un municipio que es considerado distrito especial de Coombia.
 
 10. **Variables que se re-codificaron:**
 
@@ -3444,12 +3501,11 @@ nrow_aux <- final_data %>%
 -   **estrato de la víctima:** esta variable no se elimina porque la
     cantidad de NA no supera el $50\%$ de los registros. Se encontró una
     ficha del 2016 donde no se solicita y otra de 2019 donde sí, lo que
-    explica esta cantidad de NA. Al quitar los NA en las demás columnas
-    y dejar solo los registros con NA en estrato se tiene un total de
+    explica esta cantidad de NA. El total de registros solo con NA en estrato es
     `r nrow_aux` registros, es decir, si se considera trabajar con
-    estrato se tendría `r nrow(final_data) - nrow_aux` registros
+    estrato se tendría `r nrow_data + nrow_aux` registros
     completos.
-    
+
 ```{r}
 nrow_aux <- final_data %>%
   filter(
@@ -3461,10 +3517,12 @@ nrow_aux <- final_data %>%
   ) %>% filter(is.na(nacionalidad)| is.na(nombre_nacionalidad)) %>% nrow()
 ```
 
-
--   **nacionalidad de la víctima:** esta variable no se elimina porque la
-    cantidad de NA no supera el $50\%$ de los registros. Se encontró una
-    ficha del 2019 de datos básicos donde se pide esta información pero en la previas no. Al quitar los NA en las demás columnas y dejar solo los registros con NA en nacionalidad se tiene un total de `r nrow_aux` registros, es decir, si se considera trabajar con  nacionalidad se tendría `r nrow(final_data) - nrow_aux` registros
+-   **nacionalidad de la víctima:** esta variable no se elimina porque
+    la cantidad de NA no supera el $50\%$ de los registros. Se encontró
+    una ficha del 2019 de datos básicos donde se pide esta información
+    pero en la previas no. El total de registros solo con NA en nacionalidad es
+    `r nrow_aux` registros, es decir, si se considera trabajar con
+    estrato se tendría `r nrow_data + nrow_aux` registros
     completos.
 
 -   **hora del hecho:** se eliminó por cantidad de NA, esta cantidad se
@@ -3483,7 +3541,8 @@ nrow_aux <- final_data %>%
 15. **Variables que se eliminaron:** [*inventario
     variables*](https://docs.google.com/spreadsheets/d/181s69-iNbESmx_xTnrb7ti-7pC37L8-AUBCdxDb7eeQ/edit?usp=sharing)
 
-16. **Variables a las que no se les hizo modificaciones relevantes o solo se completaron con variables de igual representación:**
+16. **Variables a las que no se les hizo modificaciones relevantes o
+    solo se completaron con variables de igual representación:**
 
 -   tipo de seguridad social
 
