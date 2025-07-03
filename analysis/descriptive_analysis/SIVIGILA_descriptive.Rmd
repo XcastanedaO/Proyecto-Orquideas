@@ -68,11 +68,81 @@ Para conocer más sobre las variables se cuenta con un diccionario de datos que 
 
 ## Análisis univariado
 ### Fecha hecho, consulta, notificación
-diferencia en días entre hecho y consulta y diferencia en días entre consulta y notificación
-
 ```{r}
 summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
 ```
+Comportamiento fecha de hecho por año
+
+```{r}
+base_aux <- base_datos %>% mutate(ano_hecho = floor_date(fec_hecho, "year")) 
+
+base_aux %>% count(ano_hecho) %>% drop_na() %>% 
+ggplot(aes(x = ano_hecho, y = n)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "steelblue") +
+  labs(
+    title = "Línea del tiempo anual de hechos de violencia",
+    x = "Mes",
+    y = "Número de casos"
+  ) +
+  theme_minimal() 
+```
+
+
+```{r}
+base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) < 2000) %>% 
+ggplot(aes(x = ano_hecho, y = n)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "steelblue") +
+  labs(
+    title = "Línea del tiempo anual de hechos de violencia",
+    x = "Mes",
+    y = "Número de casos"
+  ) +
+  theme_minimal()
+
+summary(base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) < 2000))
+```
+```{r}
+base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) >= 2000) %>% 
+ggplot(aes(x = ano_hecho, y = n)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "steelblue") +
+  labs(
+    title = "Línea del tiempo anual de hechos de violencia",
+    x = "Mes",
+    y = "Número de casos"
+  ) +
+  theme_minimal()
+
+summary(base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) >= 2000))
+```
+
+
+Comportamiento de casos por mes
+
+```{r}
+
+
+
+ggplot(base_datos %>% mutate(mes_hecho = floor_date(fec_hecho, "month")) %>% count(mes_hecho), 
+       aes(x = mes_hecho, y = n)) +
+  geom_line(color = "steelblue", size = 1.2) +
+  geom_point(color = "steelblue") +
+  labs(
+    title = "Línea del tiempo mensual de hechos de violencia",
+    x = "Mes",
+    y = "Número de casos"
+  ) +
+  theme_minimal()
+```
+
+
+
+
+
+
+
 ### Edad víctima
 ```{r}
 summary(base_datos$edad_)
@@ -137,7 +207,8 @@ summary(base_datos[c("cod_dpto_o","departamento_ocurrencia","cod_mun_o","municip
 
 ### Modalidad de violencia
 ```{r}
-summary(base_datos$def_naturaleza)
+base_datos %>% count(def_naturaleza) %>%
+  arrange(desc(n))
 ```
 
 ### Mecanismo o arma
