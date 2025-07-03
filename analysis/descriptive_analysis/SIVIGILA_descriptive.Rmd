@@ -39,7 +39,7 @@ library(kableExtra)
 # Lectura de la base de datos
 
 ```{r, echo=TRUE, warning=FALSE,message=FALSE}
-base_datos <- load_data("SIVIGILA_debugged.csv", type = "interim")
+base_datos <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
 ```
 
 ```{r}
@@ -50,13 +50,13 @@ base_datos$fec_hecho <- as.Date(base_datos$fec_hecho, format = "%Y-%m-%d")
 
 base_datos <- base_datos %>%
   mutate(across(
-    .cols = !all_of(c("edad", "fec_not","fec_con","fec_hecho")),  
+    .cols = !all_of(c("edad_", "fec_not","fec_con","fec_hecho","sem_ges")),  
     .fns = as.factor                     
   ))
 
 ```
 
-La base de datos utilizada para este análisis descriptivo es el resultado de juntar y depurar las bases de datos proporcionadas por SIVIGILA, la cual recopila información sobre los casos sospechosos de violencia de género que fueron reportados. Así, la base depurada tiene un total `r nrow(base_datos)` de filas y `r ncol(base_datos) ` columnas, las cuales son:
+La base de datos utilizada para este análisis descriptivo es el resultado de juntar y depurar las bases de datos proporcionadas por SIVIGILA, la cual recopila información sobre los casos sospechosos de violencia de género que fueron reportados. Así, la base depurada tiene un total `r nrow(base_datos)` de filas y `r ncol(base_datos)` columnas, las cuales son:
 
 ```{r}
 colnames(base_datos)
@@ -67,43 +67,165 @@ Para conocer más sobre las variables se cuenta con un diccionario de datos que 
 # Análisis descriptivo
 
 ## Análisis univariado
-
+### Fecha hecho, consulta, notificación
 diferencia en días entre hecho y consulta y diferencia en días entre consulta y notificación
 
-### Fecha hecho, consulta, notificación
+```{r}
+summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
+```
 ### Edad víctima
+```{r}
+summary(base_datos$edad_)
+```
+
+
 ### Nacionalidad víctima
+
+```{r}
+summary(base_datos[c("nacionalidad", "nombre_nacionalidad")])
+```
 ### Lugar de residencia víctima
+
+```{r}
+summary(base_datos[c("cod_pais_r","pais_residencia","cod_dpto_r", "departamento_residencia","cod_mun_r","municipio_residencia","dist_esp_r")])
+```
 ### Estrato de la víctima
+```{r}
+summary(base_datos$estrato)
+```
 ### Sexo - orientación sexual - identidad de género
+```{r}
+summary(base_datos[c("sexo", "orient_sex","ident_gene")])
+```
+
 ### Pertenencia a grupo poblacional especial
+```{r}
+summary(base_datos[c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+             "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")])
+```
+
 #### semana de gestación
+```{r}
+summary(as.factor(base_datos$sem_ges))
+```
 #### Madre cabeza de familia
+```{r}
+summary(base_datos$mujer_cabf)
+```
+
 #### Pertenencia étnica
+```{r}
+summary(base_datos[c("per_etn","nom_grupo")])
+```
+
 #### Consumidora de SPA
+```{r}
+summary(base_datos$consum_spa)
+```
+
 ### Ocupación de la víctima
+```{r}
+summary(base_datos$actividad)
+```
+
 ### Lugar de ocurrencia del hecho
+```{r}
+summary(base_datos[c("cod_dpto_o","departamento_ocurrencia","cod_mun_o","municipio_ocurrencia","dist_esp_o","area")])
+```
+
+
 ### Modalidad de violencia
+```{r}
+summary(base_datos$def_naturaleza)
+```
+
 ### Mecanismo o arma
+```{r}
+summary(base_datos$armas)
+```
+
 #### Quemaduras
+```{r}
+summary(base_datos[c("que_cara", "que_cuello", "que_mano", "que_pie", "que_pliegu", "que_genita", "que_tronco", "que_miesup", "que_mieinf","ext_que","cla_gra")])
+```
 ### Escenario
+```{r}
+summary(base_datos$escenario)
+```
+
 ### Ámbito lugar
+```{r}
+summary(base_datos$ambito_lug)
+```
 ### Presencia de alcohol en la víctima
+```{r}
+summary(base_datos$sust_vict)
+```
 ### Antecedente de violencia
-### Hecho dentro del conflicto armando
+```{r}
+summary(base_datos$antec)
+```
+### Hecho dentro del conflicto armado
+```{r}
+summary(base_datos$zona_conf)
+```
 ### Sexo del agresor
+```{r}
+summary(base_datos$sexo_agre)
+```
 ### Convivencia con la víctima
+```{r}
+summary(base_datos$conv_agre)
+```
 ### Lugar de notificación
+```{r}
+summary(base_datos[c("cod_dpto_n","departamento_notificacion","cod_mun_n","municipio_notificacion","dist_esp_n")])
+```
+
 ### Tipo de seguridad social
+```{r}
+summary(base_datos$tip_ss)
+```
 ### Hospitalización
+```{r}
+summary(base_datos$pac_hos)
+```
 ### Atención en salud mental
+```{r}
+summary(base_datos$ac_mental)
+```
 ### Laboratorios
+```{r}
+summary(base_datos[c("sp_its","prof_hep_b","prof_otras" )])
+```
 ### Anticonceptivo de emergencia
+```{r}
+summary(base_datos$ac_anticon)
+```
+
 ### Orientación
+```{r}
+summary(base_datos$ac_ive)
+```
 ### Informe a autoridades competentes
+```{r}
+summary(base_datos[c( "remit_prot","inf_aut")])
+```
+
 ### Recolección evidencia medicina legal
+```{r}
+summary(base_datos$evi_mlegal)
+```
+
 ### Condición final de la víctima
+```{r}
+summary(base_datos$con_fin)
+```
 #### Causa básica de defunción
+```{r}
+summary(base_datos$cbmte)
+```
 
 
 ## Análisis multivariado
