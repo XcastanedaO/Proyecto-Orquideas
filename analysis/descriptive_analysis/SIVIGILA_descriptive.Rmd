@@ -1,0 +1,111 @@
+---
+title: "Análisis Descriptivo información proporcionada por SIVIGILA del 2013 al 2024."
+date: "2025-07-02"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+always_allow_html: true
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+library(dplyr)
+library(ggplot2)
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(stringi)
+library(knitr)
+library(readr)
+library(sf)
+library(gmodels)   
+library(DescTools)
+library(kableExtra)
+```
+
+\newpage
+
+# Lectura de la base de datos
+
+```{r, echo=TRUE, warning=FALSE,message=FALSE}
+base_datos <- load_data("SIVIGILA_debugged.csv", type = "interim")
+```
+
+```{r}
+# Conversión de tipo dato
+base_datos$fec_not <- as.Date(base_datos$fec_not, format = "%Y-%m-%d")
+base_datos$fec_con <- as.Date(base_datos$fec_con, format = "%Y-%m-%d")
+base_datos$fec_hecho <- as.Date(base_datos$fec_hecho, format = "%Y-%m-%d")
+
+base_datos <- base_datos %>%
+  mutate(across(
+    .cols = !all_of(c("edad", "fec_not","fec_con","fec_hecho")),  
+    .fns = as.factor                     
+  ))
+
+```
+
+La base de datos utilizada para este análisis descriptivo es el resultado de juntar y depurar las bases de datos proporcionadas por SIVIGILA, la cual recopila información sobre los casos sospechosos de violencia de género que fueron reportados. Así, la base depurada tiene un total `r nrow(base_datos)` de filas y `r ncol(base_datos) ` columnas, las cuales son:
+
+```{r}
+colnames(base_datos)
+```
+
+Para conocer más sobre las variables se cuenta con un diccionario de datos que enviaron junto a las bases [(Ver aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf). Adicional, se cuenta con algunas de las fichas de notificación al SIVIGILA que contienen indicaciones sobre muchas variables, la más actualizada es la ficha de 2024 [(Ver   aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
+
+# Análisis descriptivo
+
+## Análisis univariado
+
+diferencia en días entre hecho y consulta y diferencia en días entre consulta y notificación
+
+### Fecha hecho, consulta, notificación
+### Edad víctima
+### Nacionalidad víctima
+### Lugar de residencia víctima
+### Estrato de la víctima
+### Sexo - orientación sexual - identidad de género
+### Pertenencia a grupo poblacional especial
+#### semana de gestación
+#### Madre cabeza de familia
+#### Pertenencia étnica
+#### Consumidora de SPA
+### Ocupación de la víctima
+### Lugar de ocurrencia del hecho
+### Modalidad de violencia
+### Mecanismo o arma
+#### Quemaduras
+### Escenario
+### Ámbito lugar
+### Presencia de alcohol en la víctima
+### Antecedente de violencia
+### Hecho dentro del conflicto armando
+### Sexo del agresor
+### Convivencia con la víctima
+### Lugar de notificación
+### Tipo de seguridad social
+### Hospitalización
+### Atención en salud mental
+### Laboratorios
+### Anticonceptivo de emergencia
+### Orientación
+### Informe a autoridades competentes
+### Recolección evidencia medicina legal
+### Condición final de la víctima
+#### Causa básica de defunción
+
+
+## Análisis multivariado
+
+## Conjuntos de posibles variables relacionadas
