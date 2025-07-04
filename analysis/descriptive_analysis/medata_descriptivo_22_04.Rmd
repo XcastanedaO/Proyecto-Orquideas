@@ -1,0 +1,762 @@
+---
+title: "Análisis Descriptivo información del portal de datos públicos de Medellín (MEData)."
+date: "2024-11-13"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+always_allow_html: true
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+library(dplyr)
+library(ggplot2)
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(stringi)
+library(knitr)
+library(readr)
+library(kableExtra)
+```
+
+\newpage
+
+# Lectura de la base de datos
+
+```{r, echo=TRUE, warning=FALSE,message=FALSE}
+base_datos <- load_data("medata_1900_2022_debugged.csv", type = "interim")
+```
+
+```{r}
+# Conversión de tipo dato
+base_datos$fec_not <- as.Date(base_datos$fec_not, format = "%Y-%m-%d")
+
+base_datos <- base_datos %>%
+  mutate(across(
+    .cols = !all_of(c("edad", "fec_not")),  
+    .fns = as.factor                     
+  ))
+
+```
+
+La base de datos utilizada para este análisis descriptivo es el resultado de depurar la base de datos alojada en el portal MEData [(Ver)](https://medata.gov.co/dataset/1-026-22-000170), la cual recopila información sobre los casos sospechosos de violencia de género que fueron reportados al SIVIGILA.Así, la base depurada tiene un total `r nrow(base_datos)` de filas y `r ncol(base_datos) ` columnas, las cuales son:
+
+```{r}
+colnames(base_datos)
+```
+
+Para conocer más sobre las variables se cuenta con un diccionario que aparece en MEData y el formato de notificación al SIVIGILA [(Ver)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
+
+# Análisis descriptivo
+
+## Análisis temporal
+
+```{r,fig.align = "center"}
+summary(base_datos$fec_not)
+```
+Se evidencia que las fechas de notificación van desde julio de 2016 hasta abril de 2023, lo que indica un período de observación de casi 7 años, donde la mayor parte de los casos notificados se concentran entre 2019 y 2021.
+
+
+### Frecuencia de casos por año
+
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
+base_datos %>%
+  mutate(año_not = ifelse(is.na(año_not), "Desconocido", as.character(año_not))) %>%  
+  count(año_not) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = año_not, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  
+            fontface = "bold",
+            size = 2) + 
+  labs(x = "Año", y = "Frecuencia") + #title = "Casos de violencia por año"
+  theme_minimal()
+
+```
+Este gráfico representa un conteo de los casos presentados por año. Se evidencia que para años menores a 2017 los casos son muy pocos, por lo que se decide estudiar únicamente los casos cuyo año sea mayor o igual a 2017. Además, que en el año 2019 hubo un aumento de los casos que posiblemente a no ser por la pandemia, se evidenciaría también en los años 2020 y 2021, como se evidencia en el año 2022. El bajo porcentaje en al año 2023 se atribuye a que se tiene registro de casos notificados hasta abril del 2023.
+
+```{r}
+# dejar registros unicamente de 2017 en adelante
+base_datos <- base_datos %>%
+  filter(as.numeric(as.character(año_not)) >= 2017)  
+```
+
+### Frecuencia de casos por mes
+
+Luego de filtrar los casos notificados desde 2017 en adelante, se obtiene una base de datos con `r nrow(base_datos)` registros.
+
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
+base_datos %>%
+  mutate(mes_not = as.factor(month(base_datos$fec_not))) %>%
+  count(mes_not) %>%
+  ggplot(aes(x = mes_not, y = n)) +
+  geom_col(fill = "#c07dca",  alpha = 0.8) +
+  labs(x = "Mes", y = "Casos") + #title = "Casos de violencia por mes", 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Aunque podría considerarse una distribución de casos por mes muy uniforme, se ve que, en los meses de mayo, septiembre y julio son los meses en que más casos se han notificado.
+
+### Frecuencia de casos por semana
+
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
+base_datos %>%
+  mutate(semana_not = as.factor(week(base_datos$fec_not))) %>%
+  count(semana_not) %>%
+  slice_max(order_by = n, n = 10) %>%
+  ggplot(aes(x = semana_not, y = n)) +
+  geom_col(fill = "#c07dca",  alpha = 0.8) +
+  labs(x = "Semana", y = "Casos") + #title = "Casos de violencia por semana", 
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+Se observa que las semanas con mayor número de casos notificados son 19,21,37 y 38. Este hallazgo es coherente con lo encontrado en el gráfico anterior, además deja el interrogante si estos casos están relacionados con celebraciones como el día de la amdre o el día de amor y amistad que suelen celebrarse en la semana 19 o 20 y en la semana 37 o 38 del año, respectivamente.
+
+
+## Caracterización de las víctimas
+
+#### Distribución por edad de las víctimas
+
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
+ggplot(base_datos, aes(x = edad)) +
+  geom_bar(aes(y = after_stat(count)), fill = "#4B0082", alpha = 0.6, color = "white") +
+  geom_density(aes(y = after_stat(count)), color = "#c09dca", fill = "#c09dca", alpha = 0.3, linewidth = 1.1) +
+  labs(x = "Edad", y = "Frecuencia") + #title = "Distribución de edad de las víctimas",
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        # plot.title = element_text(face = "bold", size = 16),
+        # plot.subtitle = element_text(size = 12, color = "gray40"))
+```
+El gráfico muestra que la violencia afecta principalmente a personas jóvenes, con un pico en adultos de 20-30 años y un menor pero notable impacto en la infancia y adolescencia. Esto podría estar relacionado con factores como la violencia intrafamiliar, de pareja o la vulnerabilidad social en estos grupos etarios.
+
+
+##### Distribución por edad agrupada de las víctimas
+
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
+ggplot(base_datos, aes(x = grupo_edad)) +
+  geom_bar(fill = "#c07dca", alpha = 0.8) +
+  labs(x = "Grupo de edad", y = "Frecuencia") + #title = "Distribución de edad agrupada",
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotar etiquetas
+
+```
+
+El análisis de la variable edad muestra que la violencia afecta a mujeres de todas las edades, pero con patrones específicos según el grupo etario. La mayoría de las víctimas son niñas de 10-14 años (7760 casos), seguidas por adolescentes de 25-29 años (6279 casos) y  20-24 años (6018 casos). Además, genera un alarma frente al número de víctimas menores a 10 años (8318)
+
+
+### Princioales ocupaciones de las víctimas
+
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
+base_datos %>%
+  mutate(
+    actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
+) %>% 
+
+   count(actividad) %>%
+  top_n(5, n) %>%
+  ggplot(aes(x = reorder(actividad, n), y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
+  coord_flip() +
+  labs( x = "Ocupación", y = "Frecuencia") + #title = "Principales ocupaciones de las víctimas",
+  theme_minimal()
+```
+
+Con respecto a la ocupación de las víctimas, se observa que las categorías más frecuentes son "Ninguna" y "Otro". Sin embargo, estas categorías son poco informativas desde el punto de vista analítico, pues no permiten identificar una actividad específica para así caracterizar de alguna manera los perfiles ocupacionales de las víctimas. Por esta razón, en el análisis descriptivo que sigue, se excluyen estas categorías para enfocarse en las ocupaciones definidas. 
+
+
+
+```{r,fig.align = "center", fig.width = 5, fig.height = 3}
+base_datos %>%
+  mutate(
+    actividad = ifelse(is.na(actividad), "Sin información", as.character(actividad))
+) %>% 
+  
+
+
+filter(actividad != "Ninguna" & actividad !="Otro") %>% 
+
+  count(actividad) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  top_n(5, n) %>%
+  ggplot(aes(x = reorder(actividad, n), y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            color = "#4B0082",  
+            fontface = "bold",
+            size = 2) + 
+  coord_flip() +
+  labs(x = "Ocupación", y = "Frecuencia") + #title = "Principales ocupaciones ", 
+  theme_minimal()
+```
+
+Entre las ocupaciones específicas más reportadas se destacan: estudiante, persona dedicada al cuidado del hogar y ocupaciones elementales. Estas últimas agrupan trabajos que requieren habilidades básicas, como personal de aseo, ayudantes o trabajadores informales, generalmente asociados a condiciones laborales precarias. También se identificaron casos entre personas en situación de prostitución y personas que cuidan a otras.
+
+Este resultado, permite ver un primer acercamiento al análisis y sugiere que las personas que más hicieron reportes de violencia, son aquellas en contextos de procesos educativos o en empleos de alta vulnerabilidad social.
+
+
+Finalmente, se observa que existe en esta variable un alto nivel de desagregación ya que muchas categrías contienen pocos casos y esto limita de alguna manera la posibilidad de tener conclusiones significativas.
+
+
+#### Ámbito de la violencia según lugar de ocurrencia
+
+
+```{r}
+base_datos <- base_datos %>% 
+  mutate(ambito_lug = case_when(
+    ambito_lug == "1" ~ "Escolar",
+    ambito_lug == "2" ~ "Laboral",
+    ambito_lug == "3" ~ "Institucional",
+    ambito_lug == "4" ~ "Virtual",
+    ambito_lug == "5" ~ "Comunitario",
+    ambito_lug == "6" ~ "Hogar",
+    ambito_lug == "7" ~ "Otros"
+  ))
+```
+
+```{r}
+base_datos %>%
+  count(ambito_lug) %>%
+  arrange(desc(n)) %>%
+  mutate(proporcion = round( n / sum(n) * 100, 2)) 
+```
+
+La variable ámbito describe el tipo de relación social o espacio donde se inscribe la violencia (por ejemplo, familiar, comunitario o institucional).
+
+Los datos muestran que el hogar es el principal ámbito de violencia, con un 63.2% de los casos, lo que refuerza la idea de que la violencia basada en género ocurre mayormente en entornos íntimos o privados. Le siguen los ámbitos "Otros" (29.1%) y el comunitario (4.0%).
+
+
+
+#### Escenario
+
+```{r}
+base_datos <- base_datos %>% 
+  mutate(escenario = case_when(
+    escenario == "1" ~ "Vía pública",
+    escenario == "2" ~ "Vivienda",
+    escenario == "3" ~ "Establecimiento educativo",
+    escenario == "4" ~ "Lugar de trabajo",
+    
+    escenario == "7" ~ "Otro",
+    escenario == "8" ~ "Comercio",
+    escenario == "9" ~ " Otros espacios abiertos",
+    escenario == "10" ~ "Bares",
+    escenario == "11" ~ "Institución de la salud",  
+    escenario == "12" ~ "Área deportiva"
+
+  ))
+```
+
+```{r}
+base_datos %>% count(escenario) %>% 
+  arrange(desc(n)) %>% 
+  mutate(proporcion = round( n / sum(n) * 100, 2)) 
+```
+
+
+El escenario señala el lugar físico específico donde se produjo el hecho, y de él se puede concluir que, la mayoría de los casos de violencia ocurrieron en la vivienda (69.26%), lo que refuerza que el hogar sigue siendo el principal escenario de agresión para mujeres, niñas y adolescentes. Un 18.26% de los casos se registraron en la categoría "Otro", lo que sugiere que hay espacios no especificados donde también ocurre violencia. La vía pública (8.43%) es el tercer lugar más frecuente, lo que indica que la violencia no se limita únicmente al ámbito privado. Los demás escenarios, como establecimientos educativos, lugares de trabajo y comercios, presentan una incidencia menor, pero no por ello menos relevantes, ya que reflejan agresiones en contextos sociales y laborales.
+
+
+
+<!-- ###### Comparación entre ambas -->
+
+<!-- ```{r} -->
+<!-- table(base_datos$ambito_lug, base_datos$escenario) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- library(dplyr) -->
+
+<!-- base_datos <- base_datos %>% -->
+<!--   mutate(ambito_lug = case_when( -->
+<!--     ambito_lug == "Otros" ~ escenario, # Si el ámbito es "Otros", tomar el escenario -->
+<!--     escenario == "Otro" ~ ambito_lug,  # Si el escenario es "Otro", mantener el ámbito -->
+<!--     TRUE ~ ambito_lug # Mantener el valor original en otros casos -->
+<!--   )) -->
+
+
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- library(dplyr) -->
+
+<!-- base_datos <- base_datos %>% -->
+<!--   mutate(categoria_ambito = case_when( -->
+<!--     ambito_lug %in% c("Vía pública", "Otros espacios abiertos", "Área deportiva", "Bares", "Comunitario") | -->
+<!--     escenario %in% c("Vía pública", "Otros espacios abiertos", "Área deportiva", "Bares", "Comunitario") ~ "Espacios públicos", -->
+
+<!--     ambito_lug %in% c("Establecimiento educativo", "Institucional", "Escolar") | -->
+<!--     escenario %in% c("Establecimiento educativo", "Institucional", "Escolar") ~ "Entornos educativos", -->
+
+<!--     ambito_lug %in% c("Vivienda", "Hogar") | -->
+<!--     escenario %in% c("Vivienda", "Hogar") ~ "Hogar", -->
+
+<!--     ambito_lug %in% c("Laboral", "Comercio", "Lugar de trabajo") | -->
+<!--     escenario %in% c("Laboral", "Comercio", "Lugar de trabajo") ~ "Ambiente laboral y comercial", -->
+
+<!--     ambito_lug %in% c("Institución de la salud") | -->
+<!--     escenario %in% c("Institución de la salud") ~ "Institución de la salud", -->
+
+<!--     ambito_lug %in% c("Virtual") | -->
+<!--     escenario %in% c("Virtual") ~ "Virtual", -->
+
+<!--     ambito_lug %in% c("Otro") | -->
+<!--     escenario %in% c("Otro") ~ "Otro", -->
+
+<!--     TRUE ~ "Otro"  # Para valores no clasificados o NA -->
+<!--   )) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- base_datos %>% -->
+<!--   count(categoria_ambito) %>% -->
+<!--   arrange(desc(n)) %>% -->
+<!--   mutate(proporcion = round( n / sum(n) * 100, 2)) -->
+<!-- ``` -->
+
+<!-- La mayoría de los casos de violencia (68.26%) ocurren en el hogar, lo que resalta la vulnerabilidad de las víctimas en su entorno familiar y la necesidad de fortalecer medidas de prevención y protección. Un 18.50% de los casos están en la categoría "Otro", lo que sugiere una clasificación poco definida que podría ocultar patrones importantes y lo que sugiere la necesidad de mayor precisión en la clasificación de los espacios donde ocurre la violencia. -->
+
+<!-- Los espacios públicos, entornos educativos y laborales presenta menores reportes de violencia sin embargo, sigue siendo relevante, indicando que las agresiones también ocurren fuera del hogar, aunque en menor proporción. -->
+
+## Caracterización de los agresores
+
+#### Distribución por sexo de los agresores
+
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
+base_datos <- base_datos %>%
+  mutate(sexo_agre = str_trim(sexo_agre)) # Elimina espacios en blanco
+
+base_datos %>%
+  mutate(
+    sexo_agre = ifelse(is.na(sexo_agre), "Sin información", as.character(sexo_agre)),
+    sexo_agre = factor(sexo_agre, levels = c("M", "F", "I", "Sin información"))) %>% 
+
+  count(sexo_agre) %>% 
+  mutate(porcentaje = round(n / sum(n) * 100, 1)) %>%
+  
+  ggplot(aes(x = sexo_agre, y = n, fill = sexo_agre)) +
+  geom_col(alpha=0.8) +
+  geom_text(aes(label = paste0(porcentaje, "%")),
+            vjust = -0.2, 
+            color = "#4B0082",  
+            fontface = "bold",
+            size = 2) +
+  labs( x = "Sexo", y = "Casos") + #title = "Sexo de los agresores",
+  theme_minimal() +
+  scale_fill_manual(values = c("F" = "#a55dbb", "M" = "#a55dbb", "I" = "#a55dbb"))+
+  theme(legend.position = "none") 
+```
+
+
+La gran mayoría de los casos de violencia reportados fueron perpetrados por hombres. Las mujeres representaron el 20.1% de los agresores (10,748 casos), mientras que los casos registrados como personas intersexuales fueron apenas 0.3%. Por otra parte, no se cuenta con información acerca del sexo del agresor para 10.2% registros. Estos resultados muestran que la violencia basada en género no es exclusivamente ejercida por hombres, pues, la participación femenina como agresora, también es evidenciada en un porcentaje mucho menor. 
+
+
+La violencia ejercida por mujeres hacia otras mujeres puede manifestarse en diversos contextos. En el ámbito familiar, pueden presentarse casos de violencia intrafamiliar ejercida por madres, abuelas u otras figuras femeninas. También pueden darse en espacios laborales y educativos, es posible encontrar situaciones de acoso, discriminación o abuso de poder entre mujeres. Además, en contextos de trata de personas o explotación sexual, algunas mujeres pueden actuar como intermediarias dentro de estructuras más amplias de violencia. Incluso en relaciones de pareja entre mujeres, pueden surgir dinámicas violentas similares a las observadas en relaciones heterosexuales.
+
+
+#### Relación víctima-agresor
+
+```{r, fig.align = "center",fig.width = 4, fig.height = 3}
+base_datos %>%
+  mutate(
+    parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor))) %>% 
+  
+  count(parentezco_agresor) %>%
+  top_n(10, n) %>%
+  ggplot(aes(x = reorder(parentezco_agresor, n), y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
+  coord_flip() +
+  labs( x = "Parentesco", y = "Casos") + #title = "Relación víctima-agresor"
+  theme_minimal()
+
+
+```
+
+Con respecto a la relación que existe entre la víctima y el agresor, el análisis revela que, la violencia a la mujer está presentada mayormente por personas cercanas a la víctima. La pareja actual y familiares son los principales agresores, lo que resalta un preocupante patrón de violencia en el ámbito doméstico y relacional. Además, las exparejas representan un grupo significativo, lo que sugiere que el riesgo de violencia persiste incluso después de la finalización de la relación. 
+
+Aunque en menor medida, la violencia ejercida por padres y madres también es relevante, evidenciando dinámicas de maltrato intrafamiliar que no deben ser ignoradas. Finalmente, si bien la violencia ejecutada por personas externas al núcleo familiar (como conocidos, desconocidos o amigos) es menos frecuente, su presencia reafirma que la violencia sobrepasa los límites del hogar y se puede manifestar en múltiples contextos sociales.
+
+
+#### Convive con el agresor
+
+```{r}
+base_datos <- base_datos %>% 
+  mutate(conv_agre = case_when(
+    conv_agre == 1 ~ "Sí",
+    conv_agre == 2 ~ "No"
+  ))
+```
+
+```{r,fig.align = "center", fig.width = 4, fig.height = 3}
+# base_datos %>% filter(conv_agre !="") %>% count(conv_agre) %>%
+#   arrange(desc(n)) %>%
+#   mutate(proporcion = round( n / sum(n) * 100, 2)) 
+
+
+base_datos %>% filter(conv_agre !="") %>%
+  count(conv_agre) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%  # Calculamos el porcentaje
+  ggplot(aes(x = reorder(conv_agre, n), y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            hjust = 0.9999, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 2) +
+  coord_flip() +
+  labs(#title = "Convivencia con el agresor", 
+       x = "Convive con el gresor", 
+       y = "Casos") +
+  theme_minimal()
+```
+
+Los resultados muestran que en el 62.5% de los casos reportados, las víctimas no convivían con su agresor al momento de la violencia, mientras que, un 37.5% sí compartía el mismo espacio de residencia con su agresor. Esto es relevante, ya que sugiere que la violencia no solo es ejercida por personas con las que la víctima comparte un entorno diario, sino también por agresores externos, lo que podría incluir situaciones de violencia en espacios comunitarios, laborales o públicos. Además, la alta proporción de convivencia con el agresor resalta la dificultad de muchas víctimas para denunciar, ya que pueden enfrentar miedo, dependencia económica o emocional, y barreras para acceder a apoyo y protección.
+
+
+
+## Caracterización del hecho
+
+#### Tipos de violencia reportados
+
+```{r, fig.align = "center", fig.width = 4.5, fig.height = 3}
+base_datos %>% 
+  mutate(def_naturaleza = case_when(
+    def_naturaleza == 1 ~ "Violencia física",
+  def_naturaleza == 2 ~ "Violencia psicológica",
+  def_naturaleza == 3 ~ "Negligencia y abandono",
+  def_naturaleza %in% c(4, 5, 6, 7, 10, 12, 14) ~ "Violencia sexual"
+  )) %>% 
+  
+    mutate(
+    def_naturaleza = ifelse(is.na(def_naturaleza), "Sin información", as.character(def_naturaleza))) %>%
+
+  count(def_naturaleza) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%  # Calculamos el porcentaje
+  ggplot(aes(x = reorder(def_naturaleza, n), y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +
+   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            hjust = 0.9999, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 2)  +
+  coord_flip() +
+  labs(#title = "Tipos de violencia reportados", 
+       x = "Tipo de violencia", 
+       y = "Casos") +
+  theme_minimal()
+```
+
+El análisis de la naturaleza de la violencia muestra que la violencia física representa la forma mas común de agresión, pues constituye el 45.9% del total de reportes. Le sigue la violencia sexual con el 28.5%, lo cual evidencia una alta incidencia de agresiones de carácter íntimo. La violencia psicológica (16.8%) también tiene una presencia significativa, indicando que el daño emocional y mental es una dimensión importante de la violencia de género que muchas veces permanece invisible. Por su parte, los casos de negligencia y abandono (8.8%) si bien son los menos frecuentes, reflejan situaciones de desprotección que pueden afectar gravemente el desarrollo y la salud integral de las personas afectadas.  
+
+Estos resultados subrayan la necesidad de estrategias integrales de prevención y atención, considerando que la violencia en sus diversas formas es un problema estructural que requiere intervención desde múltiples frentes.
+
+#### Área de ocurrencia
+
+```{r}
+base_datos <- base_datos %>% 
+  mutate(area_ = case_when(
+    area_ == "1" ~ "Cabecera municipal",
+    area_ == "2" ~ "Centro poblado",
+    area_ == "3" ~ "Rural disperso"
+  ))
+base_datos %>% filter(!is.na(area_)) %>% count(area_)
+```
+
+
+La gran mayoría de los casos reportados de violencia de género (alrededor del 97%) ocurren en la cabecera municipal, lo que indica que este tipo de violencia se visibiliza más en las zonas urbanas. Esto puede estar relacionado con un mayor acceso a instituciones, rutas de atención más claras y una mayor disposición o posibilidad para denunciar.
+
+En cambio, en zonas como los centros poblados y el rural disperso, los reportes son mucho menores. Sin embargo, esto no necesariamente significa que haya menos violencia en estos lugares, sino que podrían existir obstáculos importantes para la denuncia, como la falta de servicios cercanos, el aislamiento o incluso normalización de la violencia en algunos contextos.
+
+
+## Atención en salud
+
+#### Hospitalización
+
+```{r}
+base_datos <- base_datos %>% 
+  mutate(pac_hos_ = case_when(
+    pac_hos_ == 1 ~ "Sí",
+    pac_hos_ == 2 ~ "No"
+  ))
+
+```
+
+```{r}
+base_datos %>%
+  count(pac_hos_)
+```
+
+
+En la mayoría de los casos reportados, las víctimas no requirieron hospitalización, lo cual podría estar relacionado con que muchas formas de violencia no siempre dejan lesiones físicas visibles o no son consideradas de gravedad clínica inmediata.
+
+Sin embargo, más de 5.000 víctimas sí fueron hospitalizadas luego de su maltrato, lo que refleja la severidad de algunas agresiones y la necesidad urgente de atención médica. Esta cifra es de gran importancia pues, indica impacto físico que puede tener la violencia de género, además del daño emocional y psicológico.
+
+Evaluar de forma individual esta variable podría no ser tan relevante pues, en proporción hay muchos casos en los que la paciente no fue hospitalizada y una cantidad muy mínima en la que sí, por lo tanto, se analiza la hospitalización con respecto a la modalidad de violencia y se notan diferencias importantes:
+
+
+
+##### Hospitalización vs def_naturaleza
+
+Se presenta a continuación la proporción de víctimas hospitalizadas según el tipo de violencia:
+
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
+# Crear el gráfico
+base_datos %>%
+  group_by(def_naturaleza) %>%
+  count(pac_hos_) %>%
+  mutate(proporcion = round((n / sum(n))*100, 3)) %>%
+  ggplot(aes(x = def_naturaleza, y = proporcion, fill = pac_hos_)) +
+  geom_bar(stat = "identity", position = "fill", alpha=0.85) +  # "fill" normaliza a 100%
+  scale_fill_manual(values = c("#e07a5f", "#c07dca")) +  # Paleta personalizada
+  labs(
+       x = "Tipo de violencia",
+       y = "Proporción",
+       fill = "Hospitalización") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 10))  # Rotar etiquetas
+```
+
+La violencia sexual es la que presenta la mayor proporción de hospitalizaciones (más del 24%), lo que refleja la gravedad física y emocional que puede implicar este tipo de agresión, así como la necesidad de atención médica especializada.
+
+En comparación, la violencia física, aunque es la más reportada, tiene una proporción mucho menor de hospitalización (alrededor del 4.3%), y en el caso de la violencia psicológica, la cifra de hospitalización es muchi más baja (menos del 1%), lo que también puede estar relacionado con la falta de atención médica inmediata para este tipo de afectaciones.
+
+
+## Análisis multivariado
+
+#### Proporción de atenciones en salud realizadas hasta la notificación de los casos al Sivigila según tipo de violencia
+
+```{r}
+# Lista de variables de atención en salud en el orden deseado
+atenciones <- c("sp_its", "prof_hep_b", "prof_otras", "ac_anticon", "ac_ive", "ac_mental", "remit_prot", "inf_aut")
+
+# Crear la tabla con los porcentajes por tipo de violencia
+tabla_salud <- base_datos %>%
+  mutate(def_naturaleza = case_when(
+    def_naturaleza == 1 ~ "Violencia física",
+  def_naturaleza == 2 ~ "Violencia psicológica",
+  def_naturaleza == 3 ~ "Negligencia y abandono",
+  def_naturaleza %in% c(4, 5, 6, 7, 10, 12, 14) ~ "Violencia sexual"
+  )) %>%
+  
+  pivot_longer(cols = all_of(atenciones), names_to = "atencion", values_to = "presente") %>%
+  group_by(def_naturaleza, atencion) %>%
+  summarise(proporcion = round(mean(presente == 1, na.rm = TRUE) * 100, 1), .groups = "drop") %>%
+  mutate(atencion = factor(atencion, levels = atenciones)) %>% # Ordenar por niveles deseados
+  arrange(atencion) %>% # Aplicar el orden
+  pivot_wider(names_from = def_naturaleza, values_from = proporcion)
+```
+
+```{r}
+tabla_salud 
+# %>%
+#   kable(format = "html", caption = "Atenciones en salud según tipo de violencia") %>%
+#   kable_styling("striped", full_width = F)
+```
+
+Los servicios de atención en salud presentan diferencias significativas según el tipo de violencia sufrida.
+
+Las acciones de profilaxis para ITS (sp_its, prof_hep_b, prof_otras), anticoncepción de emergencia (ac_anticon) y orientación para Interrupciones Voluntarias de Embarazo (ac_ive) solo aplican en casos de violencia sexual. Sin embargo, no existen soberturas completas para estos servicios a pesar de haber sufrido de este tipo de violencia, por ejemplo, solo el 42.2% recibió profilaxis para ITS, el 43.9% profilaxis para hepatitis B, y el 45.9% otras profilaxis. La orientación para IVE alcanzó un 61.5% en este grupo. Estas cifras muestran que todavía hay una proporción importante de víctimas que no acceden a estas atenciones clave. 
+
+La atención en salud mental es también mucho más común en víctimas de violencia sexual (92.6%), pero baja notablemente en otros tipos de violencia, (25.4% en violencia física y solo 4.7% en negligencia y abandono). Esto evidencia una brecha en el acompañamiento psicológico que aún persiste.
+
+En cuanto a las remisiones a protección, estas son más frecuentes en los casos de negligencia y abandono (58%) y violencia psicológica (69.5%), lo que puede estar relacionado con la necesidad de apartar a las víctimas de entornos peligrosos o de abandono.
+
+Por último, el informe a autoridades (inf_aut) destaca en los casos de violencia sexual (84.6%), mientras que en otros tipos de violencia es menor. En violencia psicológica, por ejemplo, solo llega al 3.9%, lo que sugiere que muchos de estos casos no se judicializan o formalizan ante las instituciones.
+
+
+#### Antecedentes
+
+```{r}
+base_datos <- base_datos %>% 
+  mutate(antec = case_when(
+    antec == "1" ~ "Sí",
+    antec == "2" ~ "No"
+  ))
+```
+
+
+```{r}
+base_datos %>%
+  count(antec) %>%
+  arrange(desc(n)) %>%
+  mutate(proporcion = round( n / sum(n) * 100, 2)) 
+```
+
+La variable antecedentes permite identificar si la víctima había sufrido previamente algún tipo de violencia, lo que resulta clave para evaluar la reincidencia y profundizar en el análisis de factores asociados a la revictimización.
+
+El 92.5% de las víctimas reportaron no haber tenido antecedentes de violencia, mientras que el 7.5% sí indicó antecedentes previos. Claramente, la proporción de mujeres con antecedentes es muy baja en comparación a quienes no los tienen, sin embargo, este grupo pequeño, representa una población vulnerable, que puede requerir atención detallada y seguimiento.
+
+
+
+##### Reincidencia según tipo de violencia
+
+```{r,fig.align = "center", fig.width = 5, fig.height = 3}
+base_datos %>%
+  mutate(
+    antec = case_when(antec == "1" ~ "Sí", antec == "2" ~ "No", is.na(antec) ~ "Sin información",TRUE ~ antec),
+    
+    def_naturaleza = case_when(
+      def_naturaleza == "1" ~ "Física",
+      def_naturaleza == "2" ~ "Psicológica",
+      def_naturaleza == "3" ~ "Negligencia",
+      def_naturaleza == "4" ~ "Abuso Sexual",
+      def_naturaleza == "5" ~ "Acoso Sexual",
+      def_naturaleza == "6" ~ "Acceso carnal",
+      def_naturaleza == "7" ~ "Explotación sexual",
+      def_naturaleza == "10" ~ "Trata de personas",
+      def_naturaleza == "12" ~ "Actos sexuales",
+      def_naturaleza == "14" ~ "Otras violencias sexuales",
+      is.na(def_naturaleza) ~ "Sin información",
+      TRUE ~ def_naturaleza
+    )
+  ) %>%
+  group_by(def_naturaleza, antec) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  ggplot(aes(x = def_naturaleza, y = n, fill = antec)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  scale_y_continuous(labels = scales::percent_format()) +
+   scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
+  labs(#title = "Proporción de reincidencia según tipo de violencia",
+       x = "Tipo de Violencia",
+       y = "Proporción",
+       fill = "Reincidencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+El gráfico anterior indica que el acceso carnal tiene la tasa de reincidencia más alta (13.45%), lo que sugiere que quienes han sufrido este tipo de violencia tienen más probabilidad de volver a ser víctimas. La explotación sexual también tiene un porcentaje considerable de reincidencia (13.33%), lo que es preocupante porque sugiere una revictimización frecuente.
+Finalmente, la violencia psicológica y la negligencia tienen muy baja reincidencia, lo que puede deberse a que las víctimas no reportan estos casos o a que los agresores no son recurrentes en estos tipos de violencia.
+
+
+##### Reincidencia según área
+
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
+base_datos %>%
+  mutate(
+    antec = case_when(
+      antec == "1" ~ "Sí",
+      antec == "2" ~ "No",
+      is.na(antec) ~ "Sin información",
+      TRUE ~ antec
+    ),
+    area_ = case_when(
+      is.na(area_) ~ "Sin información",
+      area_ == "1" ~ "Cabecera municipal",
+      area_ == "2" ~ "Centro poblado",
+      area_ == "3" ~ "Rural disperso",
+      TRUE ~ area_
+    )
+  ) %>%
+  group_by(area_, antec) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  ggplot(aes(x = area_, y = n, fill = antec)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("No" = "#e07a5f", "Sí" = "#c07dca", "Sin información" = "#9b9b9b")) +
+  labs(
+    x = "Área",
+    y = "Proporción",
+    fill = "Reincidencia"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1, size = 10)  # Mejora visibilidad del eje x
+  )
+
+```
+
+El siguiente gráfico evidencia que la reincidencia es más alta en las cabeceras municipales (7.24%) que en las zonas rurales (0.26%)
+
+#### Convivencia
+
+##### Relación entre el tipo de violencia y la convivencia
+
+```{r,fig.align = "center", fig.width = 5, fig.height = 3}
+base_datos %>%
+  mutate(conv_agre = case_when(
+    conv_agre == "1" ~ "Sí",
+    conv_agre == "2" ~ "No",
+    is.na(conv_agre) ~ "Sin información",
+    TRUE ~ conv_agre),
+    
+    def_naturaleza = case_when(
+      def_naturaleza == "1" ~ "Física",
+      def_naturaleza == "2" ~ "Psicológica",
+      def_naturaleza == "3" ~ "Negligencia",
+      def_naturaleza == "4" ~ "Abuso Sexual",
+      def_naturaleza == "5" ~ "Acoso Sexual",
+      def_naturaleza == "6" ~ "Acceso carnal",
+      def_naturaleza == "7" ~ "Explotación sexual",
+      def_naturaleza == "10" ~ "Trata de personas",
+      def_naturaleza == "12" ~ "Actos sexuales",
+      def_naturaleza == "14" ~ "Otras violencias sexuales",
+      is.na(def_naturaleza) ~ "Sin información",
+      TRUE ~ def_naturaleza
+    )
+  ) %>%
+  group_by(def_naturaleza, conv_agre) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(def_naturaleza) %>%
+  mutate(proporcion = round(n / sum(n) * 100, 2)) %>%
+  ggplot(aes(x = def_naturaleza, y = proporcion, fill = conv_agre)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  scale_y_continuous(labels = scales::percent_format()) +
+ scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
+  labs(#title = "Proporción de Convivencia con el \n agresor por tipo de violencia",
+       x = "Tipo",
+       y = "Proporción",
+       fill = "Convivencia con el agresor") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Son solo tres casos en que no se conoce si la víctima convivía con el agresor, por ello, no se alcanzan a visualizar en el gráfico. Este análisis muestra que la convivencia con el agresor varía según la naturaleza de la violencia. En casos de negligencia y abandono, la convivencia es la más alta (>60%), lo que sugiere que este tipo de violencia ocurre principalmente dentro del hogar o en entornos donde la víctima interactúa frecuentemente con el agresor. La violencia física y la violencia psicológica (<50%) también presentan una proporción considerable de convivencia. En contraste, la explotación sexual y la trata de personas tienen la menor tasa de convivencia con el agresor. 
+
+
+##### Relación entre el parentesco y la convivencia
+
+```{r, fig.align = "center",fig.width = 5, fig.height = 3}
+base_datos %>%
+  mutate(
+    parentezco_agresor = ifelse(is.na(parentezco_agresor), "Sin información", as.character(parentezco_agresor)),
+    conv_agre = ifelse(is.na(conv_agre), "Sin información", as.character(conv_agre))
+  ) %>%
+  mutate(conv_agre = case_when(
+    conv_agre == "1" ~ "Sí",
+    conv_agre == "2" ~ "No",
+    conv_agre == "Sin información" ~ "Sin información",
+    TRUE ~ conv_agre
+  )) %>%
+  count(parentezco_agresor, conv_agre) %>%
+  ggplot(aes(x = parentezco_agresor, y = n, fill = conv_agre)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  scale_y_continuous(labels = scales::percent_format()) +
+   scale_fill_manual(values = c("#e07a5f","#c07dca","#9b9b9b")) +
+  labs(
+    #title = "Proporción de convivencia \n con el agresor por parentesco",
+    x = "Parentesco",
+    y = "Proporción",
+    fill = "Convivencia con el agresor"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+Son solos tres los casos en que no se conoce el parentesco y tampoco si la victima convive con el agresor, por ello, no se evidencian en el gráfico. Ahora bien, se observa que la convivencia con el agresor varía según el parentesco con el agresor, por ejemplo, cuando el agresor fue la madre, más del 80% de las victimas convivían con el agresor o cuando fue padre y pareja también los casos fueron superiores al 60%. Mientras que cuando la relación con el agresor es externa, las proporciones no alcanzan el 50%. Lo anterior da indicios que el entorno doméstico y familiar puede ser un entorno de alto riesgo.
+

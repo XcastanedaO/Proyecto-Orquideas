@@ -10,7 +10,7 @@ library(writexl)
 
 load_data <- function(file_name, type = "raw", ...) {
   # Validación del tipo de archivo
-  if (!type %in% c("raw", "interim", "processed")) {
+  if (!type %in% c("raw", "interim", "processed","auxiliary")) {
     stop("El tipo de archivo debe ser 'raw', 'interim' o 'processed'")
   }
   
@@ -34,7 +34,7 @@ load_data <- function(file_name, type = "raw", ...) {
   
   # Leer archivo según su extensión
   if (grepl("\\.csv$", file_name)) {
-    data <- read.csv(file_path, ...)
+    data <- read_csv(file_path, ...)
   } else if (grepl("\\.(xlsx|xls)$", file_name)) {
     data <- read_excel(file_path, ...)
   } else if (grepl("\\.rds$", file_name)) {
@@ -52,7 +52,7 @@ load_data <- function(file_name, type = "raw", ...) {
 
 save_data <- function(data, file_name, type = "processed", format = "csv") {
   # Validación del tipo de directorio
-  if (!type %in% c("raw", "interim", "processed")) {
+  if (!type %in% c("raw", "interim", "processed","auxiliary")) {
     stop("El tipo de directorio debe ser 'raw', 'interim' o 'processed'")
   }
   
