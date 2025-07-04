@@ -11,6 +11,9 @@ library(stringi)
 library(janitor)
 library(explore)
 library(ggplot2)
+library(sf)
+library(readr)
+library(patchwork)
 ```
 
 
@@ -22,6 +25,16 @@ nf_data <- load_data("INMLCF_no_fatales_debugged_2015_2024_v2.csv", type = "inte
 
 ```{r}
 colnames(nf_data)
+```
+
+```{r}
+nf_data <- nf_data %>% mutate(
+    codigo_dane_departamento = as.character(codigo_dane_departamento),
+    codigo_dane_departamento = ifelse(codigo_dane_departamento == "11", "25", codigo_dane_departamento))
+```
+
+```{r}
+nf_data$codigo_dane_departamento %>% unique()
 ```
 
 ```{r}
@@ -438,6 +451,74 @@ prop.table(table(nf_data$def_naturaleza, nf_data$grupo_mayor_menor_de_edad), mar
 ```{r}
 
 prop.table(table(nf_data$def_naturaleza, nf_data$escenario_del_hecho), margin = 1)
+```
+
+
+```{r}
+colombia_map <- st_read("../../data/raw/Departamento.shp")
+```
+```{r}
+conteo_departamento  <- nf_data %>%
+  count(codigo_dane_departamento) %>%
+  rename(N_registros = n)
+```
+
+
+
+```{r}
+colombia_map <- colombia_map %>%
+  mutate(DeCodigo = sub("^0", "", DeCodigo))
+```
+
+
+
+```{r}
+colombia_datos  <- colombia_map %>%
+  left_join(conteo_departamento, by  = c("DeCodigo" = "codigo_dane_departamento"))
+```
+
+```{r}
+
+
+mapa <- ggplot(colombia_datos) +
+  geom_sf(aes(fill = N_registros), color = "white") +
+  scale_fill_viridis_c(option = "plasma", na.value = "grey90") +
+  labs(
+    title = "Casos de violencia por departamento",
+    fill = "Nº Registros"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+mapa
+```
+
+
+```{r}
+dep <- nf_data %>%
+  count(departamento_del_hecho_dane) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  filter(proporcion >= 2) %>%
+  ggplot(aes(x = departamento_del_hecho_dane, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() 
+```
+
+
+```{r, fig.width = 8.5, fig.height =4.5}
+(mapa | dep)
+
+ggsave(filename = "../../reports/bayes/dep.pdf",
+       plot = (mapa | dep), width = 8.5, height = 4.5)
+
 ```
 
 
