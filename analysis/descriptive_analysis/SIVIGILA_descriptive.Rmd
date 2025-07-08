@@ -67,80 +67,168 @@ Para conocer más sobre las variables se cuenta con un diccionario de datos que 
 # Análisis descriptivo
 
 ## Análisis univariado
-### Fecha hecho, consulta, notificación
+### Fechas
 ```{r}
 summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
 ```
-Comportamiento fecha de hecho por año
+#### Fecha hecho
 
 ```{r}
-base_aux <- base_datos %>% mutate(ano_hecho = floor_date(fec_hecho, "year")) 
-
-base_aux %>% count(ano_hecho) %>% drop_na() %>% 
+base_fec <- base_datos %>% select(fec_hecho,fec_con,fec_not) %>% mutate(ano_hecho = floor_date(fec_hecho, "year")) 
+base_fec %>% count(ano_hecho) %>% drop_na() %>% 
 ggplot(aes(x = ano_hecho, y = n)) +
-  geom_line(color = "steelblue", size = 1.2) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
   geom_point(color = "steelblue") +
   labs(
     title = "Línea del tiempo anual de hechos de violencia",
-    x = "Mes",
+    x = "Año",
     y = "Número de casos"
   ) +
   theme_minimal() 
 ```
 
+```{r}
+summary(base_fec %>% count(ano_hecho) %>% select(n))
+hist(base_fec %>% count(ano_hecho) %>% pull(n))
+```
+```{r}
+base_fec %>% count(ano_hecho) %>%  filter(n > 210.8)
+```
 
 ```{r}
-base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) < 2000) %>% 
+base_fec %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) < 2012) %>% 
 ggplot(aes(x = ano_hecho, y = n)) +
   geom_line(color = "steelblue", size = 1.2) +
   geom_point(color = "steelblue") +
   labs(
-    title = "Línea del tiempo anual de hechos de violencia",
-    x = "Mes",
+    title = "Línea del tiempo anual de hechos de violencia 1899-2012",
+    x = "Año",
     y = "Número de casos"
   ) +
   theme_minimal()
-
-summary(base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) < 2000))
 ```
+
 ```{r}
-base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) >= 2000) %>% 
+base_fec %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) >= 2012) %>% 
 ggplot(aes(x = ano_hecho, y = n)) +
   geom_line(color = "steelblue", size = 1.2) +
   geom_point(color = "steelblue") +
   labs(
-    title = "Línea del tiempo anual de hechos de violencia",
-    x = "Mes",
+    title = "Línea del tiempo anual de hechos de violencia a partir de 2012",
+    x = "Año",
     y = "Número de casos"
   ) +
   theme_minimal()
-
-summary(base_aux %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) >= 2000))
 ```
 
 
-Comportamiento de casos por mes
+```{r}
+base_fec %>% count(ano_hecho) %>%  filter(year(ano_hecho) >= 2012)  %>% summarise(total = sum(n))
+```
+A partir de ahora se hace el análisis con los casos que ocurrieron de 2012 al 2024
 
 ```{r}
+base_fec <- base_fec %>% filter(year(fec_hecho) >= 2012)
+  
+base_fec <- base_fec %>%mutate(mes_hecho = floor_date(fec_hecho, "month")) 
 
-
-
-ggplot(base_datos %>% mutate(mes_hecho = floor_date(fec_hecho, "month")) %>% count(mes_hecho), 
-       aes(x = mes_hecho, y = n)) +
-  geom_line(color = "steelblue", size = 1.2) +
+base_fec %>% count(mes_hecho) %>% drop_na() %>% 
+ggplot(aes(x = mes_hecho, y = n)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
   geom_point(color = "steelblue") +
   labs(
     title = "Línea del tiempo mensual de hechos de violencia",
     x = "Mes",
     y = "Número de casos"
   ) +
+  theme_minimal() 
+```
+
+```{r}
+serie_mensual <- base_fec %>%
+  count(mes_hecho) %>%
+  arrange(mes_hecho)
+
+# Convertir a objeto ts (suponiendo que comienza en enero de 2012)
+ts_mensual <- ts(serie_mensual$n, start = c(2012, 1), frequency = 12)
+
+descomp_ts_mensual <- decompose(ts_mensual, type = "additive")  # o "multiplicative"
+plot(descomp_ts_mensual)
+
+```
+```{r}
+# Estacionalidad promedio por mes para ver en qué meses sube o baja regularmente la serie
+estacionalidad <- descomp_ts_mensual$seasonal
+meses <- rep(1:12, length.out = length(estacionalidad))
+
+# Agrupar y promediar
+tendencia_estacional <- data.frame(
+  mes = meses,
+  valor = estacionalidad
+) %>%
+  group_by(mes) %>%
+  summarise(efecto_promedio = mean(valor)) %>%
+  mutate(mes_nombre = month.abb[mes])  # abreviatura del mes
+
+tendencia_estacional %>% arrange(desc(efecto_promedio))
+```
+
+Primeros 5 meses del año a excepción de abril. Julio, agosto, sept
+
+
+```{r}
+base_fec %>%
+  mutate(
+    dia = day(fec_hecho),                        # Día del mes
+    mes_num = month(fec_hecho),                 
+    mes_nombre = month(fec_hecho, label = TRUE, abbr = FALSE)
+  ) %>%
+  filter(mes_num %in% c(1)) %>%         # Enero, Febrero, Marzo, Mayo
+  count(mes_nombre, dia) %>%                    # Suma total por día del mes
+  ggplot(aes(x = dia, y = n)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue") +
+  facet_wrap(~ mes_nombre, ncol = 2) +          # Crea un panel para cada mes
+  labs(
+    title = "Distribución diaria de casos por mes (2012–2023)",
+    x = "Día del mes",
+    y = "Número total de casos"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+base_fec %>% filter(month(mes_hecho) %in% c(1) & day(fec_hecho) == 1 & year(ano_hecho) != year(fec_con)) %>%
+    count(fec_hecho,fec_con,fec_not)
+```
+
+```{r}
+base_fec %>%
+  mutate(
+    dia = day(fec_hecho),                        # Día del mes
+    mes_num = month(fec_hecho),                 
+    mes_nombre = month(fec_hecho, label = TRUE, abbr = FALSE)
+  ) %>%
+  filter(mes_num %in% c(2, 3, 5,7,8,9)) %>%         # Enero, Febrero, Marzo, Mayo
+  count(mes_nombre, dia) %>%                    # Suma total por día del mes
+  ggplot(aes(x = dia, y = n)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue") +
+  facet_wrap(~ mes_nombre, ncol = 2) +          # Crea un panel para cada mes
+  labs(
+    title = "Distribución diaria de casos por mes (2012–2023)",
+    x = "Día del mes",
+    y = "Número total de casos"
+  ) +
   theme_minimal()
 ```
 
 
-
-
-
+```{r}
+base_fec %>% filter(month(mes_hecho) %in% c(1,2, 3, 5,7,8,9) & day(fec_hecho) == 1 & year(ano_hecho) != year(fec_con)) %>% 
+  count(fec_hecho,fec_con,fec_not)
+```
+Son 997 casos con inconsistencias
 
 
 ### Edad víctima
