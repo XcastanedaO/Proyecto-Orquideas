@@ -1,0 +1,862 @@
+---
+title: "Depuración y Descriptivos: Registros no Fatales "
+output: html_document
+date: "2025-07-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Dada la depuración inicial, en el siguiente documento se procede a realizar los ajustes necesarios para enfocar los modelos que se desarrollarán.
+
+```{r, echo=FALSE, message=FALSE}
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(janitor)
+library(explore)
+library(ggplot2)
+library(sf)
+library(readr)
+library(patchwork)
+# library(knitr)
+```
+
+```{r, echo=FALSE}
+nf_data <- load_data("INMLCF_no_fatales_debugged_2015_2024_v2.csv", type = "interim")
+```
+
+```{r, echo=FALSE, message=FALSE,results='hide'}
+colnames(nf_data)
+```
+
+```{r, echo=FALSE}
+# nf_data <- nf_data %>% mutate(
+#     codigo_dane_departamento = as.character(codigo_dane_departamento),
+#     codigo_dane_departamento = ifelse(codigo_dane_departamento == "11", "25", codigo_dane_departamento))
+```
+
+
+```{r, echo=FALSE, message=FALSE,results='hide', warning=FALSE}
+nf_data <- nf_data %>%
+  mutate(across(
+    .fns = as.factor                     
+  ))
+```
+
+
+```{r, echo=FALSE, message=FALSE,results='hide'}
+nf_data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
+```
+```{r, echo=FALSE, message=FALSE,results='hide'}
+nf_data %>% colnames()
+```
+
+### Filtros y agrupaciones
+
+
+Filtros aplicados:
+
+ *-* Tipo de violencia = Violencia sexual,Violencia interpersonal,Violencia intrafamiliar,Violencia sociopolítica.
+ 
+ *-* Pais de la víctima = Colombia.
+ 
+ *-* Agresor = Pareja, Familiar, Ex-pareja, Conocido.
+
+Agrupaciones:
+ *-* Ciclo vital: Adulto Mayor y Adultez, Primera Infancia e Infancia.
+ 
+ *-* Escenario del hecho: Distintos de vivienda, se renombran como **espacios sociales**.
+ 
+ *_* Escolaridad: Doctorado o equivalente,educación técnica profesional y tecnológica, especialización, maestría o equivalente, universitario, educación media o secundaria alta como **Educación superior**.
+ 
+ *-* Rango de hora: De 6 am hasta 5pm como horario laboral, en otro caso queda como fuera del horario laboral.
+
+
+```{r}
+nf_data <- nf_data %>% filter(municipio_del_hecho_dane == "Medellín")
+```
+
+
+ 
+```{r, echo=FALSE}
+nf_data <- nf_data %>% filter(def_naturaleza %in% c("Violencia sexual","Violencia interpersonal","Violencia intrafamiliar","Violencia sociopolítica")) 
+
+nf_data <- nf_data %>% filter(circunstancia_del_hecho != "Bala perdida")
+
+nf_data <- nf_data %>% filter(pais_de_nacimiento_de_la_victima =="Colombia") 
+```
+
+
+```{r, echo=FALSE}
+# nf_data %>% count(pais_de_nacimiento_de_la_victima)
+# write.csv(nf_data %>% count(pais_de_nacimiento_de_la_victima), "pais.csv", fileEncoding = "UTF-8", row.names = FALSE)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  agresor_ag = case_when(
+    agresor_ag == "Amigo(a)" ~ "Conocido",
+    TRUE ~ agresor_ag
+  )
+)
+```
+
+Dado que la violencia sociopolítica puede ser más perpetuada por agresores distintos a pareja, familiar, ex-pareja o conocido, a continuación se valida el cambio que sufre este nivel de la variable tipo de violencia:
+
+```{r, echo=FALSE, warning=FALSE}
+nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count(agresor_ag)  %>%
+  arrange(desc(n)) %>%
+  mutate(agresor_ag = stringr::str_trunc(agresor_ag, width = 30))
+```
+Aplicando el filtro de que el agresor sólo sea pareja, familiar, ex-pareja, conocido.
+```{r, echo=FALSE, warning=FALSE}
+nf_data <- nf_data %>% filter(agresor_ag %in% c("Pareja","Familiar","Ex-pareja","Conocido")) 
+```
+```{r, echo=FALSE}
+nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count(agresor_ag) %>%
+  arrange(desc(n)) 
+```
+
+Agrupación dado el tipo de agresor y la circunstancia del hecho para la violencia sociopolítica:
+```{r, echo=FALSE}
+nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count( circunstancia_del_hecho,agresor_ag) %>%
+  arrange(desc(n)) 
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  escolaridad = case_when(
+    escolaridad == "Educación básica primaria" ~ "Educación básica primaria y secundaria",
+    escolaridad == "Educación básica secundaria o secundaria baja" ~ "Educación básica primaria y secundaria",
+    escolaridad == "Doctorado o equivalente" ~ "Educación superior",
+    escolaridad == "Educación técnica profesional y tecnológica" ~ "Educación superior",
+    escolaridad == "Especialización, maestría o equivalente" ~ "Educación superior",
+    escolaridad == "Universitario" ~ "Educación superior",
+    escolaridad == "Educación media o secundaria alta" ~ "Educación superior",
+    TRUE ~ escolaridad
+  )
+)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  escenario_del_hecho = case_when(
+    escenario_del_hecho != "vivienda" ~ "Espacios sociales",
+    TRUE ~ escenario_del_hecho
+  )
+)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  ciclo_vital = case_when(
+    ciclo_vital == "Adulto Mayor" ~ "Adulto Mayor y Adultez",
+    ciclo_vital == "Adultez" ~ "Adulto Mayor y Adultez",
+    ciclo_vital == "Primera Infancia" ~ "Primera Infancia e Infancia",
+    ciclo_vital == "Infancia" ~ "Primera Infancia e Infancia",
+    TRUE ~ ciclo_vital
+  )
+)
+
+```
+
+```{r,echo=FALSE, results='hide'}
+nf_data %>% count(rango_de_hora_del_hecho_x_3_horas)
+```
+
+
+
+```{r, echo=FALSE}
+departamentos_colombia <- tribble(
+  ~region, ~departamento, ~codigo_dane_departamento,
+  
+  # REGIÓN CARIBE
+  "Caribe", "Atlántico", 8,
+  "Caribe", "Bolívar", 13,
+  "Caribe", "Cesar", 20,
+  "Caribe", "Córdoba", 23,
+  "Caribe", "La Guajira", 44,
+  "Caribe", "Magdalena", 47,
+  "Caribe", "San Andrés", 88,
+  "Caribe", "Sucre", 70,
+  
+  # REGIÓN EJE CAFETERO
+  "Eje Cafetero", "Antioquia", 5,
+  "Eje Cafetero", "Caldas", 17,
+  "Eje Cafetero", "Quindío", 63,
+  "Eje Cafetero", "Risaralda", 66,
+  
+  # REGIÓN PACÍFICO
+  "Pacífico", "Cauca", 19,
+  "Pacífico", "Chocó", 27,
+  "Pacífico", "Nariño", 52,
+  "Pacífico", "Valle del Cauca", 76,
+  
+  # REGIÓN CENTRO ORIENTE
+  "Centro Oriente", "Bogotá, D.C.", 11,
+  "Centro Oriente", "Boyacá", 15,
+  "Centro Oriente", "Cundinamarca", 25,
+  "Centro Oriente", "Norte de Santander", 54,
+  "Centro Oriente", "Santander", 68,
+  
+  # REGIÓN DE LOS LLANOS
+  "Llanos", "Arauca", 81,
+  "Llanos", "Casanare", 85,
+  "Llanos", "Guainía", 94,
+  "Llanos", "Guaviare", 95,
+  "Llanos", "Meta", 50,
+  "Llanos", "Vaupés", 97,
+  "Llanos", "Vichada", 99,
+  
+  # REGIÓN CENTRO SUR AMAZONÍA
+  "Centro Sur Amazonía", "Amazonas", 91,
+  "Centro Sur Amazonía", "Caquetá", 18,
+  "Centro Sur Amazonía", "Huila", 41,
+  "Centro Sur Amazonía", "Putumayo", 86,
+  "Centro Sur Amazonía", "Tolima", 73
+)
+```
+
+```{r, echo=FALSE}
+departamentos_colombia$codigo_dane_departamento <- as.factor(departamentos_colombia$codigo_dane_departamento)
+nf_data <- nf_data %>%
+  left_join(departamentos_colombia, by = "codigo_dane_departamento")
+```
+
+```{r, echo=FALSE}
+# nf_data %>% filter(is.na(region)) %>% count(departamento_del_hecho_dane)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  region = case_when(
+    is.na(region)  ~ "Sin información",
+    
+    TRUE ~ region
+  )
+)
+```
+
+
+### Circunstancia del hecho 
+
+
+```{r, echo=FALSE, results='hide'}
+nf_data %>%
+  count(def_naturaleza) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = def_naturaleza, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por tipo", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Circunstancia del hecho asociado a violencia interpersonal
+```{r, echo=FALSE}
+nf_data %>% filter(def_naturaleza == "Violencia interpersonal") %>% group_by(circunstancia_del_hecho) %>% summarise(n=n())
+```
+
+## Temporales
+```{r, echo=FALSE}
+nf_data$ano_del_hecho <- nf_data$ano_del_hecho %>% as.factor()
+```
+
+```{r, echo=FALSE}
+anio <- nf_data %>%
+  count(ano_del_hecho) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = ano_del_hecho, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por año", x = "Año", y = "Frecuencia") +
+  theme_minimal()
+```
+
+```{r, echo=FALSE}
+meses_orden <- c("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
+mes <- nf_data %>%
+  # filter(mes_del_hecho != "Sin información") %>% 
+  count(mes_del_hecho) %>%
+  mutate(
+    mes_del_hecho = factor(mes_del_hecho, levels = meses_orden),
+    proporcion = n / sum(n) * 100
+  ) %>%
+  ggplot(aes(x = mes_del_hecho, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",
+            fontface = "bold",
+            size = 3) +
+  labs(title = "Casos de violencia por mes", x = "Mes", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+dia <- nf_data %>%
+  # filter(dia_del_hecho != "Sin información") %>% 
+  count(dia_del_hecho) %>%
+  mutate(dia_del_hecho = factor(dia_del_hecho, levels = c("Lunes", "Martes", "Miércoles", "Jueves", 
+                "Viernes", "Sábado", "Domingo")),
+    proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = dia_del_hecho, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por día", x = "Día", y = "Frecuencia") +
+  theme_minimal()
+```
+
+
+```{r, echo=FALSE}
+hora <- nf_data %>%
+  count(rango_de_hora_del_hecho_x_3_horas) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = rango_de_hora_del_hecho_x_3_horas, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por hora", x = "Hora", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+```{r, fig.width=11, fig.height=6.5, echo=FALSE}
+(anio | mes ) / (dia | hora)
+# ggsave("../../reports/bayes/temp_inmlcf.pdf", (anio | mes ) / (dia | hora), width = 14, height = 7)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  rango_de_hora_del_hecho_x_3_horas = case_when(
+    rango_de_hora_del_hecho_x_3_horas == "Sin información" ~ "Sin información",
+    rango_de_hora_del_hecho_x_3_horas %in% c("00:00 - 02:59", "03:00 - 05:59","21:00 - 23:59","18:00 - 20:59") ~ "Fuera horario laboral",
+    TRUE ~ "Horario laboral"
+  )
+)
+```
+
+Agrupando el rango de hora del hecho: 
+
+```{r, echo=FALSE}
+nf_data %>%
+  count(rango_de_hora_del_hecho_x_3_horas) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = rango_de_hora_del_hecho_x_3_horas, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por hora", x = "Hora", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+
+## Ciclo vital de la víctima
+```{r, echo=FALSE}
+grupo <- nf_data %>%
+  count(grupo_de_edad_de_la_victima) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = grupo_de_edad_de_la_victima, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por grupo de edad", x = "Edad", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+
+
+```{r, echo=FALSE}
+orden <- c("Primera Infancia e Infancia", "Adolescencia", "Juventud", "Adulto Mayor y Adultez")
+ciclo <- nf_data %>%
+  count(ciclo_vital) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+   mutate(
+    ciclo_vital = factor(ciclo_vital, levels = orden)) %>% 
+  ggplot(aes(x = ciclo_vital, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por ciclo vital", x = "ciclo_vital", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+```{r,fig.width = 9, fig.height =4, echo=FALSE}
+(grupo | ciclo)
+# ggsave(filename = "../../reports/bayes/edad.pdf",
+#        plot = (grupo | ciclo), width = 9, height = 4)
+```
+```{r, echo=FALSE}
+table(nf_data$ciclo_vital) %>% sort()
+```
+## Estado civil y escolaridad
+
+
+```{r, echo=FALSE}
+
+esc <- nf_data %>%
+  count(escolaridad) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = escolaridad, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por escolaridad", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
+
+```{r, echo=FALSE}
+estado <- nf_data %>%
+  count(estado_civil) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = estado_civil, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por estado civil", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r,fig.width = 9, fig.height =5, echo=FALSE}
+(estado | esc)
+# ggsave(filename = "../../reports/bayes/escolaridad.pdf",
+#        plot = (estado | esc), width = 9, height = 5)
+```
+```{r, echo=FALSE}
+table(nf_data$estado_civil) %>% sort()
+```
+```{r, echo=FALSE}
+table(nf_data$escolaridad) %>% sort()
+```
+
+```{r, echo=FALSE}
+tipo <- nf_data %>%
+  count(def_naturaleza) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = def_naturaleza, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por tipo de violencia", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+<!-- ```{r, echo=FALSE, results='markup'} -->
+<!-- nf_data %>% -->
+<!--   count(escolaridad) %>% -->
+<!--   mutate(proporcion = n / sum(n) * 100) %>% -->
+<!--   ggplot(aes(x = escolaridad, y = n)) + -->
+<!--   geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras -->
+<!--   geom_text(aes(label = paste0(round(proporcion, 1), "%")),  -->
+<!--             vjust = -0.2,  -->
+<!--             color = "#4B0082",  # Morado oscuro -->
+<!--             fontface = "bold", -->
+<!--             size = 3) +  # Texto en negrita -->
+<!--   labs(title = "Casos de violencia por escolaridad", x = "", y = "Frecuencia") + -->
+<!--   theme_minimal() + -->
+<!--   theme(axis.text.x = element_text(angle = 45, hjust = 1))   -->
+<!-- ``` -->
+
+<!-- ```{r, echo=FALSE} -->
+<!-- nf_data <- nf_data %>% mutate( -->
+<!--   escolaridad = case_when( -->
+<!--     escolaridad == "Educación básica primaria" ~ "Educación básica primaria y secundaria", -->
+<!--     escolaridad == "Educación básica secundaria o secundaria baja" ~ "Educación básica primaria y secundaria", -->
+<!--     escolaridad == "Doctorado o equivalente" ~ "Educación superior", -->
+<!--     escolaridad == "Educación técnica profesional y tecnológica" ~ "Educación superior", -->
+<!--     escolaridad == "Especialización, maestría o equivalente" ~ "Educación superior", -->
+<!--     escolaridad == "Universitario" ~ "Educación superior", -->
+<!--     escolaridad == "Educación media o secundaria alta" ~ "Educación superior", -->
+<!--     TRUE ~ escolaridad -->
+<!--   ) -->
+<!-- ) -->
+<!-- ``` -->
+
+## Agresor
+
+```{r, echo=FALSE, results='markup'}
+nf_data %>%
+  count(agresor_ag) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  # filter(proporcion >= 2) %>%
+  ggplot(aes(x = agresor_ag, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por presunto agresor", x = "", y = "Frecuencia") +
+  theme_minimal()
+  # coord_flip() +scale_x_discrete(labels = function(x) str_wrap(x, width = 30))
+```
+
+```{r, echo=FALSE}
+table(nf_data$agresor_ag) %>% sort()
+```
+
+## Escenario del hecho
+
+```{r, echo=FALSE}
+nf_data %>%
+  count(escenario_del_hecho) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  # filter(proporcion >= 2) %>%
+  ggplot(aes(x = escenario_del_hecho, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3.4) +  # Texto en negrita
+  labs(title = "Casos de violencia por escenario_del_hecho", x = "", y = "Frecuencia") +
+  theme_minimal()
+  # coord_flip() +scale_x_discrete(labels = function(x) str_wrap(x, width = 30))
+```
+
+```{r, echo=FALSE}
+table(nf_data$escenario_del_hecho) %>% sort()
+```
+
+```{r, echo=FALSE}
+# nf_data %>% filter(pais_de_nacimiento_de_la_victima =="Venezuela") %>% group_by(def_naturaleza) %>% summarise(n=n())
+```
+
+```{r, echo=FALSE}
+# nf_data %>% filter(pais_de_nacimiento_de_la_victima =="Venezuela") %>% explore()
+```
+
+
+```{r, echo=FALSE}
+# nf_data %>% filter(grupo_mayor_menor_de_edad =="Menor de edad", def_naturaleza == "Violencia sexual") %>% group_by(circunstancia_del_hecho) %>% summarise(n=n()) 
+```
+
+```{r, echo=FALSE}
+# nf_data %>% explore()
+```
+
+
+
+```{r,fig.width = 8.5, fig.height =4.5, , echo=FALSE}
+# (tipo | agresor)
+# agresor
+# ggsave(filename = "../../reports/bayes/tipo.pdf",
+#        plot = (tipo | agresor), width = 8.5, height = 4.5)
+```
+
+## Región
+
+```{r, echo=FALSE}
+dep <- nf_data %>%
+  count(region) %>%
+   mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = region, y = n)) +
+  geom_col(fill = "#c07dca", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() 
+
+dep
+```
+```{r}
+nf_data <- nf_data %>% select(def_naturaleza, ciclo_vital, estado_civil, escolaridad, dia_del_hecho, rango_de_hora_del_hecho_x_3_horas,
+                              escenario_del_hecho, zona_del_hecho, agresor_ag, region)
+nf_data %>% explore()
+```
+
+## Variables de interés vs Tipo de violencia
+```{r, echo=FALSE}
+# Calcular proporciones por ciclo_vital y def_naturaleza
+a <- nf_data %>%
+  count(ciclo_vital, def_naturaleza) %>%
+  group_by(def_naturaleza) %>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  mutate(
+    ciclo_vital = factor(ciclo_vital, levels = orden)) %>% 
+  ggplot(aes(x = proporcion, y = ciclo_vital, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("ciclo_vital") +
+  coord_flip()
+
+```
+
+```{r, echo=FALSE}
+# Calcular proporciones por ciclo_vital y def_naturaleza
+b <- nf_data %>%
+  count(estado_civil, def_naturaleza) %>%
+  group_by(def_naturaleza) %>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = estado_civil, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Estado civil") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r, echo=FALSE}
+c <- nf_data %>%
+  count(escolaridad, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = escolaridad, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Escolaridad") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+d <- nf_data %>%
+  count(escolaridad, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = escolaridad, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Escolaridad") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r, echo=FALSE}
+a
+b
+c
+d
+```
+
+```{r, echo=FALSE}
+nf_data %>%
+  count(rango_de_hora_del_hecho_x_3_horas, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = rango_de_hora_del_hecho_x_3_horas, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Rango de hora") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+nf_data %>%
+  count(escenario_del_hecho, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = escenario_del_hecho, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Escenario del hecho") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+nf_data %>%
+  count(agresor_ag, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = agresor_ag, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Agresor") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+nf_data %>%
+  count(region, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = region, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 0.9),
+            hjust = -0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Región") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+<!-- ### Proporción de casos de cada tipo de violencia según la edad y el escenario del hecho -->
+<!-- ```{r} -->
+<!-- prop.table(table(nf_data$def_naturaleza, nf_data$ciclo_vital), margin = 1) -->
+<!-- ``` -->
+<!-- ```{r} -->
+
+<!-- prop.table(table(nf_data$def_naturaleza, nf_data$escenario_del_hecho), margin = 1) -->
+<!-- ``` -->

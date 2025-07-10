@@ -57,15 +57,6 @@ unique(n_f_data_24$Contexto.de.Violencia)
 aux_nf_nrow <- nrow(n_f_data_24)
 ```
 
-```{r}
-n_f_data_24 <- n_f_data_24 %>% filter(!(
-  Contexto.de.Violencia %in% c(
-    "7 Lesiones por Eventos de Transporte",
-    "8 Lesiones Accidentales"
-  ))
-)
-```
-
 Obteniendo una base con `r nrow(n_f_data_24)` registros y
 `r ncol(n_f_data_24)` columnas. Se descartaron
 `r aux_nf_nrow - nrow(n_f_data_24)` registros.
@@ -77,6 +68,15 @@ interp_data <- interp_data%>% clean_names()
 intraf_data <- intraf_data%>% clean_names()
 ```
 
+
+```{r}
+n_f_data_24 <- n_f_data_24 %>% filter(!(
+  contexto_de_violencia %in% c(
+    "7 Lesiones por Eventos de Transporte",
+    "8 Lesiones Accidentales"
+  ))
+)
+```
 Las bases de datos de 2024 y 2015-2023 no comparten las siguientes
 variables:
 
@@ -357,8 +357,7 @@ corresponden a departamentos de colombia con ayuda de la codificación
 Divipola
 
 ```{r, message=FALSE, warning=FALSE}
-DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "raw", col_types = c("numeric", "text", "numeric", 
-        "text", "text"))
+DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("numeric", "text", "numeric", "text", "text", "text"))
 ```
 
 ```{r}
