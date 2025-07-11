@@ -79,8 +79,8 @@ Agrupaciones:
  *-* Rango de hora: De 6 am hasta 5pm como horario laboral, en otro caso queda como fuera del horario laboral.
 
 
-```{r}
-nf_data <- nf_data %>% filter(municipio_del_hecho_dane == "Medellín")
+```{r, echo=FALSE}
+# nf_data <- nf_data %>% filter(municipio_del_hecho_dane == "Medellín")
 ```
 
 
@@ -100,12 +100,30 @@ nf_data <- nf_data %>% filter(pais_de_nacimiento_de_la_victima =="Colombia")
 ```
 
 ```{r, echo=FALSE}
+# nf_data <- nf_data %>% mutate(
+#   agresor_ag = case_when(
+#     agresor_ag == "Amigo(a)" ~ "Conocido",
+#     TRUE ~ agresor_ag
+#   )
+# )
+```
+
+```{r, echo=FALSE, results='hide'}
+nf_data %>% count(agresor_ag)
+```
+
+```{r, echo=FALSE, results='hide'}
 nf_data <- nf_data %>% mutate(
-  agresor_ag = case_when(
-    agresor_ag == "Amigo(a)" ~ "Conocido",
-    TRUE ~ agresor_ag
-  )
-)
+  agresor_group = case_when(
+  agresor_ag == "Delincuencia común" ~ "Actores del conflicto",
+  agresor_ag == "Miembro de grupos alzados al margen de la ley" ~ "Actores del conflicto",
+  agresor_ag == "Miembro de un grupo de la delincuencia organizada" ~  "Actores del conflicto",
+    agresor_ag == "Miembros de las fuerzas armadas, de policía, policía judicial y servicios de inteligencia" ~ "Actores del conflicto",
+  agresor_ag == "Encargado del cuidado" ~ "Conocido",
+  agresor_ag == "Amigo(a)" ~ "Conocido",
+  TRUE ~ agresor_ag
+))
+
 ```
 
 Dado que la violencia sociopolítica puede ser más perpetuada por agresores distintos a pareja, familiar, ex-pareja o conocido, a continuación se valida el cambio que sufre este nivel de la variable tipo de violencia:
@@ -117,10 +135,10 @@ nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count(agres
 ```
 Aplicando el filtro de que el agresor sólo sea pareja, familiar, ex-pareja, conocido.
 ```{r, echo=FALSE, warning=FALSE}
-nf_data <- nf_data %>% filter(agresor_ag %in% c("Pareja","Familiar","Ex-pareja","Conocido")) 
+nf_data <- nf_data %>% filter(agresor_group %in% c("Pareja","Familiar","Ex-pareja","Conocido", "Actores del conflicto")) 
 ```
 ```{r, echo=FALSE}
-nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count(agresor_ag) %>%
+nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count(agresor_group) %>%
   arrange(desc(n)) 
 ```
 
@@ -130,19 +148,13 @@ nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count( circ
   arrange(desc(n)) 
 ```
 
+Violencia interpersonal 
+```{r}
+nf_data %>% filter(circunstancia_del_hecho == "Riña")%>% count(agresor_ag)
+```
+
 ```{r, echo=FALSE}
-nf_data <- nf_data %>% mutate(
-  escolaridad = case_when(
-    escolaridad == "Educación básica primaria" ~ "Educación básica primaria y secundaria",
-    escolaridad == "Educación básica secundaria o secundaria baja" ~ "Educación básica primaria y secundaria",
-    escolaridad == "Doctorado o equivalente" ~ "Educación superior",
-    escolaridad == "Educación técnica profesional y tecnológica" ~ "Educación superior",
-    escolaridad == "Especialización, maestría o equivalente" ~ "Educación superior",
-    escolaridad == "Universitario" ~ "Educación superior",
-    escolaridad == "Educación media o secundaria alta" ~ "Educación superior",
-    TRUE ~ escolaridad
-  )
-)
+# nf_data <- nf_data %>% filter(circunstancia_del_hecho != "Riña")
 ```
 
 ```{r, echo=FALSE}
@@ -155,16 +167,72 @@ nf_data <- nf_data %>% mutate(
 ```
 
 ```{r, echo=FALSE}
+# nf_data <- nf_data %>% mutate(
+#   escolaridad = case_when(
+#     escolaridad == "Educación básica primaria" ~ "Educación básica primaria y secundaria",
+#     escolaridad == "Educación básica secundaria o secundaria baja" ~ "Educación básica primaria y secundaria",
+#     escolaridad == "Doctorado o equivalente" ~ "Educación superior",
+#     escolaridad == "Educación técnica profesional y tecnológica" ~ "Educación superior",
+#     escolaridad == "Especialización, maestría o equivalente" ~ "Educación superior",
+#     escolaridad == "Universitario" ~ "Educación superior",
+#     escolaridad == "Educación media o secundaria alta" ~ "Educación superior",
+#     TRUE ~ escolaridad
+#   )
+# )
+```
+
+ Ciclo
+ 
+```{r}
+nf_data %>% count(grupo_de_edad_de_la_victima)
+```
+
+
+```{r, echo=FALSE}
 nf_data <- nf_data %>% mutate(
-  ciclo_vital = case_when(
-    ciclo_vital == "Adulto Mayor" ~ "Adulto Mayor y Adultez",
-    ciclo_vital == "Adultez" ~ "Adulto Mayor y Adultez",
-    ciclo_vital == "Primera Infancia" ~ "Primera Infancia e Infancia",
-    ciclo_vital == "Infancia" ~ "Primera Infancia e Infancia",
-    TRUE ~ ciclo_vital
+  ciclo_vital_2 = case_when(
+    grupo_de_edad_de_la_victima %in% c("00-04", "05-09") ~ "00-09",
+    grupo_de_edad_de_la_victima %in% c("10-14", "15-17", "18-19") ~ "10-19",
+    grupo_de_edad_de_la_victima %in% c("20-24", "25-29") ~ "20-29",
+    grupo_de_edad_de_la_victima %in% c("30-34", "35-39") ~ "30-39",
+    grupo_de_edad_de_la_victima %in% c("40-44", "45-49") ~ "40-49",
+    grupo_de_edad_de_la_victima %in% c("50-54", "55-59") ~ "50-59",
+    TRUE ~ grupo_de_edad_de_la_victima
+  )
+)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  ciclo_vital_ = case_when(
+    grupo_de_edad_de_la_victima %in% c("00-04", "05-09","10-14","15-17","18-19") ~ "Niñas y adolescentes",
+    grupo_de_edad_de_la_victima %in% c("20-24", "25-29","30-34") ~ "Jovenes",
+    grupo_de_edad_de_la_victima %in% c("35-39", "40-44","45-49","50-54","55-59") ~ "Adultez",
+    TRUE ~ grupo_de_edad_de_la_victima
   )
 )
 
+# nf_data %>% mutate(
+#   ciclo_vital = case_when(
+#     ciclo_vital == "Adulto Mayor" ~ "Adulto Mayor y Adultez",
+#     ciclo_vital == "Adultez" ~ "Adulto Mayor y Adultez",
+#     ciclo_vital == "Primera Infancia" ~ "Primera Infancia e Infancia",
+#     ciclo_vital == "Infancia" ~ "Primera Infancia e Infancia",
+#     TRUE ~ ciclo_vital
+#   )
+# )
+```
+
+```{r, echo=FALSE, results="hide"}
+nf_data %>% count(ciclo_vital_)
+```
+
+```{r}
+nf_data <- nf_data %>% filter(ciclo_vital_ %in% c("Niñas y adolescentes", "Jovenes", "Adultez"))
+```
+
+```{r}
+table(nf_data$escolaridad, nf_data$ciclo_vital_2)
 ```
 
 ```{r,echo=FALSE, results='hide'}
@@ -351,12 +419,29 @@ hora <- nf_data %>%
 # ggsave("../../reports/bayes/temp_inmlcf.pdf", (anio | mes ) / (dia | hora), width = 14, height = 7)
 ```
 
+```{r}
+nf_data %>% count(rango_de_hora_del_hecho_x_3_horas)
+```
+```{r}
+nf_data %>% explore()
+```
+
 ```{r, echo=FALSE}
+# nf_data <- nf_data %>% mutate(
+#   rango_de_hora_del_hecho_x_3_horas = case_when(
+#     rango_de_hora_del_hecho_x_3_horas == "Sin información" ~ "Sin información",
+#     rango_de_hora_del_hecho_x_3_horas %in% c("00:00 - 02:59", "03:00 - 05:59","21:00 - 23:59","18:00 - 20:59") ~ "Fuera horario laboral",
+#     TRUE ~ "Horario laboral"
+#   )
+# )
+
 nf_data <- nf_data %>% mutate(
   rango_de_hora_del_hecho_x_3_horas = case_when(
     rango_de_hora_del_hecho_x_3_horas == "Sin información" ~ "Sin información",
-    rango_de_hora_del_hecho_x_3_horas %in% c("00:00 - 02:59", "03:00 - 05:59","21:00 - 23:59","18:00 - 20:59") ~ "Fuera horario laboral",
-    TRUE ~ "Horario laboral"
+    rango_de_hora_del_hecho_x_3_horas %in% c("00:00 - 02:59", "03:00 - 05:59") ~ "Madrugada",
+    rango_de_hora_del_hecho_x_3_horas %in% c("06:00 - 08:59", "09:00 - 11:59") ~ "Dia",
+    rango_de_hora_del_hecho_x_3_horas %in% c("12:00 - 14:59", "15:00 - 17:59") ~ "Tarde",
+    TRUE ~ "Noche"
   )
 )
 ```
