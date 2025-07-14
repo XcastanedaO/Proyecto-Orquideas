@@ -13,7 +13,7 @@ parameters {
 model {
   // priors
   for (i in 1:(K-1)) {
-    beta[i] ~ normal(0, 5); // weakly informative priors
+    beta[i] ~ normal(0, 1); // weakly informative priors
   }
   
   // likelihood

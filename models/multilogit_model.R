@@ -74,18 +74,38 @@ nf_data <- nf_data %>% mutate(
   )
 )
 
-nf_data <- nf_data %>% select(def_naturaleza, ciclo_vital_, escolaridad, dia_del_hecho, rango_de_hora_del_hecho_x_3_horas, escenario_del_hecho, zona_del_hecho, agresor_group)
+nf_data <- nf_data %>% dplyr::select(def_naturaleza, ciclo_vital_, escolaridad, dia_del_hecho, rango_de_hora_del_hecho_x_3_horas, escenario_del_hecho, zona_del_hecho, agresor_group)
 save_data(nf_data, "data_nf_modelo")
 
 data <- model.matrix(~ ciclo_vital_ + escolaridad + rango_de_hora_del_hecho_x_3_horas + dia_del_hecho + escenario_del_hecho + zona_del_hecho + agresor_group, nf_data)
 
 levels(as.factor(nf_data$def_naturaleza))
-modelo <- multinom(def_naturaleza ~ ciclo_vital_+escolaridad+dia_del_hecho+rango_de_hora_del_hecho_x_3_horas+
-         escenario_del_hecho+ zona_del_hecho+agresor_group, data = nf_data)
 
-resumen <- summary(modelo) 
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
 
-z <- resumen$coefficients / resumen$standard.errors
-pvalores <- 2 * (1 - pnorm(abs(z)))
+set.seed(123)
+sample_data <- nf_data %>% 
+sample_n(1000)
+sample_data %>% count(def_naturaleza)
 
-print(pvalores)
+data <- model.matrix(~ ciclo_vital_ + escolaridad + rango_de_hora_del_hecho_x_3_horas + dia_del_hecho + escenario_del_hecho + zona_del_hecho + agresor_group, sample_data)
+
+# Prepare data for Stan
+stan_data <- list(
+  K = 4,  # number of categories
+  N = nrow(sample_data),
+  D = ncol(data),  # intercept + 2 predictors
+  y = as.integer(as.factor(sample_data$def_naturaleza)),
+  x = data
+)
+
+# Compile and run model
+fit <- stan(
+  file = "models/multi_logit.stan",
+  data = stan_data,
+  iter = 2000,
+  chains = 2,
+  seed = 123
+)
