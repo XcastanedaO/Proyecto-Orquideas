@@ -137,6 +137,7 @@ Aplicando el filtro de que el agresor sólo sea pareja, familiar, ex-pareja, con
 ```{r, echo=FALSE, warning=FALSE}
 nf_data <- nf_data %>% filter(agresor_group %in% c("Pareja","Familiar","Ex-pareja","Conocido", "Actores del conflicto")) 
 ```
+
 ```{r, echo=FALSE}
 nf_data %>% filter(def_naturaleza == "Violencia sociopolítica") %>% count(agresor_group) %>%
   arrange(desc(n)) 
@@ -154,7 +155,7 @@ nf_data %>% filter(circunstancia_del_hecho == "Riña")%>% count(agresor_ag)
 ```
 
 ```{r, echo=FALSE}
-# nf_data <- nf_data %>% filter(circunstancia_del_hecho != "Riña")
+nf_data <- nf_data %>% filter(circunstancia_del_hecho != "Riña")
 ```
 
 ```{r, echo=FALSE}
