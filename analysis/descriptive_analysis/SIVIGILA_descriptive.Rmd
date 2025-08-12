@@ -233,7 +233,14 @@ Son 997 casos con inconsistencias
 
 ### Edad víctima
 ```{r}
-summary(base_datos$edad_)
+summary(as.numeric(as.character(base_datos$edad_))) # depurada original 877154 registros
+
+aux <- base_datos %>% filter(year(fec_hecho) >= 2012)
+summary(as.numeric(as.character(aux$edad_))) # hecho >= 2012 876052 registros
+```
+
+```{r}
+aux <- aux %>% count(as.numeric(as.character(edad_)),year(fec_hecho),year(fec_not))
 ```
 
 
