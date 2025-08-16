@@ -3195,6 +3195,7 @@ data <- data %>% mutate(cod_dpto_n = if_else(
 data <- data %>% mutate(dist_esp_n=if_else(municipio_notificacion == "Bogotá, D.c.","1",dist_esp_n))
 ```
 
+#### Porcentaje final de valores faltantes 
 Luego de completar valores faltantes y crear las nuevas variables, se
 puede observar que disminuyó la cantidad de celdas vacías.
 
