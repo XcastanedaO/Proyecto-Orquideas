@@ -80,7 +80,7 @@ ggplot(aes(x = ano_hecho, y = n)) +
   geom_line(color = "steelblue", linewidth = 1.2) +
   geom_point(color = "steelblue") +
   labs(
-    title = "Línea del tiempo anual de hechos de violencia",
+    title = "Casos por año",
     x = "Año",
     y = "Número de casos"
   ) +
@@ -89,23 +89,9 @@ ggplot(aes(x = ano_hecho, y = n)) +
 
 ```{r}
 summary(base_fec %>% count(ano_hecho) %>% select(n))
-hist(base_fec %>% count(ano_hecho) %>% pull(n))
 ```
 ```{r}
 base_fec %>% count(ano_hecho) %>%  filter(n > 210.8)
-```
-
-```{r}
-base_fec %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) < 2012) %>% 
-ggplot(aes(x = ano_hecho, y = n)) +
-  geom_line(color = "steelblue", size = 1.2) +
-  geom_point(color = "steelblue") +
-  labs(
-    title = "Línea del tiempo anual de hechos de violencia 1899-2012",
-    x = "Año",
-    y = "Número de casos"
-  ) +
-  theme_minimal()
 ```
 
 ```{r}
@@ -114,7 +100,7 @@ ggplot(aes(x = ano_hecho, y = n)) +
   geom_line(color = "steelblue", size = 1.2) +
   geom_point(color = "steelblue") +
   labs(
-    title = "Línea del tiempo anual de hechos de violencia a partir de 2012",
+    title = "Casos por año a partir de 2012",
     x = "Año",
     y = "Número de casos"
   ) +

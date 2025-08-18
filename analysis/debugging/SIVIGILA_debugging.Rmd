@@ -741,7 +741,7 @@ se divide en dos rangos.
 [*(Ejemplo)*](https://www.medicinalegal.gov.co/documents/20143/696494/8+Suicidio+Masatugo+sep+7-21.pdf). Teniendo en cuenta esto, y que se pasaron las edades a años, se decide agrupar la edad de igual manera que lo hace el INMLCF.
 
 ```{r, echo=TRUE}
-data <- data %>% mutate(
+ensayo <- data %>% mutate(
   grupo_edad = case_when(
     edad_ >= 0 & edad_ <= 4 ~ "0-4",
     edad_ >= 5 & edad_ <= 9 ~ "5-9",
@@ -3349,6 +3349,7 @@ final_data <- final_data %>%
     ident_gene,
     orient_sex,
     edad_,
+    grupo_edad,
     actividad,
     tip_ss,
     per_etn,
