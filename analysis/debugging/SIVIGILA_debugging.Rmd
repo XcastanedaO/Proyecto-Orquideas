@@ -1,5 +1,5 @@
 ---
-title: "Depuración información reportada al SIVIGILA desde 2013 hasta 2023."
+title: "Depuración información reportada al SIVIGILA desde 2013 hasta 2024."
 date: "2025-07-02"
 output:
   pdf_document:
@@ -734,6 +734,39 @@ data <- data %>% select(-c(edad_hecho,edad_notif,uni_med,edad))
 data <- data %>% select(-c(fecha_nto,fec_def,fec_hos,ini_sin))
 ```
 
+#### Edad agrupada: 
+en los boletines del INMLCF se presentan los análisis con la edad
+agrupada en rango de 4 edades a excepción de la edad 15-19 que
+se divide en dos rangos.
+[*(Ejemplo)*](https://www.medicinalegal.gov.co/documents/20143/696494/8+Suicidio+Masatugo+sep+7-21.pdf). Teniendo en cuenta esto, y que se pasaron las edades a años, se decide agrupar la edad de igual manera que lo hace el INMLCF.
+
+```{r, echo=TRUE}
+data <- data %>% mutate(
+  grupo_edad = case_when(
+    edad_ >= 0 & edad_ <= 4 ~ "0-4",
+    edad_ >= 5 & edad_ <= 9 ~ "5-9",
+    edad_ >= 10 & edad_ <= 14 ~ "10-14",
+    edad_ >= 15 & edad_ <= 17 ~ "15-17",
+    edad_ >= 18 & edad_ <= 19 ~ "18-19",
+    edad_ >= 20 & edad_ <= 24 ~ "20-24",
+    edad_ >= 25 & edad_ <= 29 ~ "25-29",
+    edad_ >= 30 & edad_ <= 34 ~ "30-34",
+    edad_ >= 35 & edad_ <= 39 ~ "35-39",
+    edad_ >= 40 & edad_ <= 44 ~ "40-44",
+    edad_ >= 45 & edad_ <= 49 ~ "45-49",
+    edad_ >= 50 & edad_ <= 54 ~ "50-54",
+    edad_ >= 55 & edad_ <= 59 ~ "55-59",
+    edad_ >= 60 & edad_ <= 64 ~ "60-64",
+    edad_ >= 65 & edad_ <= 69 ~ "65-69",
+    edad_ >= 70 & edad_ <= 74 ~ "70-74",
+    edad_ >= 75 & edad_ <= 79 ~ "75-79",
+    edad_ >= 80 ~ "80 y más",
+    TRUE ~ NA_character_
+  )
+) 
+```
+
+
 ### Nacionalidad (no obligatoria)
 
 Se cuenta con el código (**nacionalidad**) y nombre de la nacionalidad
@@ -1401,7 +1434,7 @@ data <- data %>% select(-persona_con_jefatura_de_hogar)
 #### Pertenencia étnica (obligatoria):
 
 De acuerdo al diccionario de datos, indica la pertenencia de la víctima
-a alguna étnica que es considerada de interés para eventos en salud
+a alguna étnia que es considerada de interés para eventos en salud
 pública. Los valores que toma son: 1 = Indígena, 2 = ROM/Gitano, 3 =
 Raizal, 4 = Palenquero, 5 = Negro/Mulato/Afro Colombiano, 6 = Otro
 
