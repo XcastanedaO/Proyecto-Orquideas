@@ -730,7 +730,7 @@ data <- data %>% select(-c(edad_hecho,edad_notif,uni_med,edad))
 ```
 
 ```{r}
-# Eliminar fechs que no se utilizarán
+# Eliminar fechas que no se utilizarán
 data <- data %>% select(-c(fecha_nto,fec_def,fec_hos,ini_sin))
 ```
 
@@ -741,7 +741,7 @@ se divide en dos rangos.
 [*(Ejemplo)*](https://www.medicinalegal.gov.co/documents/20143/696494/8+Suicidio+Masatugo+sep+7-21.pdf). Teniendo en cuenta esto, y que se pasaron las edades a años, se decide agrupar la edad de igual manera que lo hace el INMLCF.
 
 ```{r, echo=TRUE}
-ensayo <- data %>% mutate(
+data <- data %>% mutate(
   grupo_edad = case_when(
     edad_ >= 0 & edad_ <= 4 ~ "0-4",
     edad_ >= 5 & edad_ <= 9 ~ "5-9",
@@ -765,7 +765,6 @@ ensayo <- data %>% mutate(
   )
 ) 
 ```
-
 
 ### Nacionalidad (no obligatoria)
 
@@ -3289,9 +3288,9 @@ registros completos.
 
 ```{r}
 # Buscar registros duplicados
-data %>%
-  filter(duplicated(.)) %>%
-  nrow()
+# data %>%
+#   filter(duplicated(.)) %>%
+#   nrow()
 ```
 
 ```{r}
@@ -3433,8 +3432,9 @@ implementar métodos de imputación
 
 ```{r, warning=FALSE, message=FALSE}
 # Guardar base de datos con valores faltantes
-saveRDS(final_data,paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
+# saveRDS(final_data,paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
 ```
+
 
 # Resumen
 
@@ -3637,3 +3637,55 @@ nrow_aux <- final_data %>%
     -   anticoncepción de emergencia
     -   orientación IVE
     -   fecha de consulta
+
+# Base de datos para análisis espacial
+
+1.  Se seleccionan las variables de interés que son:
+
+    -   Sexo de la víctima
+    -   Identidad de género
+    -   Edad y grupo etario
+    -   Grupos poblacionales (gp_)
+    -   Madre cabeza de familia
+    -   Pertenencia étnica
+    -   Consumidora de SPA
+    -   Modalidad de violencia
+    -   Fecha de notificación
+    -   Lugar de notificación (municipio,departamento,distrito especial)
+    -   Salud mental    
+
+
+```{r}
+data_esp <- final_data %>% select(
+  sexo, ident_gene, edad_, grupo_edad, gp_discapa, gp_desplaz, gp_migrant, gp_carcela,  
+  gp_gestan, gp_indigen, gp_pobicfb, gp_mad_com, gp_desmovi, gp_psiquia, gp_vic_vio,gp_otros,
+  mujer_cabf,per_etn,consum_spa, def_naturaleza,fec_not,cod_dpto_n,departamento_notificacion,
+  cod_mun_n,municipio_notificacion,dist_esp_n,ac_mental
+)
+```
+
+```{r}
+summary(data_esp)
+```
+
+2.  Se eliminaron los registros con algún valor faltante
+
+```{r}
+nrow_aux <- nrow(data_esp)
+```
+
+```{r}
+data_esp <- na.omit(data_esp)
+```
+
+Fueron en total `r nrow_aux - nrow(data_esp)` registros eliminados
+
+3.  Guardar nueva base de datos
+```{r, warning=FALSE, message=FALSE}
+# Guardar en csv
+#save_data(data_esp, "SIVIGILA_debugged_spatial", type = "interim", format = "csv")
+
+# Guardar en rds
+#saveRDS(data_esp,paste0(here(),"/data/interim/SIVIGILA_debugged_spatial.rds"))
+```
+
