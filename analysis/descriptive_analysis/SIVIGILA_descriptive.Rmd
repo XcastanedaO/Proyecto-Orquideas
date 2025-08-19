@@ -488,7 +488,7 @@ pred_cualit <- c("per_etn", "sexo", "orient_sex","ident_gene","consum_spa","ante
 pred_cuant  <- c("edad_","dif_dias_con")
 pruebas_hosp <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-pruebas_hosp %>% arrange(desc(cramersV))
+knitr::kable(pruebas_hosp %>% arrange(desc(cramersV)))
 ```
 
 Sin evidencia estadística suficiente para asumir relación: gp_carcela y gp_desmovi
@@ -502,7 +502,7 @@ pred_cualit <- c("per_etn", "sexo", "orient_sex","ident_gene","consum_spa","ante
 pred_cuant  <- c("edad_","dif_dias_con")
 pruebas_con_fin <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-pruebas_con_fin %>% arrange(desc(cramersV))
+knitr::kable(pruebas_con_fin %>% arrange(desc(cramersV)))
 ```
 Sin evidencia estadística suficiente para asumir relación: sexo, ident_gene, consum_spa, sem_ges, gp_desplaz, gp_migrant,gp_carcela,gp_indigen,gp_pobicfb,gp_mad_com,gp_desmovi,gp_psiquia,gp_otros
 
@@ -517,7 +517,7 @@ pred_cuant  <- c("edad_","dif_dias")
 
 pruebas_antec <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-pruebas_antec %>% arrange(desc(cramersV))
+knitr::kable(pruebas_antec %>% arrange(desc(cramersV)))
 ```
 Sin evidencia estadística suficiente para asumir relación: ident_gene
 
@@ -528,7 +528,7 @@ pred_cualit <- c("per_etn", "sexo", "orient_sex","ident_gene","consum_spa","def_
 pred_cuant  <- c("edad_","dif_dias_con")
 pruebas_mental <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-pruebas_mental %>% arrange(desc(cramersV))
+knitr::kable(pruebas_mental %>% arrange(desc(cramersV)))
 ```
 Sin evidencia estadística suficiente para asumir relación: ident_gene y gp_desmovi
 
