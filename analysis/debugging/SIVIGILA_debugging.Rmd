@@ -3645,22 +3645,25 @@ nrow_aux <- final_data %>%
     -   Sexo de la víctima
     -   Identidad de género
     -   Edad y grupo etario
-    -   Grupos poblacionales (gp_)
-    -   Madre cabeza de familia
-    -   Pertenencia étnica
-    -   Consumidora de SPA
     -   Modalidad de violencia
-    -   Fecha de notificación
+    -   Fecha de notificación (año)
     -   Lugar de notificación (municipio,departamento,distrito especial)
-    -   Salud mental    
-
 
 ```{r}
-data_esp <- final_data %>% select(
-  sexo, ident_gene, edad_, grupo_edad, gp_discapa, gp_desplaz, gp_migrant, gp_carcela,  
-  gp_gestan, gp_indigen, gp_pobicfb, gp_mad_com, gp_desmovi, gp_psiquia, gp_vic_vio,gp_otros,
-  mujer_cabf,per_etn,consum_spa, def_naturaleza,fec_not,cod_dpto_n,departamento_notificacion,
-  cod_mun_n,municipio_notificacion,dist_esp_n,ac_mental
+data_esp <- final_data %>% mutate(ano_not = as.factor(year(fec_not)))
+
+data_esp <- data_esp %>% select(
+  sexo,
+  ident_gene,
+  edad_,
+  grupo_edad,
+  def_naturaleza,
+  ano_not,
+  cod_dpto_n,
+  departamento_notificacion,
+  cod_mun_n,
+  municipio_notificacion,
+  dist_esp_n
 )
 ```
 
