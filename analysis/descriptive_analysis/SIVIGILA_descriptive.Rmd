@@ -12,6 +12,8 @@ editor_options:
   markdown:
     wrap: 72
 always_allow_html: true
+header-includes:
+  - \usepackage{float}
 ---
 
 ```{r, include=FALSE}
@@ -32,28 +34,30 @@ library(sf)
 library(gmodels)   
 library(DescTools)
 library(kableExtra)
+library(broom)
+library(purrr)
+library(DescTools)
 ```
 
 \newpage
 
 # Lectura de la base de datos
 
-```{r, echo=TRUE, warning=FALSE,message=FALSE}
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
 base_datos <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
 ```
 
 ```{r}
 # Conversión de tipo dato
-base_datos$fec_not <- as.Date(base_datos$fec_not, format = "%Y-%m-%d")
-base_datos$fec_con <- as.Date(base_datos$fec_con, format = "%Y-%m-%d")
-base_datos$fec_hecho <- as.Date(base_datos$fec_hecho, format = "%Y-%m-%d")
-
-base_datos <- base_datos %>%
-  mutate(across(
-    .cols = !all_of(c("edad_", "fec_not","fec_con","fec_hecho","sem_ges")),  
-    .fns = as.factor                     
-  ))
-
+# base_datos$fec_not <- as.Date(base_datos$fec_not, format = "%Y-%m-%d")
+# base_datos$fec_con <- as.Date(base_datos$fec_con, format = "%Y-%m-%d")
+# base_datos$fec_hecho <- as.Date(base_datos$fec_hecho, format = "%Y-%m-%d")
+# 
+# base_datos <- base_datos %>%
+#   mutate(across(
+#     .cols = !all_of(c("edad_", "fec_not","fec_con","fec_hecho","sem_ges")),  
+#     .fns = as.factor                     
+#   ))
 ```
 
 La base de datos utilizada para este análisis descriptivo es el resultado de juntar y depurar las bases de datos proporcionadas por SIVIGILA, la cual recopila información sobre los casos sospechosos de violencia de género que fueron reportados. Así, la base depurada tiene un total `r nrow(base_datos)` de filas y `r ncol(base_datos)` columnas, las cuales son:
@@ -64,6 +68,8 @@ colnames(base_datos)
 
 Para conocer más sobre las variables se cuenta con un diccionario de datos que enviaron junto a las bases [(Ver aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf). Adicional, se cuenta con algunas de las fichas de notificación al SIVIGILA que contienen indicaciones sobre muchas variables, la más actualizada es la ficha de 2024 [(Ver   aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
 
+**IMPORTANTE:** Como se indicó anteriormente, este análisis es incluyendo los valores faltantes
+
 # Análisis descriptivo
 
 ## Análisis univariado
@@ -71,79 +77,105 @@ Para conocer más sobre las variables se cuenta con un diccionario de datos que 
 ```{r}
 summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
 ```
+```{r}
+# Base para fechas
+base_datos <- base_datos %>% mutate(ano_hecho = floor_date(fec_hecho, "year"))
+```
+
+
 #### Fecha hecho
 
-```{r}
-base_fec <- base_datos %>% select(fec_hecho,fec_con,fec_not) %>% mutate(ano_hecho = floor_date(fec_hecho, "year")) 
-base_fec %>% count(ano_hecho) %>% drop_na() %>% 
+```{r,fig.width=6, fig.height=3,warning=FALSE,message=FALSE,fig.align='center',fig.pos='H'}
+base_datos %>% count(ano_hecho) %>% drop_na() %>% 
 ggplot(aes(x = ano_hecho, y = n)) +
-  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_line(color = "steelblue") +
   geom_point(color = "steelblue") +
   labs(
     title = "Casos por año",
-    x = "Año",
+    x = "Año del hecho",
     y = "Número de casos"
   ) +
   theme_minimal() 
 ```
 
-```{r}
-summary(base_fec %>% count(ano_hecho) %>% select(n))
-```
-```{r}
-base_fec %>% count(ano_hecho) %>%  filter(n > 210.8)
-```
+Se encontró que desde 1899 hasta 2009 el número de casos no supera los 100 casos por año. Por ende, se seleccionaron los años cuyo número de casos supera el tercer cuartil de la distribución de casos por año, es decir, aquellos con más de `r round(quantile(base_datos %>% count(ano_hecho) %>% select(n), 0.75, na.rm = TRUE))` casos. Obteniendo como resultado lo siguiente:
 
-```{r}
-base_fec %>% count(ano_hecho) %>% drop_na() %>% filter(year(ano_hecho) >= 2012) %>% 
-ggplot(aes(x = ano_hecho, y = n)) +
-  geom_line(color = "steelblue", size = 1.2) +
+```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE, fig.align='center',fig.pos='H'}
+base_datos %>% 
+  count(ano_hecho) %>% 
+  drop_na() %>% 
+  filter(year(ano_hecho) >= 2012) %>% 
+  ggplot(aes(x = ano_hecho, y = n)) +
+  geom_line(color = "steelblue") +
   geom_point(color = "steelblue") +
+  geom_text(aes(label = n), vjust = -0.5, color = "black", size = 2) + 
   labs(
     title = "Casos por año a partir de 2012",
-    x = "Año",
+    x = "Año del hecho",
     y = "Número de casos"
   ) +
   theme_minimal()
 ```
 
+#### Fecha de consulta
 
-```{r}
-base_fec %>% count(ano_hecho) %>%  filter(year(ano_hecho) >= 2012)  %>% summarise(total = sum(n))
-```
-A partir de ahora se hace el análisis con los casos que ocurrieron de 2012 al 2024
+```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE, fig.align='center',fig.pos='H'}
+base_datos <- base_datos %>% mutate(ano_con = floor_date(fec_con, "year")) 
 
-```{r}
-base_fec <- base_fec %>% filter(year(fec_hecho) >= 2012)
-  
-base_fec <- base_fec %>%mutate(mes_hecho = floor_date(fec_hecho, "month")) 
-
-base_fec %>% count(mes_hecho) %>% drop_na() %>% 
-ggplot(aes(x = mes_hecho, y = n)) +
-  geom_line(color = "steelblue", linewidth = 1.2) +
+base_datos %>% 
+  count(ano_con) %>% drop_na() %>% 
+  ggplot(aes(x = ano_con, y = n)) +
+  geom_line(color = "steelblue") +
   geom_point(color = "steelblue") +
+  geom_text(aes(label = n), vjust = -0.5, color = "black", size = 2) +
   labs(
-    title = "Línea del tiempo mensual de hechos de violencia",
-    x = "Mes",
+    title = "Casos por año",
+    x = "Año de consulta",
     y = "Número de casos"
   ) +
   theme_minimal() 
 ```
 
-```{r}
-serie_mensual <- base_fec %>%
-  count(mes_hecho) %>%
-  arrange(mes_hecho)
+#### Fecha de notificación
+
+```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE, fig.align='center',fig.pos='H'}
+base_datos <- base_datos %>% mutate(ano_not = floor_date(fec_not, "year")) 
+
+base_datos %>% 
+  count(ano_not) %>% drop_na() %>% 
+  ggplot(aes(x = ano_not, y = n)) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue") +
+  geom_text(aes(label = n), vjust = -0.5, color = "black", size = 2) +
+  labs(
+    title = "Casos por año",
+    x = "Año de notificación",
+    y = "Número de casos"
+  ) +
+  theme_minimal() 
+```
+A continuación, se toma la serie mensual para separar tendencia, estacionalidad y residuales: 
+
+```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE}
+serie_mensual <- base_datos %>% 
+  mutate(ano_mes = floor_date(fec_not, "month")) %>% 
+  count(ano_mes) %>%
+  arrange(ano_mes)
+
 
 # Convertir a objeto ts (suponiendo que comienza en enero de 2012)
-ts_mensual <- ts(serie_mensual$n, start = c(2012, 1), frequency = 12)
+ts_mensual <- ts(serie_mensual$n, 
+                 start = c(year(min(serie_mensual$ano_mes)), 
+                           month(min(serie_mensual$ano_mes))),
+                 frequency = 12)
 
-descomp_ts_mensual <- decompose(ts_mensual, type = "additive")  # o "multiplicative"
+descomp_ts_mensual <- decompose(ts_mensual, type = "additive") 
 plot(descomp_ts_mensual)
 
 ```
+luego, se calcula la estacionalidad promedio por mes para ver en qué meses sube o baja regularmente esta serie:
+
 ```{r}
-# Estacionalidad promedio por mes para ver en qué meses sube o baja regularmente la serie
 estacionalidad <- descomp_ts_mensual$seasonal
 meses <- rep(1:12, length.out = length(estacionalidad))
 
@@ -157,84 +189,83 @@ tendencia_estacional <- data.frame(
   mutate(mes_nombre = month.abb[mes])  # abreviatura del mes
 
 tendencia_estacional %>% arrange(desc(efecto_promedio))
+
 ```
 
-Primeros 5 meses del año a excepción de abril. Julio, agosto, sept
-
-
-```{r}
-base_fec %>%
+```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE}
+base_datos %>%
   mutate(
-    dia = day(fec_hecho),                        # Día del mes
-    mes_num = month(fec_hecho),                 
-    mes_nombre = month(fec_hecho, label = TRUE, abbr = FALSE)
+    dia = day(fec_not),                      
+    mes_num = month(fec_not),                 
+    mes_nombre = month(fec_not, label = TRUE, abbr = FALSE)
   ) %>%
-  filter(mes_num %in% c(1)) %>%         # Enero, Febrero, Marzo, Mayo
-  count(mes_nombre, dia) %>%                    # Suma total por día del mes
+  filter(mes_num %in% c(3,5,7,8,9,10)) %>%        
+  count(mes_nombre, dia) %>%                   
   ggplot(aes(x = dia, y = n)) +
-  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_line(color = "steelblue") +
   geom_point(color = "steelblue") +
-  facet_wrap(~ mes_nombre, ncol = 2) +          # Crea un panel para cada mes
+  facet_wrap(~ mes_nombre, ncol = 2) +          
   labs(
-    title = "Distribución diaria de casos por mes (2012–2023)",
+    title = "Distribución diaria de notificaciones por mes",
     x = "Día del mes",
     y = "Número total de casos"
   ) +
   theme_minimal()
 ```
 
-```{r}
-base_fec %>% filter(month(mes_hecho) %in% c(1) & day(fec_hecho) == 1 & year(ano_hecho) != year(fec_con)) %>%
-    count(fec_hecho,fec_con,fec_not)
-```
+#### Diferencia en días entre la fecha del hecho y fecha de notificación
 
 ```{r}
-base_fec %>%
-  mutate(
-    dia = day(fec_hecho),                        # Día del mes
-    mes_num = month(fec_hecho),                 
-    mes_nombre = month(fec_hecho, label = TRUE, abbr = FALSE)
-  ) %>%
-  filter(mes_num %in% c(2, 3, 5,7,8,9)) %>%         # Enero, Febrero, Marzo, Mayo
-  count(mes_nombre, dia) %>%                    # Suma total por día del mes
-  ggplot(aes(x = dia, y = n)) +
-  geom_line(color = "steelblue", linewidth = 1.2) +
-  geom_point(color = "steelblue") +
-  facet_wrap(~ mes_nombre, ncol = 2) +          # Crea un panel para cada mes
+base_datos <- base_datos %>%
+  mutate(dif_dias = as.numeric(fec_not - fec_hecho))
+
+summary(base_datos$dif_dias)
+```
+Ahora, teniendo en cuenta lo visto en la sección de fecha hecho, se decide hacer el siguiente gráfico basado en casos ocurridos a partir de 2012
+
+```{r,fig.width=6, fig.height=3,warning=FALSE,message=FALSE}
+base_datos %>% filter(year(ano_hecho) >= 2012) %>% 
+ggplot(aes(x = dif_dias)) +
+  geom_histogram(fill = "steelblue", color = "white") +
   labs(
-    title = "Distribución diaria de casos por mes (2012–2023)",
-    x = "Día del mes",
-    y = "Número total de casos"
+    title = "Distribución de la diferencia entre hecho y notificación",
+    x = "Diferencia en días",
+    y = "Frecuencia"
   ) +
   theme_minimal()
 ```
+```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE}
+base_datos %>% filter(year(ano_hecho) >= 2013) %>% 
+  group_by(ano_hecho) %>%
+  summarise(promedio = mean(dif_dias, na.rm = TRUE)) %>%
+  ggplot(aes(x = ano_hecho, y = promedio)) +
+  geom_line(color = "darkred") +
+  geom_point(color = "darkred") +
+  labs(
+    title = "Promedio de diferencia (en días) por año del hecho (2013-2023)",
+    x = "Año del hecho",
+    y = "Días promedio"
+  ) +
+  geom_text(aes(label = round(promedio,1)), vjust = -0.5, color = "black", size = 2) +
+  theme_minimal()
 
-
-```{r}
-base_fec %>% filter(month(mes_hecho) %in% c(1,2, 3, 5,7,8,9) & day(fec_hecho) == 1 & year(ano_hecho) != year(fec_con)) %>% 
-  count(fec_hecho,fec_con,fec_not)
 ```
-Son 997 casos con inconsistencias
-
 
 ### Edad víctima
 ```{r}
-summary(as.numeric(as.character(base_datos$edad_))) # depurada original 877154 registros
-
-aux <- base_datos %>% filter(year(fec_hecho) >= 2012)
-summary(as.numeric(as.character(aux$edad_))) # hecho >= 2012 876052 registros
+base_datos <- base_datos %>% mutate(edad_ = as.numeric(as.character(edad_)))
+summary(base_datos$edad_) 
 ```
-
+Cantidad de casos con edad mayor a 100 años:
 ```{r}
-aux <- aux %>% count(as.numeric(as.character(edad_)),year(fec_hecho),year(fec_not))
+base_datos %>% filter(edad_ > 100) %>% count(edad_)
 ```
-
-
 ### Nacionalidad víctima
 
 ```{r}
 summary(base_datos[c("nacionalidad", "nombre_nacionalidad")])
 ```
+
 ### Lugar de residencia víctima
 
 ```{r}
@@ -277,15 +308,13 @@ summary(base_datos$consum_spa)
 
 ### Ocupación de la víctima
 ```{r}
-summary(base_datos$actividad)
+base_datos %>% count(actividad) %>% arrange(desc(n))
 ```
 
 ### Lugar de ocurrencia del hecho
 ```{r}
 summary(base_datos[c("cod_dpto_o","departamento_ocurrencia","cod_mun_o","municipio_ocurrencia","dist_esp_o","area")])
 ```
-
-
 ### Modalidad de violencia
 ```{r}
 base_datos %>% count(def_naturaleza) %>%
@@ -382,4 +411,135 @@ summary(base_datos$cbmte)
 
 ## Análisis multivariado
 
-## Conjuntos de posibles variables relacionadas
+### Pruebas de asociación
+
+A continuación, se seleccionan 4 variables principales y un conjunto de variables ("predictores") para cada una, con el fin de encontrar posibles relaciones. Para ello, se aplican pruebas no paramétricas dependiendo del tipo de variables. 
+
+Para los predictores cualitativos, se construyen tablas de contingencia y, dependiendo de las frecuencias esperadas, se aplica una prueba de Chi-cuadrado o en caso de valores bajos, la prueba exacta de Fisher. Pero si la tabla es demasiado grande para el cálculo exacto, se recurre a una versión simulada de Fisher basada en Monte Carlo. 
+
+En cambio, para predictores cuantitativos se utiliza la correlación de Spearman, ya que no requiere supuestos de normalidad y permite detectar relaciones monotónicas.
+
+Finalmente, los resultados de cada análisis se organizan en una tabla que muestra la variable evaluada, la prueba realizada, los valores estadísticos y de significancia, junto con una interpretación clara sobre si existe o no evidencia estadística de relación con la variable de respuesta.
+
+
+
+```{r}
+test_cualit <- function(df, var_resp, var_pred) {
+  tab <- table(df[[var_resp]], df[[var_pred]])
+  
+  if (any(chisq.test(tab)$expected < 5)) {
+    test <- tryCatch(
+      fisher.test(tab, simulate.p.value = TRUE, B = 1e5),
+      error = function(e) fisher.test(tab, simulate.p.value = TRUE, B = 5000)
+    )
+    cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
+    tibble(variable = var_pred,
+           prueba = "Fisher (simulación)",
+           estadistico = NA,
+           p.value = round(test$p.value,3),
+           cramersV = round(cramerv,3),
+           decision = ifelse(test$p.value < alpha,
+                             "Posible asociación",
+                             "No asociación"))
+  } else {
+    test <- chisq.test(tab, correct = FALSE)
+    cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
+    tibble(variable = var_pred,
+           prueba = "Chi-cuadrado",
+           estadistico = round(unname(test$statistic),3),
+           p.value = round(test$p.value,3),
+           cramersV = round(cramerv,3),
+           decision = ifelse(test$p.value < alpha,
+                             "Posible asociación",
+                             "No asociación"))
+  }
+}
+
+# Spearman
+test_cuant <- function(df, var_resp, var_pred) {
+  y <- as.numeric(as.factor(df[[var_resp]]))
+  x <- df[[var_pred]]
+  
+  test <- cor.test(x, y, method = "spearman", exact = FALSE)
+  decision <- ifelse(test$p.value < alpha,
+                     "Posible asociación",
+                     "No hay evidencia estadística suficiente de asociación")
+  
+  tibble(variable = var_pred,
+         prueba = "Spearman",
+         estadistico = round(unname(test$statistic),3),
+         p.value = round(test$p.value,3),
+         decision = decision)
+}
+
+alpha <- 0.05
+```
+
+
+#### Hospitalización
+```{r, warning=FALSE,message=FALSE}
+base_datos <- base_datos %>%
+  mutate(dif_dias_con = as.numeric(fec_con - fec_hecho))
+
+respuesta <- "pac_hos" 
+pred_cualit <- c("per_etn", "sexo", "orient_sex","ident_gene","consum_spa","antec","def_naturaleza","armas","sust_vict","estrato","sem_ges","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+             "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")
+pred_cuant  <- c("edad_","dif_dias_con")
+pruebas_hosp <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
+                          map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
+pruebas_hosp %>% arrange(desc(cramersV))
+```
+
+Sin evidencia estadística suficiente para asumir relación: gp_carcela y gp_desmovi
+
+#### Condición final
+```{r, warning=FALSE,message=FALSE}
+respuesta <- "con_fin" 
+pred_cualit <- c("per_etn", "sexo", "orient_sex","ident_gene","consum_spa","antec","def_naturaleza","armas","sust_vict","estrato","sem_ges","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+             "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")
+pred_cuant  <- c("edad_","dif_dias_con")
+pruebas_con_fin <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
+                          map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
+pruebas_con_fin %>% arrange(desc(cramersV))
+```
+Sin evidencia estadística suficiente para asumir relación: sexo, ident_gene, consum_spa, sem_ges, gp_desplaz, gp_migrant,gp_carcela,gp_indigen,gp_pobicfb,gp_mad_com,gp_desmovi,gp_psiquia,gp_otros
+
+#### Antecedente de violencia
+```{r, warning=FALSE,message=FALSE}
+respuesta <- "antec" 
+pred_cualit <- c("sexo", "orient_sex","ident_gene","consum_spa","def_naturaleza","armas","estrato","mujer_cabf","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+             "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","actividad","zona_conf","conv_agre","ambito_lug","cod_dpto_r","escenario","ac_mental","inf_aut")
+
+pred_cuant  <- c("edad_","dif_dias")
+
+
+pruebas_antec <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
+                          map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
+pruebas_antec %>% arrange(desc(cramersV))
+```
+Sin evidencia estadística suficiente para asumir relación: ident_gene
+
+#### Atención en salud mental
+```{r, warning=FALSE,message=FALSE}
+respuesta <- "ac_mental" 
+pred_cualit <- c("per_etn", "sexo", "orient_sex","ident_gene","consum_spa","def_naturaleza","armas","estrato","sem_ges","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela","gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","actividad","pac_hos","conv_agre","nacionalidad","cod_dpto_n","tip_ss","zona_conf","ac_anticon","ac_ive")
+pred_cuant  <- c("edad_","dif_dias_con")
+pruebas_mental <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
+                          map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
+pruebas_mental %>% arrange(desc(cramersV))
+```
+Sin evidencia estadística suficiente para asumir relación: ident_gene y gp_desmovi
+
+<!-- #### Modalidad de violencia -->
+<!-- ```{r} -->
+<!-- base_datos <- base_datos %>% mutate(mes_hecho = as.factor(month(fec_hecho))) -->
+
+<!-- respuesta <- "def_naturaleza" -->
+<!-- pred_cualit <- c("actividad","cod_dpto_o","sexo_agre") -->
+<!-- pred_cuant  <- c("edad_") -->
+<!-- pruebas_mod <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)), -->
+<!--                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x))) -->
+<!-- pruebas_mod -->
+<!-- ``` -->
