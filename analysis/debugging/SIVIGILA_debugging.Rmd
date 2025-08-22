@@ -243,6 +243,7 @@ Esta variable se pide en la ficha de notificación de todos los años
 ```{r}
 summary(as.factor(data$sexo))
 ```
+Se selecciona solo los casos donde femenino sea mujer
 
 ### Identidad género
 
