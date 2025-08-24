@@ -245,6 +245,11 @@ summary(as.factor(data$sexo))
 ```
 Se selecciona solo los casos donde femenino sea mujer
 
+```{r}
+data <- data %>% filter(sexo=="F")
+```
+
+
 ### Identidad género
 
 Se sabe que al notificar un caso se debe llenar una ficha de datos
@@ -576,6 +581,29 @@ data <- data %>%
 ```
 
 Se eliminan estos registros quedando una base de `r nrow(data)`
+
+
+- Con el fin de tener una referencia para la fecha más consistente, se completa la fecha del hecho si es NA con la fecha de notificación:
+
+```{r}
+data %>% filter(is.na(fec_hecho)) %>% select(fec_hecho, fec_not)
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    fec_hecho = coalesce(fec_hecho, fec_not))
+```
+
+```{r}
+data %>%
+  filter(fec_hecho == fec_not) %>%
+  select(fec_hecho, fec_not)
+```
+
+
+
+
 
 ## Información de la víctima
 
@@ -3228,6 +3256,37 @@ data <- data %>% mutate(cod_dpto_n = if_else(
 data <- data %>% mutate(dist_esp_n=if_else(municipio_notificacion == "Bogotá, D.c.","1",dist_esp_n))
 ```
 
+#### Lugar del hecho a partir del lugar de notificación
+Recordemos que para los lugares de hecho y notificación tenemos información relacionada ccon el departamento, municipio y distrito especial
+
+```{r}
+na_empty %>%
+  filter(Column %in% c("departamento_ocurrencia", 
+                       "departamento_notificacion",
+                       "municipio_ocurrencia", 
+                       "municipio_notificacion", 
+                       "dist_esp_o", 
+                       "dist_esp_n"))
+```
+
+```{r}
+data <- data %>%
+  mutate(
+    departamento_ocurrencia = coalesce(departamento_ocurrencia, departamento_notificacion),
+    municipio_ocurrencia    = coalesce(municipio_ocurrencia, municipio_notificacion),
+    dist_esp_o              = coalesce(dist_esp_o, dist_esp_n))
+```
+
+```{r}
+data %>%
+  filter(is.na(departamento_ocurrencia) | is.na(municipio_ocurrencia) | is.na(dist_esp_o)) %>%
+  select(departamento_ocurrencia, departamento_notificacion,
+         municipio_ocurrencia, municipio_notificacion,
+         dist_esp_o, dist_esp_n)
+```
+
+
+
 #### Porcentaje final de valores faltantes 
 Luego de completar valores faltantes y crear las nuevas variables, se
 puede observar que disminuyó la cantidad de celdas vacías.
@@ -3343,8 +3402,8 @@ final_data <- final_data %>%
   select(
     origen,
     consecutive,
-    nacionalidad,
-    nombre_nacionalidad,
+    #nacionalidad,
+    #nombre_nacionalidad,
     sexo,
     ident_gene,
     orient_sex,
@@ -3359,7 +3418,7 @@ final_data <- final_data %>%
     gp_migrant,
     gp_carcela,
     gp_gestan,
-    sem_ges,
+    #sem_ges,
     gp_indigen,
     gp_pobicfb,
     gp_mad_com,
@@ -3377,7 +3436,7 @@ final_data <- final_data %>%
     cod_mun_r,
     municipio_residencia,
     dist_esp_r,
-    estrato,
+    #estrato,
     fec_hecho,
     def_naturaleza,
     cod_dpto_o,
@@ -3389,18 +3448,18 @@ final_data <- final_data %>%
     zona_conf,
     escenario,
     ambito_lug,
-    armas,
-    que_cara,
-    que_cuello,
-    que_mano,
-    que_pie,
-    que_pliegu,
-    que_genita,
-    que_tronco,
-    que_miesup,
-    que_mieinf,
-    cla_gra,
-    ext_que,                              
+    #armas,
+    #que_cara,
+    #que_cuello,
+    #que_mano,
+    #que_pie,
+    #que_pliegu,
+    #que_genita,
+    #que_tronco,
+    #que_miesup,
+    #que_mieinf,
+    #cla_gra,
+    #ext_que,                              
     sust_vict,
     sexo_agre,
     conv_agre,
@@ -3414,11 +3473,11 @@ final_data <- final_data %>%
     pac_hos,
     con_fin,
     cbmte,
-    sp_its,
-    prof_hep_b,
-    prof_otras,
-    ac_anticon,
-    ac_ive,
+    #sp_its,
+    #prof_hep_b,
+    #prof_otras,
+    #ac_anticon,
+    #ac_ive,
     ac_mental,
     remit_prot,
     inf_aut,
