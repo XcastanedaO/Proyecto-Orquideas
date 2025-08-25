@@ -1,0 +1,390 @@
+---
+title: "Proyecciones DANE"
+date: "2025-07-02"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+\newpage
+
+Este archivo fue creado para adecuar la información sobre proyecciones
+poblaciones que disponibiliza el DANE [(Ver
+aquí)](https://www.dane.gov.co/index.php/estadisticas-por-tema/demografia-y-poblacion/proyecciones-de-poblacion).
+En esta página se encuentran proyecciones por área, región, departamento
+y municipio para diferente años. Además, discriminado por sexo y edad.
+
+Dado que nuestro interés es para el periodo de tiempo desde 2013 hasta
+2023 se utilizan los siguientes archivos:
+
+-   Serie departamental de población **por área, sexo y edad** para el
+    periodo **2018-2050** (PPED-AreaSexoEdadDep-2018-2050_VP)
+
+-   Serie departamental de población **por área, sexo y edad** para el
+    periodo **2005-2017**
+    (DCD-area-sexo-edad-proypoblacion-dep-2005-2017_VP)
+
+-   Serie municipal de población **por área, sexo y edad** para el
+    periodo **2018-2042** (PPED-AreaSexoEdadMun-2018-2042_VP)
+
+-   Serie municipal de población **por área, sexo y edad** para el
+    periodo **2005-2017**
+    (DCD-area-sexo-edad-proypoblacion-Mun-2005-2017_VP)
+    
+Entre paréntesis se encuentra el nombre de estos archivos, los cuales estarán guardados en *data/auxiliary/proyecciones* 
+
+```{r, include=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE)
+
+source(paste0(here(),"/utils/load_data.R"))
+library(data.table)
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(readr)
+library(sf)
+library(readxl)
+library(janitor)
+library(knitr)
+```
+
+A continuación, se adecua cada uno de estos archivos para obtener un consolidado final por departamento, año, edad y por municipio, año,edad solo para mujeres durante este periodo de tiempo
+
+# Departamento 
+## 2005 - 2017
+### Lectura de la base de datos
+```{r}
+depto_05_17 <- read_excel(paste0(here(),"/","data/auxiliary/proyecciones/DCD-area-sexo-edad-proypoblacion-dep-2005-2017_VP.xlsx"), 
+    sheet = "Departamental_2005-2017", col_names = TRUE, 
+    skip = 11)
+
+depto_05_17 <- depto_05_17 %>% clean_names()
+```
+
+### Seleccionar totales de ÁREA GEOGRÁFICA
+```{r}
+depto_05_17 <- depto_05_17 %>% filter(area_geografica == "Total")
+```
+
+
+### Seleccionar columnas de interés
+```{r}
+depto_05_17 <- depto_05_17 %>%
+  select(dp,dpnom,ano,total_mujeres,starts_with("mujeres_"))
+```
+
+### Renombrar columnas
+En esta base se tiene edad hasta 100 pero en la otra base con proyecciones a partir de 2018 indica edad de 100 o más, según lo visto en la ficha metodológica 
+
+```{r}
+depto_05_17 <- depto_05_17 %>%
+  rename_with(~ sub("mujeres_", "edad_", .x), starts_with("mujeres_"))
+
+depto_05_17 <- depto_05_17 %>%
+  rename(edad_100_mas = edad_100)
+```
+
+
+
+## 2018 - 2050
+### Lectura de la base de datos
+```{r}
+depto_18_50 <- read_excel(paste0(here(),"/","data/auxiliary/proyecciones/PPED-AreaSexoEdadDep-2018-2050_VP.xlsx"), 
+    sheet = "PobDepartamentalxÁreaSexoEdad", 
+    skip = 8)
+
+depto_18_50 <- depto_18_50 %>% clean_names()
+```
+
+### Seleccionar totales de ÁREA GEOGRÁFICA
+```{r}
+depto_18_50 <- depto_18_50 %>% filter(x4 == "Total")
+```
+
+### Seleccionar columnas de interés
+```{r}
+depto_18_50 <- depto_18_50 %>%
+  select(x1,x2,x3,mujeres,starts_with("mujeres_"))
+```
+
+### Renombrar columnas
+
+```{r}
+depto_18_50 <- depto_18_50 %>%
+  rename_with(
+    ~ gsub("^mujeres_(\\d+)_ano[s]?$", "edad_\\1", .x),
+    starts_with("mujeres_")
+  )
+
+depto_18_50 <- depto_18_50 %>%
+  rename(dp = x1, dpnom = x2, ano = x3, total_mujeres = mujeres, edad_100_mas = mujeres_100_anos_y_mas)
+```
+
+## Consolidado final y selección de años
+
+```{r}
+depto_edad <- bind_rows(depto_05_17, depto_18_50)
+summary(depto_edad)
+```
+
+```{r}
+depto_edad <- depto_edad %>% filter(ano >= 2013 & ano <= 2023)
+```
+
+### Verificar que no hayan valores faltantes
+```{r}
+depto_edad %>%
+  filter(if_any(everything(), is.na))
+```
+
+### Verificar registro único por año, departamento
+```{r}
+depto_edad %>%
+  count(ano, dp,dpnom) %>%           
+  filter(n > 1)
+```
+
+
+### Verificar concordancia con DIVIPOLA y lugar de ocurrencia
+
+```{r}
+SIVIGILA_debugged <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
+DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text", "text", "text", 
+        "text", "text","text"))
+```
+
+```{r}
+inconsistencias <- depto_edad %>%
+  select(dp, dpnom) %>%
+  distinct() %>%
+  left_join(DIVIPOLA %>% select(codigo_dane_departamento, nombre_departamento) %>% distinct(),
+    by = c("dp" = "codigo_dane_departamento")) %>%
+  # filter(tolower(dpnom) !=  tolower(nombre_departamento))
+  filter(is.na(nombre_departamento))
+
+inconsistencias
+```
+
+```{r}
+inconsistencias <- depto_edad %>%
+  select(dp, dpnom) %>%
+  distinct() %>%
+  left_join(SIVIGILA_debugged %>% select(cod_dpto_o, departamento_ocurrencia) %>% distinct(),
+    by = c("dp" = "cod_dpto_o")) %>%
+  # filter(tolower(dpnom) !=  tolower(nombre_departamento))
+  filter(is.na(departamento_ocurrencia))
+
+inconsistencias
+```
+
+### Convertir a tipo de dato correcto
+
+```{r}
+depto_edad <- depto_edad %>%
+  mutate(
+    dp = as.factor(dp),
+    dpnom = as.factor(dpnom),
+    ano = as.factor(ano)
+  )
+```
+
+### Problema edad 100
+```{r}
+depto_edad %>% filter(dp == "08") %>% count(ano,edad_100_mas)
+
+depto_edad %>%
+group_by(ano) %>%
+  summarise(total_edad_100 = sum(edad_100_mas, na.rm = TRUE)) %>% count(ano,total_edad_100)
+```
+```{r}
+summary(as.numeric(as.character(SIVIGILA_debugged$edad_)))
+```
+# Municipio
+## 2005 - 2017
+### Lectura de la base de datos
+```{r}
+mun_05_17 <- read_excel(paste0(here(),"/","data/auxiliary/proyecciones/DCD-area-sexo-edad-proypoblacion-Mun-2005-2017_VP.xlsx"), skip = 11)
+
+mun_05_17 <- mun_05_17 %>% clean_names()
+```
+
+### Seleccionar totales de ÁREA GEOGRÁFICA
+```{r}
+mun_05_17 <- mun_05_17 %>% filter(area_geografica == "Total")
+```
+
+
+### Seleccionar columnas de interés
+```{r}
+mun_05_17 <- mun_05_17 %>%
+  select(dp,dpnom,dpmp,mpio,ano,total_mujeres,starts_with("mujeres_"))
+```
+
+### Renombrar columnas
+En esta base se tiene edad hasta 85 y más
+
+```{r}
+mun_05_17 <- mun_05_17 %>%
+  rename_with(~ sub("mujeres_", "edad_", .x), starts_with("mujeres_"))
+
+mun_05_17 <- mun_05_17 %>%
+  rename(edad_85_mas = edad_85_y_mas)
+```
+
+## 2018 - 2042
+### Lectura de la base de datos
+```{r}
+mun_18_42 <- read_delim(paste0(here(),"/","data/auxiliary/proyecciones/PPED-AreaSexoEdadMun-2018-2042_VP_copia.csv"),delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+mun_18_42 <- mun_18_42 %>% clean_names()
+```
+### Seleccionar totales de ÁREA GEOGRÁFICA
+```{r}
+mun_18_42 <- mun_18_42 %>% filter(x6 == "Total")
+```
+
+### Seleccionar columnas de interés
+```{r}
+mun_18_42 <- mun_18_42 %>%
+  select(x1,x2,x3,x4,x5,mujeres,starts_with("mujeres_"))
+```
+
+### Renombrar columnas
+
+```{r}
+mun_18_42 <- mun_18_42 %>%
+  rename_with(
+    ~ gsub("^mujeres_(\\d+)_ano[s]?$", "edad_\\1", .x),
+    starts_with("mujeres_")
+  )
+
+mun_18_42 <- mun_18_42 %>%
+  rename(dp = x1, dpnom = x2, dpmp = x4,mpio = x3,ano = x5, total_mujeres = mujeres, edad_100_mas = mujeres_100_anos_y_mas)
+```
+
+## Consolidado final y selección de años
+
+```{r}
+mun_18_42 <- mun_18_42 %>%
+  mutate(
+    # total_mujeres = as.numeric(total_mujeres),
+    # dp = as.character(dp),
+    mpio = as.character(mpio)
+  )
+
+mun_edad <- bind_rows(mun_05_17, mun_18_42)
+summary(mun_edad)
+```
+
+```{r}
+mun_edad <- mun_edad %>% filter(ano >= 2013 & ano <= 2023)
+```
+
+### Verificar que no hayan valores faltantes
+```{r}
+mun_edad %>%
+  filter(if_any(everything(), is.na))
+```
+
+### Verificar registro único por año, municipio
+```{r}
+mun_edad %>%
+  count(ano, mpio,dpmp) %>%           
+  filter(n > 1)
+```
+
+
+### Verificar concordancia con DIVIPOLA y lugar de ocurrencia
+
+```{r}
+SIVIGILA_debugged <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
+DIVIPOLA <- load_data("DIVIPOLA.xlsx", type = "auxiliary", col_types = c("text", "text", "text", 
+        "text", "text","text"))
+```
+
+```{r}
+inconsistencias <- mun_edad %>%
+  select(dp, dpnom) %>%
+  distinct() %>%
+  left_join(DIVIPOLA %>% select(codigo_dane_departamento, nombre_departamento) %>% distinct(),
+    by = c("dp" = "codigo_dane_departamento")) %>%
+  # filter(tolower(dpnom) !=  tolower(nombre_departamento))
+  filter(is.na(nombre_departamento))
+
+inconsistencias
+```
+```{r}
+mun_edad <- mun_edad %>% mutate(dp = case_when(
+  dp == "5" ~ "05",
+  dp == "8" ~ "08",
+  TRUE ~ dp
+))
+```
+
+```{r}
+inconsistencias <- mun_edad %>%
+  select(dp, dpnom) %>%
+  distinct() %>%
+  left_join(SIVIGILA_debugged %>% select(cod_dpto_o, departamento_ocurrencia) %>% distinct(),
+    by = c("dp" = "cod_dpto_o")) %>%
+  # filter(tolower(dpnom) !=  tolower(nombre_departamento))
+  filter(is.na(departamento_ocurrencia))
+
+inconsistencias
+```
+
+
+```{r}
+inconsistencias <- mun_edad %>%
+  select(mpio, dpmp) %>%
+  distinct() %>%
+  left_join(DIVIPOLA %>% select(codigo_dane_municipio, nombre_municipio) %>% distinct(),
+    by = c("mpio" = "codigo_dane_municipio")) %>%
+  # filter(tolower(dpnom) !=  tolower(nombre_departamento))
+  filter(is.na(nombre_municipio))
+
+inconsistencias
+```
+
+```{r}
+inconsistencias <- mun_edad %>%
+  select(mpio, dpmp) %>%
+  distinct() %>%
+  left_join(SIVIGILA_debugged %>% select(cod_mun_o, municipio_ocurrencia) %>% distinct(),
+    by = c("mpio" = "cod_mun_o")) %>%
+  # filter(tolower(dpnom) !=  tolower(nombre_departamento))
+  filter(is.na(municipio_ocurrencia))
+
+inconsistencias
+```
+
+### Convertir a tipo de dato correcto
+
+```{r}
+mun_edad <- mun_edad %>%
+  mutate(
+    dp = as.factor(dp),
+    dpnom = as.factor(dpnom),
+    dpmp = as.factor(dpmp),
+    mpio = as.factor(mpio),
+    ano = as.factor(ano)
+  )
+```
+
+## Municipio individual
+```{r}
+mun_edad_i <- mun_edad %>% select(-c("dp","dpnom"))
+```
+
