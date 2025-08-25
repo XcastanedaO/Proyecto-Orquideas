@@ -299,6 +299,18 @@ data <- data %>% filter(
 )
 ```
 
+```{r}
+summary(as.factor(data$ident_gene))
+```
+Sin embargo, al realizar este ajuste y garantizar que la variable de identidad de género sea consistente con lo especificado en el diccionario, se observa que esta no presenta variabilidad en sus valores únicos, ya que únicamente contiene registros faltantes y la categoría Femenino.
+
+Por lo tanto, se decide descartar la variable, dado que no aporta información diferenciadora para el análisis ni contribuye a explicar la variabilidad en los datos.
+
+```{r}
+data <- data %>% select(-ident_gene)
+```
+
+
 De esta manera, se pasaría de una base de `r nrow_aux` filas a
 `r nrow(data)` filas.
 
@@ -3405,7 +3417,7 @@ final_data <- final_data %>%
     #nacionalidad,
     #nombre_nacionalidad,
     sexo,
-    ident_gene,
+    ### ident_gene, ya se eliminó más arriba
     orient_sex,
     edad_,
     grupo_edad,
@@ -3511,6 +3523,9 @@ implementar métodos de imputación
     -   Los casos donde no se conoce como se identifica la víctima pero
         que sea de sexo mujer Además, se seleccionaron los casos que
         ocurrieron ÚNICAMENTE en Colombia
+        
+A pesar de los filtros realizados para generar consistecia en la base de datos, se encontró que la variable de identidad de género no aporta información adicional, ya que luego de la depuración solo conserva una única categoría (*Femenino*) además de valores faltantes. Por esta razón se decidió descartarla del análisis, dado que no contribuye a la variabilidad de los datos ni a responder los objetivos del estudio.
+
 
 Además, se filtraron los casos donde fecha del hecho, consulta y
 notificación son consistentes entre sí
@@ -3698,12 +3713,101 @@ nrow_aux <- final_data %>%
     -   orientación IVE
     -   fecha de consulta
 
+
+
+
+
+
+
+
+
+# Base final segunda versión
+
+Se crea una nueva base de datos depurada en la que se conservan
+únicamente las variables consideradas relevantes para el análisis.
+
+Se crea una nueva base de datos con variables que sí importan 
+
+```{r}
+final_data_v2 <- final_data %>%
+  select(
+    origen,
+    consecutive,
+    sexo,
+    orient_sex,
+    edad_,
+    grupo_edad,
+    tip_ss,
+    per_etn,
+    nom_grupo,
+    gp_discapa,
+    gp_desplaz,
+    gp_migrant,
+    gp_carcela,
+    gp_gestan,
+    gp_indigen,
+    gp_pobicfb,
+    gp_mad_com,
+    gp_desmovi,
+    gp_psiquia,
+    gp_vic_vio,
+    gp_otros,
+    mujer_cabf,
+    antec,
+    consum_spa,
+    cod_pais_r,
+    pais_residencia,
+    cod_dpto_r,
+    departamento_residencia,
+    cod_mun_r,
+    municipio_residencia,
+    dist_esp_r,
+    fec_hecho,
+    def_naturaleza,
+    cod_dpto_o,
+    departamento_ocurrencia,
+    cod_mun_o,
+    municipio_ocurrencia,
+    dist_esp_o,
+    area,
+    zona_conf,
+    escenario,
+    ambito_lug,
+    sust_vict,
+    sexo_agre,
+    conv_agre,
+    fec_not,
+    fec_con,
+    cod_dpto_n,
+    departamento_notificacion,
+    cod_mun_n,
+    municipio_notificacion,
+    dist_esp_n,
+    pac_hos,
+    con_fin,
+    cbmte,
+    ac_mental,
+    remit_prot,
+    inf_aut,
+    evi_mlegal)
+
+```
+
+## Base de datos segunda versión depurada
+
+```{r, warning=FALSE, message=FALSE}
+# Guardar base de datos con valores faltantes
+# saveRDS(final_data_v2,paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
+```
+
+
+
+
 # Base de datos para análisis espacial
 
 1.  Se seleccionan las variables de interés que son:
 
     -   Sexo de la víctima
-    -   Identidad de género
     -   Edad y grupo etario
     -   Modalidad de violencia
     -   Fecha de notificación (año)
@@ -3714,7 +3818,6 @@ data_esp <- final_data %>% mutate(ano_not = as.factor(year(fec_not)))
 
 data_esp <- data_esp %>% select(
   sexo,
-  ident_gene,
   edad_,
   grupo_edad,
   def_naturaleza,
@@ -3731,14 +3834,25 @@ data_esp <- data_esp %>% select(
 summary(data_esp)
 ```
 
-2.  Se eliminaron los registros con algún valor faltante
+2.  Se eliminaron únicamente los registros con valores faltantes en las variables de **georreferenciación** (cod_dpto_n, departamento_notificacion,
+cod_mun_n, municipio_notificacion, dist_esp_n).
+De esta forma, se conserva la mayor cantidad de información posible
+en las demás variables, garantizando al mismo tiempo que los casos
+cuenten con la localización mínima requerida para el análisis
+espacial.
 
 ```{r}
 nrow_aux <- nrow(data_esp)
 ```
 
 ```{r}
-data_esp <- na.omit(data_esp)
+data_esp <- data_esp %>%
+  filter(
+    !is.na(cod_dpto_n) &
+    !is.na(departamento_notificacion) &
+    !is.na(cod_mun_n) &
+    !is.na(municipio_notificacion) &
+    !is.na(dist_esp_n))
 ```
 
 Fueron en total `r nrow_aux - nrow(data_esp)` registros eliminados
