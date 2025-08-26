@@ -243,12 +243,12 @@ Esta variable se pide en la ficha de notificación de todos los años
 ```{r}
 summary(as.factor(data$sexo))
 ```
+
 Se selecciona solo los casos donde femenino sea mujer
 
 ```{r}
 data <- data %>% filter(sexo=="F")
 ```
-
 
 ### Identidad género
 
@@ -302,14 +302,20 @@ data <- data %>% filter(
 ```{r}
 summary(as.factor(data$ident_gene))
 ```
-Sin embargo, al realizar este ajuste y garantizar que la variable de identidad de género sea consistente con lo especificado en el diccionario, se observa que esta no presenta variabilidad en sus valores únicos, ya que únicamente contiene registros faltantes y la categoría Femenino.
 
-Por lo tanto, se decide descartar la variable, dado que no aporta información diferenciadora para el análisis ni contribuye a explicar la variabilidad en los datos.
+Sin embargo, al realizar este ajuste y garantizar que la variable de
+identidad de género sea consistente con lo especificado en el
+diccionario, se observa que esta no presenta variabilidad en sus valores
+únicos, ya que únicamente contiene registros faltantes y la categoría
+Femenino.
+
+Por lo tanto, se decide descartar la variable, dado que no aporta
+información diferenciadora para el análisis ni contribuye a explicar la
+variabilidad en los datos.
 
 ```{r}
 data <- data %>% select(-ident_gene)
 ```
-
 
 De esta manera, se pasaría de una base de `r nrow_aux` filas a
 `r nrow(data)` filas.
@@ -594,8 +600,8 @@ data <- data %>%
 
 Se eliminan estos registros quedando una base de `r nrow(data)`
 
-
-- Con el fin de tener una referencia para la fecha más consistente, se completa la fecha del hecho si es NA con la fecha de notificación:
+-   Con el fin de tener una referencia para la fecha más consistente, se
+    completa la fecha del hecho si es NA con la fecha de notificación:
 
 ```{r}
 data %>% filter(is.na(fec_hecho)) %>% select(fec_hecho, fec_not)
@@ -612,10 +618,6 @@ data %>%
   filter(fec_hecho == fec_not) %>%
   select(fec_hecho, fec_not)
 ```
-
-
-
-
 
 ## Información de la víctima
 
@@ -775,11 +777,14 @@ data <- data %>% select(-c(edad_hecho,edad_notif,uni_med,edad))
 data <- data %>% select(-c(fecha_nto,fec_def,fec_hos,ini_sin))
 ```
 
-#### Edad agrupada: 
+#### Edad agrupada:
+
 en los boletines del INMLCF se presentan los análisis con la edad
-agrupada en rango de 4 edades a excepción de la edad 15-19 que
-se divide en dos rangos.
-[*(Ejemplo)*](https://www.medicinalegal.gov.co/documents/20143/696494/8+Suicidio+Masatugo+sep+7-21.pdf). Teniendo en cuenta esto, y que se pasaron las edades a años, se decide agrupar la edad de igual manera que lo hace el INMLCF.
+agrupada en rango de 4 edades a excepción de la edad 15-19 que se divide
+en dos rangos.
+[*(Ejemplo)*](https://www.medicinalegal.gov.co/documents/20143/696494/8+Suicidio+Masatugo+sep+7-21.pdf).
+Teniendo en cuenta esto, y que se pasaron las edades a años, se decide
+agrupar la edad de igual manera que lo hace el INMLCF.
 
 ```{r, echo=TRUE}
 data <- data %>% mutate(
@@ -3269,11 +3274,16 @@ data <- data %>% mutate(dist_esp_n=if_else(municipio_notificacion == "Bogotá, D
 ```
 
 #### Lugar del hecho a partir del lugar de notificación
-Recordemos que para los lugares de hecho y notificación tenemos información relacionada ccon el departamento, municipio y distrito especial
+
+Recordemos que para los lugares de hecho y notificación tenemos
+información relacionada ccon el departamento, municipio y distrito
+especial
 
 ```{r}
 na_empty %>%
-  filter(Column %in% c("departamento_ocurrencia", 
+  filter(Column %in% c("cod_dpto_o", "cod_dpto_n",
+                       "cod_mun_o", "cod_mun_n",
+                       "departamento_ocurrencia", 
                        "departamento_notificacion",
                        "municipio_ocurrencia", 
                        "municipio_notificacion", 
@@ -3284,6 +3294,8 @@ na_empty %>%
 ```{r}
 data <- data %>%
   mutate(
+    cod_dpto_o              = coalesce(cod_dpto_o, cod_dpto_n),
+    cod_mun_o               = coalesce(cod_mun_o, cod_mun_n),
     departamento_ocurrencia = coalesce(departamento_ocurrencia, departamento_notificacion),
     municipio_ocurrencia    = coalesce(municipio_ocurrencia, municipio_notificacion),
     dist_esp_o              = coalesce(dist_esp_o, dist_esp_n))
@@ -3291,15 +3303,18 @@ data <- data %>%
 
 ```{r}
 data %>%
-  filter(is.na(departamento_ocurrencia) | is.na(municipio_ocurrencia) | is.na(dist_esp_o)) %>%
-  select(departamento_ocurrencia, departamento_notificacion,
+  filter(is.na(cod_dpto_o) | is.na(cod_mun_o) | 
+         is.na(departamento_ocurrencia) | is.na(municipio_ocurrencia) | 
+         is.na(dist_esp_o)) %>%
+  select(cod_dpto_o, cod_dpto_n,
+         cod_mun_o, cod_mun_n,
+         departamento_ocurrencia, departamento_notificacion,
          municipio_ocurrencia, municipio_notificacion,
          dist_esp_o, dist_esp_n)
 ```
 
+#### Porcentaje final de valores faltantes
 
-
-#### Porcentaje final de valores faltantes 
 Luego de completar valores faltantes y crear las nuevas variables, se
 puede observar que disminuyó la cantidad de celdas vacías.
 
@@ -3414,8 +3429,8 @@ final_data <- final_data %>%
   select(
     origen,
     consecutive,
-    #nacionalidad,
-    #nombre_nacionalidad,
+    nacionalidad,
+    nombre_nacionalidad,
     sexo,
     ### ident_gene, ya se eliminó más arriba
     orient_sex,
@@ -3430,7 +3445,7 @@ final_data <- final_data %>%
     gp_migrant,
     gp_carcela,
     gp_gestan,
-    #sem_ges,
+    sem_ges,
     gp_indigen,
     gp_pobicfb,
     gp_mad_com,
@@ -3448,7 +3463,7 @@ final_data <- final_data %>%
     cod_mun_r,
     municipio_residencia,
     dist_esp_r,
-    #estrato,
+    estrato,
     fec_hecho,
     def_naturaleza,
     cod_dpto_o,
@@ -3460,18 +3475,18 @@ final_data <- final_data %>%
     zona_conf,
     escenario,
     ambito_lug,
-    #armas,
-    #que_cara,
-    #que_cuello,
-    #que_mano,
-    #que_pie,
-    #que_pliegu,
-    #que_genita,
-    #que_tronco,
-    #que_miesup,
-    #que_mieinf,
-    #cla_gra,
-    #ext_que,                              
+    armas,
+    que_cara,
+    que_cuello,
+    que_mano,
+    que_pie,
+    que_pliegu,
+    que_genita,
+    que_tronco,
+    que_miesup,
+    que_mieinf,
+    cla_gra,
+    ext_que,                              
     sust_vict,
     sexo_agre,
     conv_agre,
@@ -3485,11 +3500,11 @@ final_data <- final_data %>%
     pac_hos,
     con_fin,
     cbmte,
-    #sp_its,
-    #prof_hep_b,
-    #prof_otras,
-    #ac_anticon,
-    #ac_ive,
+    sp_its,
+    prof_hep_b,
+    prof_otras,
+    ac_anticon,
+    ac_ive,
     ac_mental,
     remit_prot,
     inf_aut,
@@ -3504,9 +3519,8 @@ implementar métodos de imputación
 
 ```{r, warning=FALSE, message=FALSE}
 # Guardar base de datos con valores faltantes
-# saveRDS(final_data,paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
+saveRDS(final_data,paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
 ```
-
 
 # Resumen
 
@@ -3523,9 +3537,13 @@ implementar métodos de imputación
     -   Los casos donde no se conoce como se identifica la víctima pero
         que sea de sexo mujer Además, se seleccionaron los casos que
         ocurrieron ÚNICAMENTE en Colombia
-        
-A pesar de los filtros realizados para generar consistecia en la base de datos, se encontró que la variable de identidad de género no aporta información adicional, ya que luego de la depuración solo conserva una única categoría (*Femenino*) además de valores faltantes. Por esta razón se decidió descartarla del análisis, dado que no contribuye a la variabilidad de los datos ni a responder los objetivos del estudio.
 
+A pesar de los filtros realizados para generar consistecia en la base de
+datos, se encontró que la variable de identidad de género no aporta
+información adicional, ya que luego de la depuración solo conserva una
+única categoría (*Femenino*) además de valores faltantes. Por esta razón
+se decidió descartarla del análisis, dado que no contribuye a la
+variabilidad de los datos ni a responder los objetivos del estudio.
 
 Además, se filtraron los casos donde fecha del hecho, consulta y
 notificación son consistentes entre sí
@@ -3713,20 +3731,12 @@ nrow_aux <- final_data %>%
     -   orientación IVE
     -   fecha de consulta
 
-
-
-
-
-
-
-
-
 # Base final segunda versión
 
 Se crea una nueva base de datos depurada en la que se conservan
 únicamente las variables consideradas relevantes para el análisis.
 
-Se crea una nueva base de datos con variables que sí importan 
+Se crea una nueva base de datos con variables que sí importan
 
 ```{r}
 final_data_v2 <- final_data %>%
@@ -3790,18 +3800,46 @@ final_data_v2 <- final_data %>%
     remit_prot,
     inf_aut,
     evi_mlegal)
-
 ```
+
+### Selección del período: 2013–2023
+
+Al revisar la distribución de los registros por año en la variable fecha
+del hecho, se observa que:
+
+-   Entre 1899 y 2012 los casos son muy pocos y dispersos, con varios
+    años que apenas registran entre 1 y 200 observaciones.
+
+-   A partir de 2013 hay un incremento abrupto en la cantidad de
+    registros (más de 34 mil casos), lo que indica un mayor nivel de
+    cobertura y sistematización en la notificación de eventos.
+
+-   Entre 2013 y 2023 la base presenta una cantidad considerable y
+    sostenida de casos anuales (entre 34 mil y 122 mil), lo que asegura
+    suficiente representatividad para el análisis.
+
+Por lo tanto, se decide filtrar la base a los años 2013–2023, dado que
+representan el período con datos más completos, homogéneos y
+consistentes para el estudio.
+
+```{r}
+table(year(final_data_v2$fec_hecho))
+```
+
+```{r}
+final_data_v2 <- final_data_v2[year(final_data_v2$fec_hecho) >= 2013 &
+                         year(final_data_v2$fec_hecho) <= 2023, ]
+```
+
+Finalmente se obtiene una base de datos que contene
+**`r nrow(final_data_v2)` filas.**
 
 ## Base de datos segunda versión depurada
 
 ```{r, warning=FALSE, message=FALSE}
 # Guardar base de datos con valores faltantes
-# saveRDS(final_data_v2,paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
+saveRDS(final_data_v2,paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
 ```
-
-
-
 
 # Base de datos para análisis espacial
 
@@ -3810,36 +3848,44 @@ final_data_v2 <- final_data %>%
     -   Sexo de la víctima
     -   Edad y grupo etario
     -   Modalidad de violencia
-    -   Fecha de notificación (año)
-    -   Lugar de notificación (municipio,departamento,distrito especial)
+    -   Fecha de hecho (año)
+    -   Lugar de hecho (municipio,departamento,distrito especial)
+
+2.  Al igual que la base de datos anterior, se filtran los registros para incluir únicamente los años **2013 a 2023**, dado que este periodo corresponde al rango con mayor cantidad de datos, cobertura consistente y representatividad suficiente para el análisis.
 
 ```{r}
-data_esp <- final_data %>% mutate(ano_not = as.factor(year(fec_not)))
+data_esp <- final_data %>%
+  # Crear variable con el año del hecho
+  mutate(ano_hecho = year(fec_hecho)) %>%
+  
+  # Filtrar registros entre 2013 y 2023
+  filter(ano_hecho >= 2013 & ano_hecho <= 2023) %>%
+  mutate(ano_hecho = as.factor(ano_hecho))
 
 data_esp <- data_esp %>% select(
   sexo,
   edad_,
   grupo_edad,
   def_naturaleza,
-  ano_not,
-  cod_dpto_n,
-  departamento_notificacion,
-  cod_mun_n,
-  municipio_notificacion,
-  dist_esp_n
-)
+  ano_hecho,
+  cod_dpto_o,
+  departamento_ocurrencia,
+  cod_mun_o,
+  municipio_ocurrencia,
+  dist_esp_o)
 ```
 
 ```{r}
 summary(data_esp)
 ```
 
-2.  Se eliminaron únicamente los registros con valores faltantes en las variables de **georreferenciación** (cod_dpto_n, departamento_notificacion,
-cod_mun_n, municipio_notificacion, dist_esp_n).
-De esta forma, se conserva la mayor cantidad de información posible
-en las demás variables, garantizando al mismo tiempo que los casos
-cuenten con la localización mínima requerida para el análisis
-espacial.
+2.  Se eliminaron únicamente los registros con valores faltantes en las
+    variables de **georreferenciación** (cod_dpto_o,
+    departamento_ocurrencia, cod_mun_o, municipio_ocurrencia,
+    dist_esp_o). De esta forma, se conserva la mayor cantidad de
+    información posible en las demás variables, garantizando al mismo
+    tiempo que los casos cuenten con la localización mínima requerida
+    para el análisis espacial.
 
 ```{r}
 nrow_aux <- nrow(data_esp)
@@ -3848,21 +3894,21 @@ nrow_aux <- nrow(data_esp)
 ```{r}
 data_esp <- data_esp %>%
   filter(
-    !is.na(cod_dpto_n) &
-    !is.na(departamento_notificacion) &
-    !is.na(cod_mun_n) &
-    !is.na(municipio_notificacion) &
-    !is.na(dist_esp_n))
+    !is.na(cod_dpto_o) &
+    !is.na(departamento_ocurrencia) &
+    !is.na(cod_mun_o) &
+    !is.na(municipio_ocurrencia) &
+    !is.na(dist_esp_o))
 ```
 
 Fueron en total `r nrow_aux - nrow(data_esp)` registros eliminados
 
-3.  Guardar nueva base de datos
+4.  Guardar nueva base de datos
+
 ```{r, warning=FALSE, message=FALSE}
 # Guardar en csv
-#save_data(data_esp, "SIVIGILA_debugged_spatial", type = "interim", format = "csv")
+save_data(data_esp, "SIVIGILA_debugged_spatial", type = "interim", format = "csv")
 
 # Guardar en rds
-#saveRDS(data_esp,paste0(here(),"/data/interim/SIVIGILA_debugged_spatial.rds"))
+saveRDS(data_esp,paste0(here(),"/data/interim/SIVIGILA_debugged_spatial.rds"))
 ```
-
