@@ -173,48 +173,8 @@ ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad_nuevo, fill = n)) +
   theme_minimal()
 
 ```
-## Tabla
 
-```{r}
-anio_seleccionado <- 2016
-bloque <- 10   # número de edades por bloque (ej: 10 → bloques 0–10, 11–21, etc.)
-
-# 1) Conteo por edad
-base <- espacial %>%
-  filter(ano_hecho == anio_seleccionado) %>%
-  count(edad_, name = "Casos") %>%
-  arrange(edad_)
-
-# 2) Crear índice de bloque
-base <- base %>%
-  mutate(grupo = (edad_ %/% (bloque+1)))  # divide edades en grupos
-
-# 3) Separar en lista de tablas por bloque
-bloques <- split(base, base$grupo)
-
-# 4) Añadir índice de fila dentro de cada bloque y renombrar
-bloques_ren <- map(seq_along(bloques), function(i) {
-  bloques[[i]] %>%
-    mutate(fila = row_number()) %>%
-    select(fila, edad_, Casos) %>%
-    rename(!!paste0("Edad_", i) := edad_,
-           !!paste0("Casos_", i) := Casos)
-})
-
-# 5) Unir lado a lado por "fila"
-tabla_final <- reduce(bloques_ren, full_join, by = "fila") %>%
-  select(-fila)
-
-# 6) Renombrar columnas a "Edad | Casos | Edad | Casos ..."
-ncols <- ncol(tabla_final)
-colnames(tabla_final) <- rep(c("Edad", "Casos"), times = ncols/2)
-
-# 7) Mostrar tabla
-kable(tabla_final, align = "c") %>%
-  kable_styling(full_width = FALSE)
-
-
-```
+# Frecuencia por año y edad
 
 ```{r}
 tabla_anio_edad <- espacial %>%
@@ -234,8 +194,6 @@ col_orden <- c("ano_hecho", as.character(sort(as.numeric(setdiff(names(tabla_ani
 tabla_anio_edad <- tabla_anio_edad[, col_orden]
 tabla_anio_edad
 ```
-
-
 
 # Análisis descriptivo
 
