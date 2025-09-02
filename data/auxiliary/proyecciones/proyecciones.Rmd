@@ -96,6 +96,18 @@ depto_05_17 <- depto_05_17 %>%
   rename(edad_100_mas = edad_100)
 ```
 
+### Crear columna 85 o más
+```{r}
+depto_05_17 <- depto_05_17 %>%
+  mutate(`edad_85_mas` = rowSums(select(., starts_with("edad"))[, paste0("edad_", 85:99)], na.rm = TRUE) +
+                           `edad_100_mas`)
+```
+
+
+```{r}
+# Eliminar columnas de 85 a 100 mas
+depto_05_17 <- depto_05_17 %>% select(-all_of(c(paste0("edad_", 85:99), "edad_100_mas")))
+```
 
 
 ## 2018 - 2050
@@ -132,11 +144,24 @@ depto_18_50 <- depto_18_50 %>%
   rename(dp = x1, dpnom = x2, ano = x3, total_mujeres = mujeres, edad_100_mas = mujeres_100_anos_y_mas)
 ```
 
+### Crear columna 85 o más
+```{r}
+depto_18_50 <- depto_18_50 %>%
+  mutate(`edad_85_mas` = rowSums(select(., starts_with("edad"))[, paste0("edad_", 85:99)], na.rm = TRUE) +
+                           `edad_100_mas`)
+```
+
+
+```{r}
+# Eliminar columnas de 85 a 100 mas
+depto_18_50 <- depto_18_50 %>% select(-all_of(c(paste0("edad_", 85:99), "edad_100_mas")))
+```
+
+
 ## Consolidado final y selección de años
 
 ```{r}
 depto_edad <- bind_rows(depto_05_17, depto_18_50)
-summary(depto_edad)
 ```
 
 ```{r}
@@ -157,7 +182,8 @@ depto_edad %>%
 ```
 
 
-### Verificar concordancia con DIVIPOLA y lugar de ocurrencia
+### Verificar concordancia con 
+DIVIPOLA y lugar de ocurrencia
 
 ```{r}
 SIVIGILA_debugged <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
@@ -196,21 +222,21 @@ depto_edad <- depto_edad %>%
   mutate(
     dp = as.factor(dp),
     dpnom = as.factor(dpnom),
-    ano = as.factor(ano)
+    ano = as.character(ano)
   )
 ```
 
-### Problema edad 100
 ```{r}
-depto_edad %>% filter(dp == "08") %>% count(ano,edad_100_mas)
+summary(depto_edad)
+```
 
-depto_edad %>%
-group_by(ano) %>%
-  summarise(total_edad_100 = sum(edad_100_mas, na.rm = TRUE)) %>% count(ano,total_edad_100)
-```
+### Guardar consolidado final
+
 ```{r}
-summary(as.numeric(as.character(SIVIGILA_debugged$edad_)))
+# Guardar consolidado final
+saveRDS(depto_edad,paste0(here(),"/data/auxiliary/proyecciones/proyecciones_dep_ano_edad.rds"))
 ```
+
 # Municipio
 ## 2005 - 2017
 ### Lectura de la base de datos
@@ -250,6 +276,7 @@ mun_18_42 <- read_delim(paste0(here(),"/","data/auxiliary/proyecciones/PPED-Area
 
 mun_18_42 <- mun_18_42 %>% clean_names()
 ```
+
 ### Seleccionar totales de ÁREA GEOGRÁFICA
 ```{r}
 mun_18_42 <- mun_18_42 %>% filter(x6 == "Total")
@@ -273,6 +300,20 @@ mun_18_42 <- mun_18_42 %>%
 mun_18_42 <- mun_18_42 %>%
   rename(dp = x1, dpnom = x2, dpmp = x4,mpio = x3,ano = x5, total_mujeres = mujeres, edad_100_mas = mujeres_100_anos_y_mas)
 ```
+
+### Crear columna 85 o más
+```{r}
+mun_18_42 <- mun_18_42 %>%
+  mutate(`edad_85_mas` = rowSums(select(., starts_with("edad"))[, paste0("edad_", 85:99)], na.rm = TRUE) +
+                           `edad_100_mas`)
+```
+
+
+```{r}
+# Eliminar columnas de 85 a 100 mas
+mun_18_42 <- mun_18_42 %>% select(-all_of(c(paste0("edad_", 85:99), "edad_100_mas")))
+```
+
 
 ## Consolidado final y selección de años
 
@@ -325,6 +366,7 @@ inconsistencias <- mun_edad %>%
 
 inconsistencias
 ```
+
 ```{r}
 mun_edad <- mun_edad %>% mutate(dp = case_when(
   dp == "5" ~ "05",
@@ -336,7 +378,7 @@ mun_edad <- mun_edad %>% mutate(dp = case_when(
 ```{r}
 inconsistencias <- mun_edad %>%
   select(dp, dpnom) %>%
-  distinct() %>%
+  distinct(dp, .keep_all = TRUE) %>%
   left_join(SIVIGILA_debugged %>% select(cod_dpto_o, departamento_ocurrencia) %>% distinct(),
     by = c("dp" = "cod_dpto_o")) %>%
   # filter(tolower(dpnom) !=  tolower(nombre_departamento))
@@ -358,6 +400,23 @@ inconsistencias <- mun_edad %>%
 inconsistencias
 ```
 
+El primer caso corresponde a un Área No Municipalizada (ANM) ubicada en el departamento de Guainía, cerca de la frontera con Venezuela. Las Áreas No Municipalizadas son divisiones territoriales que no tienen un gobierno municipal propio y son administradas directamente por el departamento. No se encuentra en la base de DIVIPOLA pero en la base propia tampoco. 
+
+Los demás casos corresponden a la forma en qué está el código desde la base, se está eliminando el "0" que debe tener antes estos códigos
+
+
+```{r}
+mun_edad <- mun_edad %>%
+  mutate(
+    mpio = if_else(dp %in% c("05", "08") & !startsWith(mpio, "0"),
+                       paste0("0", mpio),
+                       mpio
+    )
+  )
+```
+
+
+
 ```{r}
 inconsistencias <- mun_edad %>%
   select(mpio, dpmp) %>%
@@ -370,6 +429,8 @@ inconsistencias <- mun_edad %>%
 inconsistencias
 ```
 
+Estos casos corresponden a Área No Municipalizada de Colombia. Al no aparecer en la base propia es porque no hay registros de estos casos
+
 ### Convertir a tipo de dato correcto
 
 ```{r}
@@ -379,12 +440,26 @@ mun_edad <- mun_edad %>%
     dpnom = as.factor(dpnom),
     dpmp = as.factor(dpmp),
     mpio = as.factor(mpio),
-    ano = as.factor(ano)
+    ano = as.character(ano)
   )
 ```
+
+### Guardar consolidado final
+
+```{r}
+# Guardar consolidado final
+saveRDS(mun_edad,paste0(here(),"/data/auxiliary/proyecciones/proyecciones_dep_mun_ano_edad.rds"))
+```
+
 
 ## Municipio individual
 ```{r}
 mun_edad_i <- mun_edad %>% select(-c("dp","dpnom"))
 ```
 
+### Guardar consolidado final
+
+```{r}
+# Guardar consolidado final
+saveRDS(mun_edad_i,paste0(here(),"/data/auxiliary/proyecciones/proyecciones_mun_ano_edad.rds"))
+```
