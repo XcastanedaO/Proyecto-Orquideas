@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Dada la depuración inicial, en el siguiente documento se procede a realizar los ajustes necesarios para enfocar los modelos que se desarrollarán.
 
 ```{r, echo=FALSE, message=FALSE}
-source("../../utils/load_data.R")
+# source("../../utils/load_data.R")
 library(here)
 library(hms)
 library(dplyr)
@@ -384,8 +384,9 @@ mes <- nf_data %>%
 dia <- nf_data %>%
   # filter(dia_del_hecho != "Sin información") %>% 
   count(dia_del_hecho) %>%
-  mutate(dia_del_hecho = factor(dia_del_hecho, levels = c("Lunes", "Martes", "Miércoles", "Jueves", 
-                "Viernes", "Sábado", "Domingo")),
+  mutate(
+    # dia_del_hecho = factor(dia_del_hecho, levels = c("Lunes", "Martes", "Miércoles", "Jueves", 
+    #             "Viernes", "Sábado", "Domingo")),
     proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = dia_del_hecho, y = n)) +
   geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
@@ -396,13 +397,15 @@ dia <- nf_data %>%
             size = 3) +  # Texto en negrita
   labs(title = "Casos de violencia por día", x = "Día", y = "Frecuencia") +
   theme_minimal()
+dia
 ```
 
 
 ```{r, echo=FALSE}
 hora <- nf_data %>%
   count(rango_de_hora_del_hecho_x_3_horas) %>%
-  mutate(proporcion = n / sum(n) * 100) %>%
+  mutate(rango_de_hora_del_hecho_x_3_horas = factor(rango_de_hora_del_hecho_x_3_horas, levels = c("Madrugada", "Dia", "Noche", "Sin información")),
+         proporcion = n / sum(n) * 100) %>%
   ggplot(aes(x = rango_de_hora_del_hecho_x_3_horas, y = n)) +
   geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
   geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
@@ -416,7 +419,8 @@ hora <- nf_data %>%
 ```
 
 ```{r, fig.width=11, fig.height=6.5, echo=FALSE}
-(anio | mes ) / (dia | hora)
+# (anio | mes ) / (dia | hora)
+(dia | hora)
 # ggsave("../../reports/bayes/temp_inmlcf.pdf", (anio | mes ) / (dia | hora), width = 14, height = 7)
 ```
 
@@ -483,6 +487,25 @@ grupo <- nf_data %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  
 ```
 
+```{r}
+unique(nf_data$ciclo_vital_)
+orden <- c("Niñas y adolescentes", "Jovenes", "Adultez")
+ciclo <- nf_data %>%
+  count(ciclo_vital_) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+   mutate(
+    ciclo_vital = factor(ciclo_vital_, levels = orden)) %>% 
+  ggplot(aes(x = ciclo_vital, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "Casos de violencia por ciclo vital", x = "", y = "Frecuencia") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+```
 
 
 ```{r, echo=FALSE}
@@ -499,7 +522,7 @@ ciclo <- nf_data %>%
             color = "#4B0082",  # Morado oscuro
             fontface = "bold",
             size = 3) +  # Texto en negrita
-  labs(title = "Casos de violencia por ciclo vital", x = "ciclo_vital", y = "Frecuencia") +
+  labs(title = "Casos de violencia por ciclo vital", x = "", y = "Frecuencia") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))  
 ```
@@ -710,32 +733,38 @@ nf_data %>% explore()
 ```{r, echo=FALSE}
 # Calcular proporciones por ciclo_vital y def_naturaleza
 a <- nf_data %>%
-  count(ciclo_vital, def_naturaleza) %>%
+  count(ciclo_vital_, def_naturaleza) %>%
   group_by(def_naturaleza) %>%
   mutate(proporcion = round(n / sum(n) * 100, 1)) %>%
   ungroup() %>%
   mutate(
-    ciclo_vital = factor(ciclo_vital, levels = orden)) %>% 
+    ciclo_vital = factor(ciclo_vital_, levels = orden)) %>% 
   ggplot(aes(x = proporcion, y = ciclo_vital, fill = def_naturaleza)) +
   geom_col(position = "dodge") +
   geom_text(aes(label = proporcion),
-            position = position_dodge(width = 0.9),
-            hjust = -0.2, size = 3) +
+            position = position_dodge(width = 1),
+            hjust = 0.5, 
+            size = 2.5) +
   scale_fill_manual(values = c(
     "Violencia interpersonal" = "#fc9272",
     "Violencia intrafamiliar" = "#78c679",
     "Violencia sexual" = "#1f9bcf",
     "Violencia sociopolítica" = "#c994c7"
   )) +
-  labs(x = "%", y = NULL, fill = "def_naturaleza") +
+  labs(x = "%", y = NULL, fill = "Tipo de violencia", title = "T") +
   theme_minimal() +
-  theme(
-    legend.position = "right",
+  theme(legend.position = "right",
     plot.title = element_text(hjust = 0.5)
   ) +
-  ggtitle("ciclo_vital") +
+  ggtitle("Ciclo vital") +
   coord_flip()
+a
+```
 
+```{r,fig.width = 10, fig.height =4.5, , echo=FALSE}
+(ciclo | a)
+ggsave(filename = "../../reports/bayes/ciclo_mod.pdf",
+       plot = (ciclo | a), width = 10, height = 4.5)
 ```
 
 ```{r, echo=FALSE}
@@ -829,6 +858,75 @@ a
 b
 c
 d
+```
+
+```{r}
+hora_2 <-nf_data %>%
+  count(rango_de_hora_del_hecho_x_3_horas, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(rango_de_hora_del_hecho_x_3_horas = factor(rango_de_hora_del_hecho_x_3_horas, levels = c("Madrugada", "Dia", "Noche", "Sin información")),
+    proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = rango_de_hora_del_hecho_x_3_horas, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 1),
+            hjust = 0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "Tipo violencia") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Rango de hora") +
+  coord_flip()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+hora_2
+
+```
+```{r}
+semana_2 <- nf_data %>%
+  count(dia_del_hecho, def_naturaleza) %>%
+  group_by(def_naturaleza)%>%
+  mutate(
+    proporcion = round(n / sum(n) * 100, 1)) %>%
+  ungroup() %>%
+  ggplot(aes(x = proporcion, y = dia_del_hecho, fill = def_naturaleza)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = proporcion),
+            position = position_dodge(width = 1),
+            hjust = 0.2, size = 3) +
+  scale_fill_manual(values = c(
+    "Violencia interpersonal" = "#fc9272",
+    "Violencia intrafamiliar" = "#78c679",
+    "Violencia sexual" = "#1f9bcf",
+    "Violencia sociopolítica" = "#c994c7"
+  )) +
+  labs(x = "%", y = NULL, fill = "Tipo violencia") +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  ggtitle("Semana del hecho") +
+  coord_flip()
+
+semana_2
+```
+
+```{r,fig.width = 10, fig.height =4.5, , echo=FALSE}
+(dia | hora)
+ggsave(filename = "../../reports/bayes/temp_2.pdf",
+       plot = (dia | hora), width = 10, height = 4.5)
+(semana_2 | hora_2)
+ggsave(filename = "../../reports/bayes/temp_vs_def.pdf",
+       plot = (semana_2 | hora_2), width = 19, height = 4.5)
 ```
 
 ```{r, echo=FALSE}
