@@ -3853,7 +3853,7 @@ final_data_v2 <- final_data_v2[year(final_data_v2$fec_hecho) >= 2013 &
                          year(final_data_v2$fec_hecho) <= 2023, ]
 ```
 
-Finalmente se obtiene una base de datos que contene
+Finalmente se obtiene una base de datos que contiene
 **`r nrow(final_data_v2)` filas.**
 
 ## Base de datos segunda versión depurada
