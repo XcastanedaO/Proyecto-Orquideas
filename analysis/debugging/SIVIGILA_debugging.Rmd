@@ -17,29 +17,17 @@ editor_options:
 
 # Información de la base de datos
 
-Este reporte describe la depuración realizada a la información
-proporcionada por el Instituto Nacional de Salud de Colombia sobre los
-casos sospechosos o probables de violencia de género que fueron
-reportados al SIVIGILA durante 2013 y 2024.
+Este reporte describe la depuración realizada a la información proporcionada por el Instituto Nacional de Salud de Colombia sobre los casos sospechosos o probables de violencia de género que fueron reportados al SIVIGILA durante 2013 y 2024.
 
--   **Información sobre las variables:** se cuenta con un diccionario de
-    datos que enviaron junto a las bases [(Ver
-    aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf).
-    Este diccionario tiene varibales de todos los eventos notificados al
-    SIVIGILA, por lo tanto, el diccionario solo con las variables de
-    interés se encuentra en *data/raw/SIVIGILA/diccionario_red.pdf*.
-    Adicional, se cuenta con algunas de las fichas de notificación al
-    SIVIGILA que contienen indicaciones sobre muchas variables, la más
-    actualizada es la ficha de 2024 [(Ver
-    aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
+Se cuenta con un diccionario de datos que enviaron junto a las bases y con algunas versiones de la ficha de notificación del evento que contienen indicaciones sobre la mayoría de las variables, la ficha más actualizada es la ficha de 2024 [(Ver aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
 
-# Lectura de la base de datos
+# Librerías
 
 ```{r, include=FALSE}
-
-knitr::opts_chunk$set(echo=FALSE)
-
+# Cargue de archivo con funciones auxiliares
 source("../../utils/load_data.R")
+
+# Cargue de librerías
 library(data.table)
 library(here)
 library(hms)
@@ -54,13 +42,12 @@ library(janitor)
 library(knitr)
 ```
 
-Los archivos originales enviados por el Instituto Nacional de Salud
-están en formato xlsx, sin embargo, dado su tamaño la memoria puede
-llenarse más fácilmente si se lee cada uno en este formato entonces se
-leyeron y guardaron en formato rds, asignando de una vez el tipo de dato
-a cada columna
+# Lectura de la base de datos
+
+Los archivos originales enviados por el Instituto Nacional de Salud están en formato xlsx, sin embargo, dado su tamaño la memoria puede llenarse más fácilmente si se lee cada uno en este formato, se decide entonces leer y guardar las bases en formato rds, asignando de una vez el tipo de dato a cada columna.
 
 ```{r, warning=FALSE}
+# Crear lista para guardar bases de datos que se vayan leyendo
 data_list <- list()
 
 # Lectura de las bases años 2013 al 2023
@@ -75,6 +62,7 @@ rm(data_)
 La composición de las bases de datos es la siguiente:
 
 ```{r}
+# Crear tabla con número de columnas y filas de cada base de datos
 col_data <- tibble(
   year = names(data_list),
   n_columnas = sapply(data_list, ncol),
@@ -83,14 +71,10 @@ col_data <- tibble(
 col_data
 ```
 
-Se utiliza la función `clean_names()` del paquete **janitor** para
-limpiar y estandarizar los nombres de las variables de la base de datos.
-Esto con el fin de facilitar la manipulación de los datos y garantizar
-una estructura consistente para aplicar la misma lógica de depuración
-utilizada en la base de datos de MEData.Luego, se cambia el tipo de las
-variables y se unen todas las bases.
+Se utiliza la función `clean_names()` del paquete **janitor** para limpiar y estandarizar los nombres de las variables de la base de datos. Esto con el fin de facilitar la manipulación de los datos y garantizar una estructura consistente para aplicar la misma lógica de depuración utilizada en la base de datos de MEData.Luego, se cambia el tipo de las variables y se unen todas las bases.
 
 ```{r}
+# Limpiar nombres de variables
 data_list <- lapply(data_list, clean_names)
 ```
 
@@ -128,69 +112,49 @@ for (nombre in names(data_list)) {
   data_list[[nombre]]$origen <- nombre
 }
 
+# Unir bases de datos
 data <- bind_rows(data_list, .id = "ano")
-# rm(data_list)
+
+# Guardar cantidad de columnas
 ncol_aux <- ncol(data)
 ```
 
 # Depuración de la base de datos
 
-La base de datos resultante está conformada por `r ncol_aux` variables,
-sin embargo, se elimina las siguientes variables por no ser de
-relevancia para el análisis o no identificar que representan:
+La base de datos resultante está conformada por `r ncol_aux` variables, sin embargo, se elimina las siguientes variables por no ser de relevancia para el análisis o no identificar que representan:
 
-1.  Nombre de la Unidad Primaria Generadora de Datos(**nom_upgd -
-    nombre_upgd**)
+1.  Nombre de la Unidad Primaria Generadora de Datos(**nom_upgd - nombre_upgd**)
 
-2.  Código y nombre del evento (**-cod_eve - evento - nombre_evento -
-    cod_eve_old**)
+2.  Código y nombre del evento (**-cod_eve - evento - nombre_evento - cod_eve_old**)
 
-3.  Código asignado en el SGSSS a los prestadores de servicios de salud
-    que se hayan registrado en el 'Registro Especial de Prestadores de
-    Servicios de Salud' (**cod_pre**)
+3.  Código asignado en el SGSSS a los prestadores de servicios de salud que se hayan registrado en el 'Registro Especial de Prestadores de Servicios de Salud' (**cod_pre**)
 
-4.  Código asignado en el SGSSS a los prestadores de servicios de salud
-    que indica sede ó territorio (**cod_sub**)
+4.  Código asignado en el SGSSS a los prestadores de servicios de salud que indica sede ó territorio (**cod_sub**)
 
-5.  Código Administradora responsable de la atención del paciente,
-    asignado por MSP (**cod_ase**)
+5.  Código Administradora responsable de la atención del paciente, asignado por MSP (**cod_ase**)
 
 6.  Número del certificado defunción (**cer_def\_**)
 
-7.  Fecha efectiva de digitación del registro o realizar un ajuste a un
-    registro previo (**fec_aju\_**)
+7.  Fecha efectiva de digitación del registro o realizar un ajuste a un registro previo (**fec_aju\_**)
 
 8.  Número de registros (**nreg**)
 
-9.  Fuerza (**fm_fuerza**) - Código de la Unidad Militar según tabla de
-    Unidades Militares (**fm_unidad**)
+9.  Fuerza (**fm_fuerza**) - Código de la Unidad Militar según tabla de Unidades Militares (**fm_unidad**)
 
-10. Código de la Grado Militar según tabla de Grados Militares
-    (**fm_grado**)
+10. Código de la Grado Militar según tabla de Grados Militares (**fm_grado**)
 
-11. Para uso interno. Versión del SIVIGILA con la que fue grabado o
-    actualizado el registro (**version**)
+11. Para uso interno. Versión del SIVIGILA con la que fue grabado o actualizado el registro (**version**)
 
-12. Contexto de la notificación, sus categorías son: notificación
-    rutinaria, búsqueda, activa Institucional, vigilancia intensificada,
-    búsqueda activa Comunitaria, investigaciones (**Fuente**)
+12. Contexto de la notificación, sus categorías son: notificación rutinaria, búsqueda, activa Institucional, vigilancia intensificada, búsqueda activa Comunitaria, investigaciones (**Fuente**)
 
 13. Estado de transformación de la notificación (**estadotran**)
 
-14. No se identifican en el diccionario de datos o fuentes de
-    información: **fec_arc_xl**, **confirmados**, **va_sispro**,
-    **esc_vict, esc_agre**, **fact_preci**, **vulnerab**, **otro_vuln**,
-    **grupos** , **otro_grup**, **sust_intx**, **canal_pers**,
-    **tcampo**, **concat**, **calculo**,
-    **consecutive_origen**,**est_f_caso**,**estado_final_de_caso**,
-    **nom_est_f_caso**,**remit_aut**,**remit_just,grup_pob,sust_agr,sp_psic**
+14. No se identifican en el diccionario de datos o fuentes de información: **fec_arc_xl**, **confirmados**, **va_sispro**,**esc_vict, esc_agre**, **fact_preci**, **vulnerab**, **otro_vuln**,**grupos** , **otro_grup**, **sust_intx**, **canal_pers**,**tcampo**, **concat**, **calculo**,**consecutive_origen**,**est_f_caso**,**estado_final_de_caso**,**nom_est_f_caso**,**remit_aut**,**remit_just,grup_pob,sust_agr,sp_psic**
 
-15. Las bases de datos del 2018,2019 y 2020 contenían un conjunto de
-    variables nombradas con el siguiente patrón x[\#], en las cuales la
-    mayoría de filas son NA. Dado que tampoco se logra identificar que
-    representan, se eliminan.
+15. Las bases de datos del 2018,2019 y 2020 contenían un conjunto de variables nombradas con el siguiente patrón x[\#], en las cuales la mayoría de filas son NA. Dado que tampoco se logra identificar que representan, se eliminan.
 
 ```{r, include=FALSE}
+# Eliminar variables que no son de interés
 data <- data %>%
   select(-nom_upgd,-nombre_upgd,
          -cod_eve,-evento,-nombre_evento,-cod_eve_old,
@@ -209,62 +173,50 @@ data <- data %>%
 data <- data %>%  select(-starts_with("x"))
 ```
 
-Ahora bien, la variable **fecha_hora** solo aparecen en la base del
-2021, toma como valor solo fechas, en ningún registro coincide con
-**fec_hecho** y tampoco sirve para completarla porque no hay registros
-donde tome valor y **fec_hecho** no. Por ende, se decide eliminarla. Al
-igual que, **inf_pac_ma, esc_agre, aten_medic y otra_asp**, que están
-presenten solo en la base de 2013. Y, **pob_lgtbi** que está presente
-solo en las bases de 2015,2016 y 2017. Esta última variable se elimina
-dado a que en la ficha de estos años se preguntaba si pertenecía a esta
-población pero desde la ficha de 2018 se pregunta directamente por la
-orientación sexual e identidad de género.
+Ahora bien, la variable **fecha_hora** solo aparecen en la base del 2021, toma como valor solo fechas, en ningún registro coincide con **fec_hecho** y tampoco sirve para completarla porque no hay registros donde tome valor y **fec_hecho** no. Por ende, se decide eliminarla. Al igual que, **inf_pac_ma, esc_agre, aten_medic y otra_asp**, que están presenten solo en la base de 2013. Y, **pob_lgtbi** que está presente solo en las bases de 2015,2016 y 2017. Esta última variable se elimina dado a que en la ficha de estos años se preguntaba si pertenecía a esta
+población pero desde la ficha de 2018 se pregunta directamente por la orientación sexual e identidad de género.
 
 ```{r}
+# Eliminar variables que no tienen información completar
 data <- data %>% select(-c(fecha_hora,inf_pac_ma,esc_agre,aten_medic,otra_asp,pob_lgtbi))
 
+# Guardar cantidad de columnas y filas de la base de datos
 ncol_aux <- ncol(data)
 nrow_aux <- nrow(data)
 ```
 
-Así, queda una base de datos de `r nrow_aux` filas y `r ncol_aux`
-columnas.
+Así, queda una base de datos de `r nrow_aux` filas y `r ncol_aux` columnas.
 
 ## Filtros
 
-Dado que el interés del estudio se centra en los casos de violencia en
-mujeres que ocurren en Colombia, se filtra la base por sexo o identidad
-de género femenino y lugar de ocurrencia.
+Dado que el interés del estudio se centra en los casos de violencia en mujeres que ocurren en Colombia, se filtra la base por sexo o identidad de género femenino y lugar de ocurrencia.
 
-### Sexo
+### Sexo víctima
 
-Esta variable se pide en la ficha de notificación de todos los años
+Esta variable se pide en la ficha de notificación de todos los años. Se selecciona solo los casos donde femenino sea mujer.
 
 ```{r}
+# Generar distribución por sexo víctima
 summary(as.factor(data$sexo))
 ```
-
-Se selecciona solo los casos donde femenino sea mujer
-
 ```{r}
+# Seleccionar casos donde sexo sea mujer
 data <- data %>% filter(sexo=="F")
 ```
 
 ### Identidad género
 
-Se sabe que al notificar un caso se debe llenar una ficha de datos
-básicos y una ficha especifica del evento a notificar. De acuerdo a las
-fichas a las que se tiene acceso, esta variable aparece en la ficha de
-datos básicos luego del 2022 y en la ficha específica del evento a
-partir del año 2017 (inclusive). Su estructura es:
+Se sabe que al notificar un caso se debe llenar una ficha de datos básicos y una ficha especifica del evento a notificar. De acuerdo a las fichas a las que se tiene acceso, esta variable aparece en la ficha de datos básicos luego del 2022 y en la ficha específica del evento a partir del año 2017 (inclusive). Su estructura es:
 
 -   **Ficha básica:** hombre (1), mujer (2), hombre trans (3), mujer
     trans (4), otra (5)
 -   **Ficha específica:** masculino (1), femenino (2), transgénero (3)
 
 ```{r, message=FALSE,warning=FALSE}
+# Contar casos por año de notificación e identidad de género
 data_aux <- data %>% count(year(fec_not),ident_gene) 
 
+# Crear tabla resumen casos por año de notificación e identidad de género
 bind_cols(data_aux[1:23,],rbind(data_aux[24:45,],NA)) %>% 
   rename("Año" = `year(fec_not)...1`,
          "Identidad género" =  `ident_gene...2`,
@@ -281,16 +233,16 @@ variable está tomando valores de 5 o 4. Tratando de tener consistencia
 con las fichas y de contar con la mayor cantidad posible de registros,
 se seleccionan los siguientes casos:
 
--   Los casos notificados desde 2013-2016 y que el sexo sea femenino
 -   Los casos notificados desde 2017-2022 donde la víctima se
-    identifique como mujer o sea de sexo masculino y se identifique como
-    transgénero
+    identifique como mujer 
 -   Los casos notificados en 2023-2024 y las víctimas se identifiquen
     como mujer o mujer trans
 -   Los casos donde no se conoce como se identifica la víctima pero que
     sea de sexo mujer
+    
 
 ```{r}
+# Seleccionar casos de interés
 data <- data %>% filter(
   (sexo == "F" & year(fec_not) < 2017) |
   (year(fec_not) >= 2017 & year(fec_not) < 2023 & (ident_gene == "2" | (ident_gene == "3" & sexo == "M"))) |
@@ -314,14 +266,12 @@ información diferenciadora para el análisis ni contribuye a explicar la
 variabilidad en los datos.
 
 ```{r}
+# Eliminar variable ident_gene
 data <- data %>% select(-ident_gene)
 ```
 
-De esta manera, se pasaría de una base de `r nrow_aux` filas a
-`r nrow(data)` filas.
+De esta manera, se pasaría de una base de `r nrow_aux` filas a `r nrow(data)` filas.
 
-**Nota:** Si se consideran los casos antes del 2023 donde ident_gene ==
-4 se rescatarían solo 318 registros más.
 
 ### País de ocurrencia
 
