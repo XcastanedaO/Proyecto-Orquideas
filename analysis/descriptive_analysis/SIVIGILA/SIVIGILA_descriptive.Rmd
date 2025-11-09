@@ -20,7 +20,7 @@ header-includes:
 knitr::opts_chunk$set(echo=FALSE)
 library(dplyr)
 library(ggplot2)
-source("../../utils/load_data.R")
+# source("../../utils/load_data.R")
 library(here)
 library(hms)
 library(forcats)
@@ -38,30 +38,16 @@ library(broom)
 library(purrr)
 library(DescTools)
 library(dplyr)
+library(skimr)
 ```
 
 \newpage
 
-#
 
-
-# Lectura de la base de datos
+# Lectura de la base de datos y adaptación de la base de datos
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 base_datos <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
-```
-
-```{r}
-# Conversión de tipo dato
-# base_datos$fec_not <- as.Date(base_datos$fec_not, format = "%Y-%m-%d")
-# base_datos$fec_con <- as.Date(base_datos$fec_con, format = "%Y-%m-%d")
-# base_datos$fec_hecho <- as.Date(base_datos$fec_hecho, format = "%Y-%m-%d")
-# 
-# base_datos <- base_datos %>%
-#   mutate(across(
-#     .cols = !all_of(c("edad_", "fec_not","fec_con","fec_hecho","sem_ges")),  
-#     .fns = as.factor                     
-#   ))
 ```
 
 La base de datos utilizada para este análisis descriptivo es el resultado de juntar y depurar las bases de datos proporcionadas por SIVIGILA, la cual recopila información sobre los casos sospechosos de violencia de género que fueron reportados. Así, la base depurada tiene un total `r nrow(base_datos)` de filas y se seleccionaron `r ncol(base_datos)` columnas de interés, las cuales son:
@@ -70,57 +56,45 @@ La base de datos utilizada para este análisis descriptivo es el resultado de ju
 colnames(base_datos)
 ```
 
-Para conocer más sobre las variables se cuenta con un diccionario de datos que enviaron junto a las bases [(Ver aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf). Adicional, se cuenta con algunas de las fichas de notificación al SIVIGILA que contienen indicaciones sobre muchas variables, la más actualizada es la ficha de 2024 [(Ver   aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
+Para conocer más sobre las variables se cuenta con un diccionario de datos que enviaron junto a las bases [(Ver aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf).Adicional, se cuenta con algunas de las fichas de notificación al SIVIGILA que contienen indicaciones sobre muchas variables, la más actualizada es la ficha de 2024 [(Ver   aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
 
-**IMPORTANTE:** Como se indicó anteriormente, este análisis es incluyendo los valores faltantes
-
-# Análisis edad
+**IMPORTANTE:** Como se indicó anteriormente, este análisis es incluyendo los valores faltantes.
 
 ```{r}
-# Leer bases
-original <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged.rds"))
-v2 <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
-espacial <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged_spatial.rds"))
+# Conversión tipo de dato
+base_datos <- base_datos %>% mutate(edad_ = as.numeric(as.character(edad_)))
+```
+
+# Composición de la base de datos
+
+```{r}
+skim(base_datos)
+```
+
+# Análisis descriptivo
+
+## Análisis univariado
+
+### Análisis edad
+
+```{r}
+# Estadísticos básicos edad
+summary(as.numeric(as.character(base_datos$edad_)))
 ```
 
 ```{r}
-# Comparar distribuciones de edad para cada base
-
-summary(as.numeric(as.character(original$edad_)))
-
-original %>% filter(edad_ %in% 14:50) %>% count(edad_)
-```
-
-```{r}
-summary(as.numeric(as.character(v2$edad_)))
-v2 %>% filter(edad_ %in% 14:50) %>% count(edad_)
-```
-
-```{r}
-summary(as.numeric(as.character(espacial$edad_)))
-espacial %>% filter(edad_ %in% 14:50) %>% count(edad_)
-espacial %>% filter(as.numeric(as.character(edad_)) > 100 ) %>% count(edad_)
-```
-
-
-## Histograma
-```{r}
-espacial <- espacial %>% mutate(edad_ = as.numeric(as.character(edad_)))
-
-
-ggplot(espacial, aes(x = edad_)) +
+ggplot(base_datos %>% mutate(edad_ = as.numeric(as.character(edad_))), 
+  aes(x = edad_)) +
   geom_histogram(binwidth = 1, fill = "skyblue", color = "white") +
-  geom_vline(xintercept = 14, color = "red", linetype = "dashed", size = 1) +
-  geom_vline(xintercept = 50, color = "red", linetype = "dashed", size = 1) +
+  geom_vline(xintercept = 14, color = "red", linetype = "dashed", linewidth = 1) +
+  geom_vline(xintercept = 50, color = "red", linetype = "dashed", linewidth = 1) +
   scale_x_continuous(breaks = seq(0, 131, by = 5), limits = c(0, 131)) +
   labs(title = "Distribución edad en años",
        x = "Edad", y = "Número de casos")
 ```
 
-## Tabla frecuencias
-
 ```{r}
-tabla_frec <- espacial %>%
+tabla_frec <- base_datos %>%
   mutate(rango = case_when(
     edad_ < 14 ~ "<14",
     edad_ >= 14 & edad_ <= 50 ~ "14-50",
@@ -137,37 +111,21 @@ kable(tabla_frec, digits = 3,
       col.names = c("Edad(años)", "Casos", "F.relativa", "F.acumulada"))
 ```
 
-
-## Mapa de calor
-
 ```{r}
-library(dplyr)
-library(ggplot2)
-
 # Orden lógico de los grupos
-espacial <- espacial %>%
-  mutate(grupo_edad_nuevo = case_when(
-    edad_ >= 0 & edad_ <= 5  ~ "0-5",
-    edad_ >= 6 & edad_ <= 11 ~ "6-11",
-    edad_ >= 12 & edad_ <= 17 ~ "12-17",
-    edad_ >= 18 & edad_ <= 28 ~ "18-28",
-    edad_ >= 29 & edad_ <= 59 ~ "29-59",
-    edad_ >= 60 & edad_ <= 84 ~ "60-84",
-    edad_ >= 85 ~ "85 y más",
-    TRUE ~ NA_character_
-  ),
-  grupo_edad_nuevo = factor(grupo_edad_nuevo,
+base_datos <- base_datos %>%
+  mutate(grupo_edad = factor(grupo_edad,
                             levels = c("0-5", "6-11", "12-17",
                                        "18-28", "29-59",
-                                       "60-84", "85 y más"))
-  )
+                                       "60-84", "85_mas")))
+base_datos <- base_datos %>% mutate(ano_hecho = year(fec_hecho))
 
 # Resumir conteos
-df_heatmap <- espacial %>%
-  count(ano_hecho, grupo_edad_nuevo)
+df_heatmap <- base_datos %>%
+  count(ano_hecho, grupo_edad)
 
 # Gráfico
-ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad_nuevo, fill = n)) +
+ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad, fill = n)) +
   geom_tile(color = "white") +
   geom_text(aes(label = n), color = "black", size = 3) +
   scale_fill_viridis_c(option = "viridis", direction = -1) +
@@ -176,39 +134,44 @@ ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad_nuevo, fill = n)) +
   theme_minimal()
 
 ```
-
-## Frecuencia por año y edad
-
 ```{r}
-tabla_anio_edad <- espacial %>%
-  count(ano_hecho, edad_, name = "Casos") %>%
-  pivot_wider(
-    names_from = edad_,
-    values_from = Casos,
-    values_fill = list(Casos = 0) # si no hubo casos → 0
-  ) %>%
-  arrange(ano_hecho)
-
-# Mostrar tabla (puede ser muy ancha si hay muchas edades)
-kable(tabla_anio_edad, align = "c") %>%
-  kable_styling(full_width = TRUE, font_size = 10)
-
-col_orden <- c("ano_hecho", as.character(sort(as.numeric(setdiff(names(tabla_anio_edad), "ano_hecho")))))
-tabla_anio_edad <- tabla_anio_edad[, col_orden]
-tabla_anio_edad
+base_datos %>% filter(fec_hecho > fec_con)
 ```
 
-# Análisis descriptivo
 
-## Análisis univariado
+
 ### Fechas
 ```{r}
 summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
 ```
 ```{r}
-# Base para fechas
-base_datos <- base_datos %>% mutate(ano_hecho = floor_date(fec_hecho, "year"))
+base_datos %>%
+  pivot_longer(all_of(c("fec_hecho", "fec_con", "fec_not")),
+               names_to = "tipo_fecha",
+               values_to = "fecha") %>%
+  mutate(anio = year(fecha),
+         tipo_fecha = recode(tipo_fecha,
+                             "fec_hecho" = "Fecha hecho",
+                             "fec_con" = "Fecha consulta",
+                             "fec_not" = "Fecha notificación")) %>%
+  count(tipo_fecha, anio) %>%
+  ggplot(aes(x = anio, y = n, group = tipo_fecha)) +
+  geom_line(color = "#4B0082", size = 1.2) +
+  geom_point(color = "#4B0082", size = 2.2) +
+  geom_label(aes(label = n),color = "#4B0082", size = 2.2) +
+  facet_wrap(~ tipo_fecha, ncol = 1, scales = "free_y") +
+  labs(x = "Año", y = "Número de casos") +
+  scale_x_continuous(breaks = function(x) seq(floor(min(x, na.rm = TRUE)),
+                                              ceiling(max(x, na.rm = TRUE)), 1)) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold", size = 11),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
 ```
+
+
 
 
 #### Fecha hecho
@@ -225,6 +188,7 @@ ggplot(aes(x = ano_hecho, y = n)) +
   ) +
   theme_minimal() 
 ```
+
 A continuación, se toma la serie mensual para separar tendencia, estacionalidad y residuales: 
 
 ```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE}
@@ -244,6 +208,7 @@ descomp_ts_mensual <- decompose(ts_mensual, type = "additive")
 plot(descomp_ts_mensual)
 
 ```
+
 luego, se calcula la estacionalidad promedio por mes para ver en qué meses sube o baja regularmente esta serie:
 
 ```{r}
@@ -321,6 +286,7 @@ base_datos %>%
   ) +
   theme_minimal() 
 ```
+
 #### Diferencia en días entre la fecha del hecho y fecha de notificación
 
 ```{r}
@@ -404,6 +370,21 @@ summary(base_datos$consum_spa)
 summary(base_datos[c("cod_dpto_o","departamento_ocurrencia","cod_mun_o","municipio_ocurrencia","dist_esp_o","area")])
 ```
 ### Modalidad de violencia
+
+```{r}
+library(lubridate)
+library(dplyr)
+library(ggplot2)
+
+df %>%
+  mutate(month = floor_date(date, "month")) %>%  # agrupar por mes
+  count(month, category1) %>%
+  ggplot(aes(x = month, y = n, color = category1)) +
+  geom_line() +
+  labs(title = "Evolución mensual por categoría", y = "Frecuencia")
+
+```
+
 ```{r}
 base_datos %>% count(def_naturaleza) %>%
   arrange(desc(n))
