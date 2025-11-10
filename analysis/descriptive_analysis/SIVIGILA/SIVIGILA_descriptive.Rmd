@@ -20,7 +20,8 @@ header-includes:
 knitr::opts_chunk$set(echo=FALSE)
 library(dplyr)
 library(ggplot2)
-# source("../../utils/load_data.R")
+source("../../../utils/load_data.R")
+source("../../../utils/descriptive_functions.R")
 library(here)
 library(hms)
 library(forcats)
@@ -39,6 +40,7 @@ library(purrr)
 library(DescTools)
 library(dplyr)
 library(skimr)
+library(scales)
 ```
 
 \newpage
@@ -63,12 +65,15 @@ Para conocer más sobre las variables se cuenta con un diccionario de datos que 
 ```{r}
 # Conversión tipo de dato
 base_datos <- base_datos %>% mutate(edad_ = as.numeric(as.character(edad_)))
+
+base_datos <- recodificar_variables(base_datos)
 ```
 
-# Composición de la base de datos
+# Esquema general de la base de datos
 
 ```{r}
-skim(base_datos)
+skim(base_datos %>% select(c(orient_sex,tip_ss,per_etn,nom_grupo,mujer_cabf,antec,consum_spa,pais_residencia,
+departamento_residencia,dist_esp_r,def_naturaleza,departamento_ocurrencia,dist_esp_o,area,zona_conf,escenario,ambito_lug,sust_vict,sexo_agre,conv_agre,departamento_notificacion,dist_esp_n,pac_hos,con_fin,cbmte,ac_mental,remit_prot,inf_aut,evi_mlegal)))
 ```
 
 # Análisis descriptivo
@@ -83,14 +88,23 @@ summary(as.numeric(as.character(base_datos$edad_)))
 ```
 
 ```{r}
-ggplot(base_datos %>% mutate(edad_ = as.numeric(as.character(edad_))), 
-  aes(x = edad_)) +
-  geom_histogram(binwidth = 1, fill = "skyblue", color = "white") +
-  geom_vline(xintercept = 14, color = "red", linetype = "dashed", linewidth = 1) +
-  geom_vline(xintercept = 50, color = "red", linetype = "dashed", linewidth = 1) +
-  scale_x_continuous(breaks = seq(0, 131, by = 5), limits = c(0, 131)) +
-  labs(title = "Distribución edad en años",
-       x = "Edad", y = "Número de casos")
+base_datos %>%
+  mutate(edad_ = as.numeric(as.character(edad_))) %>%
+  ggplot(aes(x = edad_)) +
+  geom_histogram(binwidth = 1, fill = "#AE86D3", color = "white", alpha = 0.85) +  
+  geom_vline(xintercept = 14, color = "#4B0082", linetype = "dashed", linewidth = 1) +
+  geom_vline(xintercept = 50, color = "#4B0082", linetype = "dashed", linewidth = 1) +
+  scale_x_continuous(breaks = seq(0, 130, by = 5), limits = c(0, 131)) +
+  labs(
+    title = "Distribución de edad en años",
+    x = "Edad (años)",
+    y = "Número de casos"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold",hjust = 0.5),
+    axis.text = element_text(color = "black")
+  )
 ```
 
 ```{r}
@@ -118,10 +132,8 @@ base_datos <- base_datos %>%
                             levels = c("0-5", "6-11", "12-17",
                                        "18-28", "29-59",
                                        "60-84", "85_mas")))
-base_datos <- base_datos %>% mutate(ano_hecho = year(fec_hecho))
-
 # Resumir conteos
-df_heatmap <- base_datos %>%
+df_heatmap <- base_datos %>%  mutate(ano_hecho = year(fec_hecho)) %>% 
   count(ano_hecho, grupo_edad)
 
 # Gráfico
@@ -131,15 +143,13 @@ ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad, fill = n)) +
   scale_fill_viridis_c(option = "viridis", direction = -1) +
   labs(title = "Mapa de calor: número de casos por año y grupo etario",
        x = "Año", y = "Grupo de edad", fill = "Casos") +
-  theme_minimal()
+  theme_minimal()  +
+  theme(
+    plot.title = element_text(face = "bold",hjust = 0.5),
+    axis.text = element_text(color = "black")
+  )
 
 ```
-```{r}
-base_datos %>% filter(fec_hecho > fec_con)
-```
-
-
-
 ### Fechas
 ```{r}
 summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
@@ -165,38 +175,21 @@ base_datos %>%
                                               ceiling(max(x, na.rm = TRUE)), 1)) +
   theme_minimal() +
   theme(
-    strip.text = element_text(face = "bold", size = 11),
-    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
     panel.grid.minor = element_blank()
   )
 ```
 
 
-
-
 #### Fecha hecho
 
-```{r,fig.width=6, fig.height=3,warning=FALSE,message=FALSE,fig.align='center',fig.pos='H'}
-base_datos %>% count(ano_hecho) %>% drop_na() %>% 
-ggplot(aes(x = ano_hecho, y = n)) +
-  geom_line(color = "steelblue") +
-  geom_point(color = "steelblue") +
-  labs(
-    title = "Casos por año",
-    x = "Año del hecho",
-    y = "Número de casos"
-  ) +
-  theme_minimal() 
-```
-
-A continuación, se toma la serie mensual para separar tendencia, estacionalidad y residuales: 
+A continuación, se analiza el comportamiento de la fecha hecho dad que es la fecha de interés. Primero se toma la serie mensual para separar tendencia, estacionalidad y residuales: 
 
 ```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE}
 serie_mensual <- base_datos %>% 
   mutate(ano_mes = floor_date(fec_hecho, "month")) %>% 
   count(ano_mes) %>%
   arrange(ano_mes)
-
 
 # Convertir a objeto ts (suponiendo que comienza en enero de 2012)
 ts_mensual <- ts(serie_mensual$n, 
@@ -206,7 +199,6 @@ ts_mensual <- ts(serie_mensual$n,
 
 descomp_ts_mensual <- decompose(ts_mensual, type = "additive") 
 plot(descomp_ts_mensual)
-
 ```
 
 luego, se calcula la estacionalidad promedio por mes para ver en qué meses sube o baja regularmente esta serie:
@@ -229,119 +221,80 @@ tendencia_estacional %>% arrange(desc(efecto_promedio))
 ```
 
 ```{r}
-base_datos %>%
+aux <- base_datos %>%
   mutate(
     dia = day(fec_hecho),                      
     mes_num = month(fec_hecho),                 
     mes_nombre = month(fec_hecho, label = TRUE, abbr = FALSE)
+  ) %>% count(mes_nombre, dia) %>% filter(mes_nombre == "enero", dia == 1) %>% pull(n)
+```
+
+El primero de enero es una día donde ocurren muchos casos de violencia a comparación del resto de día del año. Para este día se obtiene un total de `r aux` casos. Por este motivo, el siguiente gráfico se hace excluyendo este día. 
+
+```{r}
+base_datos %>%
+  mutate(
+    dia = day(fec_hecho),
+    mes_num = month(fec_hecho),
+    mes_nombre = month(fec_hecho, label = TRUE, abbr = FALSE)
   ) %>%
-  filter(mes_num %in% c(2,3,5,7,8,9)) %>%        
-  count(mes_nombre, dia) %>%                   
-  ggplot(aes(x = dia, y = n)) +
-  geom_line(color = "steelblue") +
-  geom_point(color = "steelblue") +
-  facet_wrap(~ mes_nombre, ncol = 2) +          
+  filter((dia > 1 & mes_num == 1) | mes_num %in% c(3, 5, 8, 9)) %>%
+  count(mes_nombre, dia) %>%
+  ggplot(aes(x = dia, y = n, group = mes_nombre)) +
+  geom_line(color = "#4B0082") +
+  geom_point(color = "#4B0082", size = 1.5) +
+  facet_wrap(~ mes_nombre, ncol = 2, scales = "free_y") +
+  scale_x_continuous(breaks = seq(1, 31, by = 2)) +
   labs(
     title = "Distribución diaria de notificaciones por mes",
     x = "Día del mes",
     y = "Número total de casos"
   ) +
-  theme_minimal()
-```
-
-#### Fecha de consulta
-
-```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE, fig.align='center',fig.pos='H'}
-base_datos <- base_datos %>% mutate(ano_con = floor_date(fec_con, "year")) 
-
-base_datos %>% 
-  count(ano_con) %>% drop_na() %>% 
-  ggplot(aes(x = ano_con, y = n)) +
-  geom_line(color = "steelblue") +
-  geom_point(color = "steelblue") +
-  geom_text(aes(label = n), vjust = -0.5, color = "black", size = 2) +
-  labs(
-    title = "Casos por año",
-    x = "Año de consulta",
-    y = "Número de casos"
-  ) +
-  theme_minimal() 
-```
-
-#### Fecha de notificación
-
-```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE, fig.align='center',fig.pos='H'}
-base_datos <- base_datos %>% mutate(ano_not = floor_date(fec_not, "year")) 
-
-base_datos %>% 
-  count(ano_not) %>% drop_na() %>% 
-  ggplot(aes(x = ano_not, y = n)) +
-  geom_line(color = "steelblue") +
-  geom_point(color = "steelblue") +
-  geom_text(aes(label = n), vjust = -0.5, color = "black", size = 2) +
-  labs(
-    title = "Casos por año",
-    x = "Año de notificación",
-    y = "Número de casos"
-  ) +
-  theme_minimal() 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold",hjust = 0.5),
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
 ```
 
 #### Diferencia en días entre la fecha del hecho y fecha de notificación
 
 ```{r}
-base_datos <- base_datos %>%
-  mutate(dif_dias = as.numeric(fec_not - fec_hecho))
+base_datos <- base_datos %>% mutate(dif_dias = ceiling(as.numeric(fec_not - fec_hecho)))
+```
 
+```{r}
 summary(base_datos$dif_dias)
 ```
-```{r,fig.width=6, fig.height=3,warning=FALSE,message=FALSE}
-base_datos %>% filter(year(ano_hecho) >= 2013 & dif_dias < 50) %>% 
-ggplot(aes(x = dif_dias)) +
-  geom_histogram(fill = "steelblue", color = "white") +
-  labs(
-    title = "Distribución de la diferencia entre hecho y notificación",
-    x = "Diferencia en días",
-    y = "Frecuencia"
-  ) +
-  theme_minimal()
-```
-
-```{r,fig.width=6, fig.height=3, warning=FALSE,message=FALSE}
-base_datos %>% filter(year(ano_hecho) >= 2013) %>% 
-  group_by(ano_hecho) %>%
-  summarise(promedio = mean(dif_dias, na.rm = TRUE)) %>%
-  ggplot(aes(x = ano_hecho, y = promedio)) +
-  geom_line(color = "darkred") +
-  geom_point(color = "darkred") +
-  labs(
-    title = "Promedio de diferencia (en días) por año del hecho (2013-2023)",
-    x = "Año del hecho",
-    y = "Días promedio"
-  ) +
-  geom_text(aes(label = round(promedio,1)), vjust = -0.5, color = "black", size = 2) +
-  theme_minimal()
-
-```
-
-### Edad víctima
-```{r}
-base_datos <- base_datos %>% mutate(edad_ = as.numeric(as.character(edad_)))
-summary(base_datos$edad_) 
-```
-Cantidad de casos con edad mayor a 100 años:
-```{r}
-base_datos %>% filter(edad_ > 100) %>% count(edad_)
-```
-
-### Lugar de residencia víctima
+Debido a que la distribución presenta asimetría positiva, se opta por continuar el análisis considerando únicamente los registros con valores menores o iguales al percentil 80 (`r quantile(base_datos$dif_dias, probs = 0.8)`), con el fin de excluir la cola derecha
 
 ```{r}
-summary(base_datos[c("cod_pais_r","pais_residencia","cod_dpto_r", "departamento_residencia","cod_mun_r","municipio_residencia","dist_esp_r")])
+data <- base_datos %>% filter(dif_dias <= 10)
+
+grafico_barras(data,"dif_dias", facet_var = NULL,color_barras = "#AE86D3",top10 = FALSE) +
+    labs(title = "Distribución de edad en años",x = "Edad (años)",y = "Número de casos (miles)")
 ```
-### Sexo - orientación sexual - identidad de género
+
 ```{r}
-summary(base_datos[c("sexo", "orient_sex")])
+base_datos %>% group_by(anio = year(fec_hecho)) %>%
+  summarise(promedio = ceiling(mean(dif_dias, na.rm = TRUE))) %>%
+  ggplot(aes(x = anio, y = promedio)) +
+  geom_line(color = "#4B0082", linewidth = 1.2) +
+  geom_point(color = "#4B0082", size = 2.2) +
+  geom_label(aes(label = promedio), color = "#4B0082",size = 2.2) +
+  scale_x_continuous(
+    breaks = function(x)
+      seq(floor(min(x, na.rm = TRUE)), ceiling(max(x, na.rm = TRUE)), 1)) +
+  scale_y_continuous(
+    breaks = function(x)
+      seq(floor(min(x, na.rm = TRUE)), ceiling(max(x, na.rm = TRUE)), 1)) +
+  labs(title = "Promedio de diferencia (en días) por año del hecho", x = "Año del hecho", y = "Días promedio") + theme_minimal() +
+  theme(
+    strip.text = element_text(face = "bold"),
+    plot.title = element_text(face = "bold",hjust = 0.5),
+    axis.text.x = element_text(angle = 90,vjust = 0.5,hjust = 1),
+    panel.grid.minor = element_blank())
 ```
 
 ### Pertenencia a grupo poblacional especial
@@ -350,38 +303,16 @@ summary(base_datos[c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
              "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")])
 ```
-#### Madre cabeza de familia
-```{r}
-summary(base_datos$mujer_cabf)
-```
 
-#### Pertenencia étnica
-```{r}
-summary(base_datos[c("per_etn","nom_grupo")])
-```
-
-#### Consumidora de SPA
-```{r}
-summary(base_datos$consum_spa)
-```
-
-### Lugar de ocurrencia del hecho
-```{r}
-summary(base_datos[c("cod_dpto_o","departamento_ocurrencia","cod_mun_o","municipio_ocurrencia","dist_esp_o","area")])
-```
 ### Modalidad de violencia
 
 ```{r}
-library(lubridate)
-library(dplyr)
-library(ggplot2)
-
-df %>%
-  mutate(month = floor_date(date, "month")) %>%  # agrupar por mes
-  count(month, category1) %>%
-  ggplot(aes(x = month, y = n, color = category1)) +
-  geom_line() +
-  labs(title = "Evolución mensual por categoría", y = "Frecuencia")
+# df %>%
+#   mutate(month = floor_date(date, "month")) %>%  # agrupar por mes
+#   count(month, category1) %>%
+#   ggplot(aes(x = month, y = n, color = category1)) +
+#   geom_line() +
+#   labs(title = "Evolución mensual por categoría", y = "Frecuencia")
 
 ```
 
@@ -389,77 +320,6 @@ df %>%
 base_datos %>% count(def_naturaleza) %>%
   arrange(desc(n))
 ```
-### Escenario
-```{r}
-base_datos %>% count(escenario) %>% arrange(desc(n))
-```
-
-### Ámbito lugar
-```{r}
-base_datos %>% count(ambito_lug) %>% arrange(desc(n))
-```
-### Presencia de alcohol en la víctima
-```{r}
-summary(base_datos$sust_vict)
-```
-### Antecedente de violencia
-```{r}
-summary(base_datos$antec)
-```
-### Hecho dentro del conflicto armado
-```{r}
-summary(base_datos$zona_conf)
-```
-### Sexo del agresor
-```{r}
-summary(base_datos$sexo_agre)
-```
-### Convivencia con la víctima
-```{r}
-summary(base_datos$conv_agre)
-```
-### Lugar de notificación
-```{r}
-summary(base_datos[c("cod_dpto_n","departamento_notificacion","cod_mun_n","municipio_notificacion","dist_esp_n")])
-```
-
-### Tipo de seguridad social
-```{r}
-base_datos %>% 
-  count(tip_ss) %>% 
-  mutate(porc = round(100 * n / sum(n), 1)) %>% 
-  arrange(desc(n))
-```
-
-### Hospitalización
-```{r}
-summary(base_datos$pac_hos)
-```
-### Atención en salud mental
-```{r}
-summary(base_datos$ac_mental)
-```
-
-
-### Informe a autoridades competentes
-```{r}
-summary(base_datos[c("remit_prot","inf_aut")])
-```
-
-### Recolección evidencia medicina legal
-```{r}
-summary(base_datos$evi_mlegal)
-```
-
-### Condición final de la víctima
-```{r}
-summary(base_datos$con_fin)
-```
-#### Causa básica de defunción
-```{r}
-summary(base_datos$cbmte)
-```
-
 
 ## Análisis multivariado
 
@@ -472,8 +332,6 @@ Para los predictores cualitativos, se construyen tablas de contingencia y, depen
 En cambio, para predictores cuantitativos se utiliza la correlación de Spearman, ya que no requiere supuestos de normalidad y permite detectar relaciones monotónicas.
 
 Finalmente, los resultados de cada análisis se organizan en una tabla que muestra la variable evaluada, la prueba realizada, los valores estadísticos y de significancia, junto con una interpretación clara sobre si existe o no evidencia estadística de relación con la variable de respuesta.
-
-
 
 ```{r}
 test_cualit <- function(df, var_resp, var_pred) {
@@ -597,6 +455,7 @@ prop.table(table(base_datos$sexo_agre,base_datos$ac_mental),1)*100
 ```{r}
 prop.table(table(base_datos$pac_hos,base_datos$ac_mental),1)*100
 ```
+
 ```{r}
 prop.table(table(base_datos$cod_dpto_n,base_datos$ac_mental),1)*100
 ```
@@ -647,62 +506,14 @@ prop.table(table(base_datos$sexo_agre,base_datos$inf_aut),1)*100
 prop.table(table(base_datos$area,base_datos$inf_aut),1)*100
 ```
 
-## Hallazgos
-
-```{r}
-base_datos <- base_datos %>% mutate(ac_mental = case_when(
-  is.na(ac_mental) ~ "Sin información", 
-  ac_mental == "1" ~ "Sí",
-  ac_mental == "2" ~ "No",
-  TRUE ~ ac_mental
-) %>% factor())
-```
-
-
 ### Tipo de seguridad social
-
-```{r}
-base_datos %>% 
-  count(tip_ss) %>% 
-  mutate(porc = round(100 * n / sum(n), 1)) %>% 
-  arrange(desc(n))
-```
 
 ```{r}
 prop.table(table(base_datos$tip_ss,base_datos$ac_mental),1)*100
 ```
-
-
-```{r}
-aux <- base_datos %>% mutate(tip_ss = case_when(
-  tip_ss == "E" ~ "P",
-  TRUE ~ tip_ss
-))
-
-aux <- aux %>% mutate(tip_ss = case_when(
-  is.na(tip_ss) ~ "Sin información", 
-  tip_ss == "S" ~ "Subsidiado",
-  tip_ss == "C" ~ "Contributivo",
-  tip_ss == "I" ~ "Indeterminado",
-  tip_ss == "N" ~ "No asegurado",
-  tip_ss == "P" ~ "Regímenes especiales",
-  TRUE ~ tip_ss
-) %>% factor())
-```
-
-```{r}
-aux %>% 
-  count(tip_ss) %>% 
-  mutate(porc = round(100 * n / sum(n), 1)) %>% 
-  arrange(desc(n))
-```
-```{r}
-prop.table(table(aux$tip_ss,aux$ac_mental),1)*100
-```
 La mayoría de las víctimas afiliadas a regímenes especiales reciben atención en salud mental (65%), mientras que las víctimas en estado de afiliación indeterminado solo 13% la recibe.
 
 ### Tipo de violencia
-
 ```{r}
 base_datos %>% 
   count(def_naturaleza) %>% 
@@ -713,39 +524,23 @@ base_datos %>%
 ```{r}
 prop.table(table(base_datos$def_naturaleza,base_datos$ac_mental),1)*100
 ```
-
-```{r}
-aux <- base_datos %>% mutate(
-      def_naturaleza = case_when(
-      def_naturaleza == "1" ~ "Física",
-      def_naturaleza == "2" ~ "Psicológica",
-      def_naturaleza == "3" ~ "Negligencia",
-      def_naturaleza == "4" ~ "Sexual",
-      def_naturaleza == "5" ~ "Sexual",
-      def_naturaleza == "6" ~ "Sexual",
-      def_naturaleza == "7" ~ "Sexual",
-      def_naturaleza == "10" ~ "Sexual",
-      def_naturaleza == "12" ~ "Sexual",
-      def_naturaleza == "14" ~ "Sexual",
-      def_naturaleza == "15" ~ "Sexual",
-      is.na(def_naturaleza) ~ "Sin información",
-      TRUE ~ def_naturaleza
-    ) %>% factor()
-)
-
-aux %>% 
-  count(def_naturaleza) %>% 
-  mutate(porc = round(100 * n / sum(n), 1)) %>% 
-  arrange(desc(n))
-```
 Más de la mitad de los casos de violencia contra mujeres corresponden a violencia física (51%)
 
 ```{r}
-aux %>%
-  group_by(def_naturaleza, ac_mental) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(def_naturaleza) %>%
-  mutate(prop = n / sum(n))
+aux <- base_datos %>% mutate(def_naturaleza = case_when(
+        def_naturaleza == "1" ~ "Física",
+        def_naturaleza == "2" ~ "Psicológica",
+        def_naturaleza == "3" ~ "Negligencia",
+        def_naturaleza == "4" ~ "Sexual",
+        def_naturaleza == "5" ~ "Sexual",
+        def_naturaleza == "6" ~ "Sexual",
+        def_naturaleza == "7" ~ "Sexual",
+        def_naturaleza == "10" ~ "Sexual",
+        def_naturaleza == "12" ~ "Sexual",
+        def_naturaleza == "14" ~ "Sexual",
+        def_naturaleza == "15" ~ "Sexual",
+        is.na(def_naturaleza) ~ "Sin información",
+        TRUE ~ def_naturaleza))
 ```
 
 ```{r}
@@ -769,10 +564,6 @@ aux %>%
   theme(legend.position = "top")
 ```
 
-```{r}
-prop.table(table(aux$def_naturaleza,aux$remit_prot),1)*100
-```
-
 ### Escenario
 
 ```{r}
@@ -781,44 +572,15 @@ base_datos %>%
   mutate(porc = round(100 * n / sum(n), 1)) %>% 
   arrange(desc(n))
 ```
-```{r}
-aux <- aux %>% 
-  mutate(escenario = case_when(
-    escenario == "1" ~ "Espacio público y social",
-    escenario == "2" ~ "Vivienda",
-    escenario == "3" ~ "Espacio público y social",
-    escenario == "4" ~ "Espacio público y social",
-    escenario == "7" ~ "Espacio público y social",
-    escenario == "8" ~ "Espacio público y social",
-    escenario == "9" ~ "Espacio público y social",
-    escenario == "10" ~ "Espacio público y social",
-    escenario == "11" ~ "Espacio público y social", 
-    escenario == "12" ~ "Espacio público y social",
-    is.na(escenario) ~ "Sin información"
-
-  ) %>% factor())
-```
 
 ```{r}
-aux %>% 
+base_datos %>% 
   count(escenario) %>% 
   mutate(porc = round(100 * n / sum(n), 1)) %>% 
   arrange(desc(n))
 ```
 
 ### Departamento de notificación
-
-```{r}
-base_datos <- base_datos %>%
-  mutate(
-    departamento_ocurrencia = case_when(
-      departamento_ocurrencia %in% c("Bogotá, D.c.", "Bogotá, D.C.") ~ "Bogotá, D.C.",
-      TRUE ~ departamento_ocurrencia
-    )
-  )
-```
-
-
 ```{r}
 prop.table(table(base_datos$departamento_ocurrencia,base_datos$remit_prot),1)*100
 ```
@@ -830,7 +592,7 @@ prop.table(table(base_datos$departamento_ocurrencia,base_datos$ac_mental),1)*100
 
 ### Informe a las autoridades
 ```{r}
-prop.table(table(aux$sexo_agre,aux$inf_aut),1)*100
+prop.table(table(base_datos$sexo_agre,base_datos$inf_aut),1)*100
 ```
 
 ### Diagnósticos
