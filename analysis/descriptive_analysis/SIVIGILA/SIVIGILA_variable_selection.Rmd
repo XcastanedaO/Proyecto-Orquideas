@@ -1,0 +1,257 @@
+---
+title: Selección de Variables para el Modelo estadístico para
+  identificar diagnósticos del impacto de la violencia contra la mujer en la salud
+  mental.
+output:
+  html_document:
+    toc: false
+    df_print: paged
+  pdf_document:
+    toc: false
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+always_allow_html: true
+header-includes: \usepackage{float}
+---
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+
+library(here)
+library(dplyr)
+library(purrr)
+library(rstatix)
+```
+
+\newpage
+
+# Introducción
+
+El presente documento detalla el proceso y la justificación para la
+selección de variables predictoras que se utilizarán en el modelo
+estadístico cuyo objetivo es identificar los factores asociados a si una
+víctima de violencia de género recibe o no atención en salud mental
+(**`ac_mental`**).
+
+La selección se realizó en dos fases: una depuración inicial basada en
+la calidad de los datos y su relevancia para el estudio, seguida de una
+selección estadística basada en el análisis de asociación entre posibles
+variables predictoras y la variable de interés.
+
+# Parte 1: Depuración y selección inicial de variables
+
+Inicialmente, se contaba con 82 variables asociadas a la información
+sobre los casos sospechosos de violencia de género notificados. Estas
+variables fueron explicadas de forma detallada en los informes previos
+de depuración de la base de datos y análisis descriptivo.
+
+Posteriormente, se realizó una depuración y selección más detallada de
+las variables, considerando su completitud y relevancia para el estudio.
+Los criterios aplicados fueron los siguientes:
+
+-   **Descarte de variables con alto porcentaje de valores faltantes:**
+    Una de las justificaciones para el alto nivel de valores faltantes
+    en algunas variables radica en que la información no estaba
+    disponible para todos los años del estudio. Esto se debe a que
+    ciertas preguntas solo se incluían en los formularios técnicos de
+    registro de víctimas para períodos específicos. Por lo tanto, una
+    imputación de estos datos podría afectar la integridad del análisis,
+    al no representar respuestas reales de los casos sospechosos.
+
+-   **Conservación de variables teóricamente relevantes:** Se
+    mantuvieron aquellas variables consideradas relevantes para el
+    fenómeno de la violencia de género según informes sectoriales, como
+    el *Informe de evento Violencia de género e intrafamiliar* del
+    [Instituto Nacional de Salud
+    (INS)](https://www.ins.gov.co/buscador-eventos/Informesdeevento/VIOLENCIA%20DE%20GENERO%20INFORME%20DE%20EVENTO%202023.pdf).
+
+A partir de este proceso, se construyó una base de datos depurada con
+variables que describen información sobre la víctima, el agresor, el
+hecho y la atención recibida, y que presentan potencial relevancia
+analítica para estudiar los factores asociados a la atención en salud
+mental en víctimas de violencia de género. A continuación, se listan las
+variables resultantes:
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+base_datos <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
+
+colnames(base_datos)
+```
+
+# Parte 2: Análisis de asociación y selección final de variables predictoras candidatas
+
+Como se ha mencionado, la variable de interés a analizar es **Atención
+en salud mental**, que indica si la víctima recibió o no atención
+psicológica tras la identificación del caso.
+
+```{r}
+ac_mental_distribution <- table(base_datos$ac_mental)/nrow(base_datos)*100
+ac_mental_distribution
+```
+
+Del total de `r nrow(base_datos)` mujeres víctimas, el
+`r round(ac_mental_distribution[1],3)`% recibió atención en salud
+mental, mientras que el `r round(ac_mental_distribution[2],3)`% no
+accedió a este servicio.
+
+Así, es de interés buscar los factores asociados a dicha atención, con
+base en las características personales, del hecho violento y del
+agresor.
+
+### Análisis de asociación
+
+De la base depurada, se procedió a identificar las variables con mayor
+poder predictivo para la atención en salud mental mediante un **análisis
+de asociación estadística**.
+
+Para ello, se aplicó una prueba estadística de asociación para cada
+variable cualitativa, con el fin de determinar si existe una relación
+significativa entre esa variable y la atención en salud mental
+(`ac_mental`). La elección de la prueba dependió del número de
+categorías de la variable analizada y del tamaño de las frecuencias
+observadas en la tabla de contingencia. Las pruebas utilizadas fueron:
+
+-   **Prueba Chi-cuadrado de Pearson:** Para tablas de contingencia con
+    frecuencias esperadas altas.
+
+-   **Chi-cuadrado con simulación de Monte Carlo**: utilizada cuando las
+    frecuencias esperadas son bajas y la tabla de contingencia tiene
+    dimensión mayor a 2x2, por lo que se requiere una mayor precisión en
+    los resultados de la prueba
+
+-   **Prueba exacta de Fisher**: utilizada cuando las frecuencias
+    esperadas son bajas y la tabla de contingencia tiene dimensión 2x2.
+
+Además, se calculó el **coeficiente V de Cramér**, que cuantifica la
+fuerza de la asociación (0 = sin relación, 1 = relación perfecta).
+
+Para predictores cuantitativos se utilizó la correlación de
+**Spearman**, ya que no requiere supuestos de normalidad y permite
+detectar relaciones monotónicas.
+
+```{r, warning=FALSE,message=FALSE}
+# Para variables cualitativas
+test_cualit <- function(df, var_resp, var_pred) {
+  tab <- table(df[[var_resp]], df[[var_pred]])
+  
+  if (any(chisq.test(tab)$expected < 5)) {
+    test <- tryCatch(
+      fisher.test(tab, simulate.p.value = TRUE, B = 1e5),
+      error = function(e) fisher.test(tab, simulate.p.value = TRUE, B = 5000)
+    )
+    cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
+    tibble(variable = var_pred,
+           prueba = "Fisher (simulacion)",
+           #estadistico = NA,
+           p.value = round(test$p.value,3),
+           cramersV = round(cramerv,3),
+           decision = ifelse(test$p.value < alpha,
+                             "Posible asociacion",
+                             "No asociacion"))
+  } else {
+    test <- chisq.test(tab, correct = FALSE)
+    cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
+    tibble(variable = var_pred,
+           prueba = "Chi-cuadrado",
+           estadistico = round(unname(test$statistic),3),
+           p.value = round(test$p.value,3),
+           cramersV = round(cramerv,3),
+           decision = ifelse(test$p.value < alpha,
+                             "Posible asociacion",
+                             "No asociacion"))
+  }
+}
+
+```
+
+```{r}
+# Para variables cuantitativas
+test_cuant <- function(df, var_resp, var_pred) {
+  y <- as.numeric(as.factor(df[[var_resp]]))
+  x <- suppressWarnings(as.numeric(df[[var_pred]]))
+  
+  if (all(is.na(x))) {
+    return(tibble(variable = var_pred,
+                  prueba = "Spearman",
+                  #estadistico = NA,
+                  p.value = NA,
+                  decision = "Variable no numerica (no se pudo calcular)"))
+  }
+  
+  test <- suppressWarnings(cor.test(x, y, method = "spearman", exact = FALSE))
+  decision <- ifelse(test$p.value < alpha,
+                     "Posible asociacion",
+                     "No hay evidencia estadistica suficiente de asociacion")
+  
+  tibble(
+    variable = var_pred,
+    prueba = "Spearman",
+    estadistico = round(unname(test$statistic), 3),
+    p.value = round(test$p.value, 3),
+    decision = decision
+  )
+}
+
+
+```
+
+```{r}
+alpha <- 0.05
+
+
+respuesta <- "ac_mental" 
+pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturaleza","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela","gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","pac_hos","conv_agre","cod_dpto_n","tip_ss","zona_conf")
+pred_cuant  <- c("edad_")
+pruebas_mental <- bind_rows(
+  map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
+  map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x))
+)
+
+knitr::kable(pruebas_mental %>% arrange(desc(cramersV)))
+```
+
+La decisión final de incluir una variable en el modelo se basó en:
+
+1.  Un **valor** $p < 0.05$**,** indicando una asociación
+    estadísticamente significativa con la recepción de atención en salud
+    mental.
+
+2.  Un **coeficiente V de Cramér** que indicara, al menos, una
+    asociación débil pero sustancial.
+
+3.  La **relevancia contextual** de la variable, avalada por informes
+    como el INS.
+
+# Resultados y Justificación de las Variables Seleccionadas
+
+Tras el análisis de asociación estadística, se seleccionaron 9 variables
+predictoras candidatas que cumplieron con los criterios establecidos de
+significancia estadística, fuerza de asociación y relevancia contextual.
+Estas variables representan dimensiones relevantes del fenómeno de la
+violencia de género y muestran una distribución consistente con las
+realidades documentadas en los informes del sector salud en Colombia, lo
+que valida su inclusión desde una perspectiva de salud pública.
+
+## Variables Seleccionadas por Dimensión
+
+Las variables finalmente seleccionadas se agrupan en cuatro dimensiones
+clave:
+
+-   **Dimensión Socioeconómica:**
+    -   Tipo de seguridad social
+    -   Jefatura del hogar
+-   **Dimensión Tipo y Severidad del Evento:**
+    -   Tipo de violencia
+    -   Hospitalización
+    -   Escenario del hecho
+-   **Dimensión Características del Agresor y Vínculo:**
+    -   Sexo del agresor
+    -   Parentesco con el agresor
+    -   Convivencia con el agresor
+-   **Dimensión Contexto Geográfico:**
+    -   Área de ocurrencia
