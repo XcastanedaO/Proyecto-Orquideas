@@ -233,7 +233,7 @@ saveRDS(fit_fr_t , "brms_total_fullrank.rds")
 fit <- readRDS(file = "brms_total_fullrank.rds")
 # modelo 1 ciclo_vital + agresor_group
 # modelo 2 ciclo_vital + agresor_group + dia_del_hecho + rango_de_hora_del_hecho_x_3_horas + escenario_del_hecho
-summary(fit) %>% kabl
+summary(fit) 
 
 # Energy diagnostic (should look like a normal distribution)
 mcmc_neff(neff_ratio(fit))  
