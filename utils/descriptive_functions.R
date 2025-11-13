@@ -46,7 +46,7 @@ recodificar_variables <- function(data) {
   vars_binarias <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela", "antec", "consum_spa","dist_esp_o", 
                      "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "mujer_cabf","dist_esp_r","zona_conf",
                      "gp_desmovi", "gp_psiquia", "gp_vic_vio", "gp_otros","ac_mental","pac_hos","conv_agre",
-                     "sust_vict","dist_esp_n","con_fin","remit_prot","evi_mlegal")
+                     "sust_vict","dist_esp_n","con_fin","remit_prot","evi_mlegal","inf_aut")
   
   data %>%
     mutate(
@@ -123,7 +123,7 @@ recodificar_variables <- function(data) {
         area == "1" ~ "Cabecera municipal",
         area == "2" ~ "Centro poblado",
         area == "3" ~ "Rural disperso",
-        TRUE ~ area),
+        TRUE ~ as.character(area))
     ) %>%
     mutate(across(
       all_of(vars_binarias),
@@ -134,7 +134,7 @@ recodificar_variables <- function(data) {
         TRUE ~ as.character(.)
       )
     )) %>%
-    mutate(across(c(tip_ss, sexo_agre,escenario,departamento_ocurrencia,all_of(vars_binarias),def_naturaleza), as.factor))
+    mutate(across(c(tip_ss,area,sexo_agre,escenario,departamento_ocurrencia,per_etn,ambito_lug,all_of(vars_binarias),def_naturaleza), as.factor))
 }
 
 
@@ -217,7 +217,7 @@ test_cualit <- function(df, var_resp, var_pred) {
     tibble(variable = var_pred,
            prueba = "Fisher (simulación)",
            estadistico = NA,
-           p.value = round(test$p.value,3),
+           p.value = test$p.value,
            cramersV = round(cramerv,3),
            decision = ifelse(test$p.value < alpha,
                              "Posible asociación",
@@ -228,7 +228,7 @@ test_cualit <- function(df, var_resp, var_pred) {
     tibble(variable = var_pred,
            prueba = "Chi-cuadrado",
            estadistico = round(unname(test$statistic),3),
-           p.value = round(test$p.value,3),
+           p.value = test$p.value,
            cramersV = round(cramerv,3),
            decision = ifelse(test$p.value < alpha,
                              "Posible asociación",
@@ -236,20 +236,28 @@ test_cualit <- function(df, var_resp, var_pred) {
   }
 }
 
-# Spearman
+# Kruskal–Wallis
 test_cuant <- function(df, var_resp, var_pred) {
   alpha <- 0.05
-  y <- as.numeric(as.factor(df[[var_resp]]))
-  x <- df[[var_pred]]
   
-  test <- cor.test(x, y, method = "spearman", exact = FALSE)
+  # Variables
+  y <- df[[var_resp]]          # variable categórica sin orden
+  x <- as.numeric(df[[var_pred]])  # variable cuantitativa
+  
+  # Ejecutar prueba de Kruskal–Wallis
+  test <- kruskal.test(x ~ as.factor(y), data = df)
+  
+  # Decisión estadística
   decision <- ifelse(test$p.value < alpha,
                      "Posible asociación",
                      "No hay evidencia estadística suficiente de asociación")
   
-  tibble(variable = var_pred,
-         prueba = "Spearman",
-         estadistico = round(unname(test$statistic),3),
-         p.value = round(test$p.value,3),
-         decision = decision)
+  # Salida formateada
+  tibble(
+    variable = var_pred,
+    prueba = "Kruskal–Wallis",
+    estadistico = round(unname(test$statistic), 3),  # estadístico H de Kruskal
+    p.value = test$p.value,
+    decision = decision
+  )
 }
