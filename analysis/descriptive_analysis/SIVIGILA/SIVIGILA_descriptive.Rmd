@@ -1,6 +1,6 @@
 ---
 title: "Análisis Descriptivo información proporcionada por SIVIGILA del 2013 al 2024."
-date: "2025-07-02"
+date: "2025-11-13"
 output:
   pdf_document:
     toc: true
@@ -17,13 +17,14 @@ header-includes:
 ---
 
 ```{r, include=FALSE}
-knitr::opts_chunk$set(echo=FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
 library(dplyr)
 library(ggplot2)
 source("../../../utils/load_data.R")
 source("../../../utils/descriptive_functions.R")
 library(here)
 library(hms)
+library(float)
 library(forcats)
 library(lubridate)
 library(stringr)
@@ -40,7 +41,9 @@ library(purrr)
 library(DescTools)
 library(dplyr)
 library(skimr)
+library(knitr)
 library(scales)
+library(tibble)
 ```
 
 \newpage
@@ -58,7 +61,7 @@ La base de datos utilizada para este análisis descriptivo es el resultado de ju
 colnames(base_datos)
 ```
 
-Para conocer más sobre las variables se cuenta con un diccionario de datos que enviaron junto a las bases [(Ver aquí)](https://www.ins.gov.co/BibliotecaDigital/diccionario-datos-basicos-.pdf).Adicional, se cuenta con algunas de las fichas de notificación al SIVIGILA que contienen indicaciones sobre muchas variables, la más actualizada es la ficha de 2024 [(Ver   aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
+Para conocer más sobre las variables se cuenta con un diccionario de datos que enviaron junto a las bases. Adicional, se cuenta con algunas de las fichas de notificación al SIVIGILA que contienen indicaciones sobre muchas variables, la más actualizada es la ficha de 2024 [(Ver   aquí)](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
 
 **IMPORTANTE:** Como se indicó anteriormente, este análisis es incluyendo los valores faltantes.
 
@@ -72,9 +75,14 @@ base_datos <- recodificar_variables(base_datos)
 # Esquema general de la base de datos
 
 ```{r}
-skim(base_datos %>% select(c(orient_sex,tip_ss,per_etn,nom_grupo,mujer_cabf,antec,consum_spa,pais_residencia,
-departamento_residencia,dist_esp_r,def_naturaleza,departamento_ocurrencia,dist_esp_o,area,zona_conf,escenario,ambito_lug,sust_vict,sexo_agre,conv_agre,departamento_notificacion,dist_esp_n,pac_hos,con_fin,cbmte,ac_mental,remit_prot,inf_aut,evi_mlegal)))
+resumen <- skim(base_datos %>% select(c(orient_sex,tip_ss,per_etn,nom_grupo,mujer_cabf,antec,consum_spa,pais_residencia,
+departamento_residencia,dist_esp_r,def_naturaleza,departamento_ocurrencia,dist_esp_o,area,zona_conf,escenario,ambito_lug,sust_vict,sexo_agre,conv_agre,departamento_notificacion,dist_esp_n,pac_hos,con_fin,cbmte,ac_mental,remit_prot,inf_aut,evi_mlegal))) 
+
+resumen %>%
+   filter(skim_type == tail(unique(skim_type), 1))
 ```
+
+# Conclusiones relevantes
 
 # Análisis descriptivo
 
@@ -83,8 +91,12 @@ departamento_residencia,dist_esp_r,def_naturaleza,departamento_ocurrencia,dist_e
 ### Análisis edad
 
 ```{r}
-# Estadísticos básicos edad
-summary(as.numeric(as.character(base_datos$edad_)))
+summary(as.numeric(as.character(base_datos$edad_))) %>%
+  enframe(name = "Estadístico", value = "Valor") %>%
+  kable(format = "latex",
+        col.names = c("Estadístico", "Valor"),
+        digits = 2) %>%
+  kable_styling(full_width = FALSE, position = "center",latex_options = "H")
 ```
 
 ```{r}
@@ -108,7 +120,7 @@ base_datos %>%
 ```
 
 ```{r}
-tabla_frec <- base_datos %>%
+base_datos %>%
   mutate(rango = case_when(
     edad_ < 14 ~ "<14",
     edad_ >= 14 & edad_ <= 50 ~ "14-50",
@@ -118,11 +130,10 @@ tabla_frec <- base_datos %>%
   rango = factor(rango, levels = c("<14", "14-50", ">50"))) %>%
   count(rango) %>%
   mutate(freq_rel = n / sum(n),
-         freq_acum = cumsum(freq_rel))
-
-# Mostrar en kable
-kable(tabla_frec, digits = 3,
-      col.names = c("Edad(años)", "Casos", "F.relativa", "F.acumulada"))
+         freq_acum = cumsum(freq_rel)) %>% kable(format = "latex",
+        digits = 2,
+      col.names = c("Edad(años)", "Casos", "F.relativa", "F.acumulada")) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 ```{r}
@@ -152,7 +163,13 @@ ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad, fill = n)) +
 ```
 ### Fechas
 ```{r}
-summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
+summary(base_datos[c("fec_hecho", "fec_con", "fec_not")]) %>%
+  as.data.frame() %>%
+  rownames_to_column("Estadístico") %>%
+  kable(format = "latex",
+        digits = 2,
+        col.names = c("Estadístico", "fec_hecho", "fec_con", "fec_not")) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 ```{r}
 base_datos %>%
@@ -165,21 +182,19 @@ base_datos %>%
                              "fec_con" = "Fecha consulta",
                              "fec_not" = "Fecha notificación")) %>%
   count(tipo_fecha, anio) %>%
-  ggplot(aes(x = anio, y = n, group = tipo_fecha)) +
-  geom_line(color = "#4B0082", size = 1.2) +
-  geom_point(color = "#4B0082", size = 2.2) +
-  geom_label(aes(label = n),color = "#4B0082", size = 2.2) +
-  facet_wrap(~ tipo_fecha, ncol = 1, scales = "free_y") +
-  labs(x = "Año", y = "Número de casos") +
-  scale_x_continuous(breaks = function(x) seq(floor(min(x, na.rm = TRUE)),
-                                              ceiling(max(x, na.rm = TRUE)), 1)) +
-  theme_minimal() +
-  theme(
-    strip.text = element_text(face = "bold"),
-    panel.grid.minor = element_blank()
-  )
+  grafico_lineas(
+    var_x = "anio",
+    var_y = "n",
+    group = "tipo_fecha",
+    facet_var = "tipo_fecha",
+    facet_col = 1,
+    facet_row = 3,
+    mostrar_label = TRUE) +
+  labs(
+      title = "Distribución anual por fechas",
+      x = "Año",
+      y = "Número de casos (miles)") 
 ```
-
 
 #### Fecha hecho
 
@@ -204,19 +219,25 @@ plot(descomp_ts_mensual)
 luego, se calcula la estacionalidad promedio por mes para ver en qué meses sube o baja regularmente esta serie:
 
 ```{r}
+# Calcular tendencia estacional promedio
 estacionalidad <- descomp_ts_mensual$seasonal
 meses <- rep(1:12, length.out = length(estacionalidad))
 
-# Agrupar y promediar
 tendencia_estacional <- data.frame(
   mes = meses,
   valor = estacionalidad
 ) %>%
   group_by(mes) %>%
-  summarise(efecto_promedio = mean(valor)) %>%
-  mutate(mes_nombre = month.abb[mes])  # abreviatura del mes
+  summarise(efecto_promedio = mean(valor, na.rm = TRUE)) %>%
+  mutate(mes_nombre = factor(month.abb[mes], levels = month.abb)) %>%
+  arrange(desc(efecto_promedio))
 
-tendencia_estacional %>% arrange(desc(efecto_promedio))
+# Mostrar tabla formateada
+tendencia_estacional %>%
+  kable(format = "latex",
+        col.names = c("Mes (número)", "Efecto promedio", "Mes"),
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 
 ```
 
@@ -240,24 +261,18 @@ base_datos %>%
   ) %>%
   filter((dia > 1 & mes_num == 1) | mes_num %in% c(3, 5, 8, 9)) %>%
   count(mes_nombre, dia) %>%
-  ggplot(aes(x = dia, y = n, group = mes_nombre)) +
-  geom_line(color = "#4B0082") +
-  geom_point(color = "#4B0082", size = 1.5) +
-  facet_wrap(~ mes_nombre, ncol = 2, scales = "free_y") +
-  scale_x_continuous(breaks = seq(1, 31, by = 2)) +
-  labs(
+  grafico_lineas(
+    var_x = "dia",
+    var_y = "n",
+    group = "mes_nombre",
+    facet_var = "mes_nombre",
+    facet_col = 2, facet_row = 3, mostrar_label = FALSE) +
+labs(
     title = "Distribución diaria de notificaciones por mes",
     x = "Día del mes",
-    y = "Número total de casos"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(face = "bold",hjust = 0.5),
-    strip.text = element_text(face = "bold"),
-    panel.grid.minor = element_blank()
-  )
+    y = "Número total de casos (miles)") + 
+  theme(axis.text.x = element_text(angle = 90,vjust = 0.5,hjust = 1, size =5))
 ```
-
 #### Diferencia en días entre la fecha del hecho y fecha de notificación
 
 ```{r}
@@ -265,7 +280,12 @@ base_datos <- base_datos %>% mutate(dif_dias = ceiling(as.numeric(fec_not - fec_
 ```
 
 ```{r}
-summary(base_datos$dif_dias)
+summary(base_datos$dif_dias) %>%
+  enframe(name = "Estadístico", value = "Valor") %>%
+  kable(format = "latex",
+        col.names = c("Estadístico", "Valor"),
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 Debido a que la distribución presenta asimetría positiva, se opta por continuar el análisis considerando únicamente los registros con valores menores o iguales al percentil 80 (`r quantile(base_datos$dif_dias, probs = 0.8)`), con el fin de excluir la cola derecha
 
@@ -299,26 +319,85 @@ base_datos %>% group_by(anio = year(fec_hecho)) %>%
 
 ### Pertenencia a grupo poblacional especial
 ```{r}
-summary(base_datos[c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
+vars_gp <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
-             "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")])
+             "gp_desmovi", "gp_psiquia", "gp_vic_vio")
+
+summary(base_datos[vars_gp]) %>%
+  as.data.frame() %>%
+  rownames_to_column("Estadístico") %>%
+  kable(format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
+
+```{r}
+resumen_gp <- base_datos %>%
+  mutate(
+    # Convertir "Sí" en 1, y NA o "No" en 0 antes de sumar
+    n_grupos = rowSums(across(all_of(vars_gp), ~ ifelse(.x == "Sí", 1, 0))),
+    
+    # Variable binaria para gp_otros
+    otros = ifelse(gp_otros == "Sí", 1, 0)
+  ) %>%
+  summarise(
+    total = n(),
+    conteo = list(table(factor(n_grupos, levels = 0:max(n_grupos)))),
+    proporcion = list(round(prop.table(table(factor(n_grupos, levels = 0:max(n_grupos))))*100),1),
+    prop_gp_otros = round(mean(otros, na.rm = TRUE)*100,1)
+  )
+```
+
+```{r}
+resumen_gp$conteo[[1]] %>%
+  kable(format = "latex",
+        # col.names = c("Mes (número)", "Efecto promedio", "Mes"),
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
+```
+```{r}
+resumen_gp$prop_gp_otros[1]
+```
+
 
 ### Modalidad de violencia
-
 ```{r}
-# df %>%
-#   mutate(month = floor_date(date, "month")) %>%  # agrupar por mes
-#   count(month, category1) %>%
-#   ggplot(aes(x = month, y = n, color = category1)) +
-#   geom_line() +
-#   labs(title = "Evolución mensual por categoría", y = "Frecuencia")
-
+base_datos %>% 
+  count(def_naturaleza) %>% 
+  mutate(porc = round(100 * n / sum(n), 1)) %>% 
+  arrange(desc(n))
 ```
 
 ```{r}
-base_datos %>% count(def_naturaleza) %>%
-  arrange(desc(n))
+base_datos %>%
+  mutate(anio = year(fec_hecho)) %>% 
+  count(def_naturaleza, anio, name = "n") %>% 
+grafico_lineas(
+  var_x = "anio",
+  var_y = "n",
+  group = "def_naturaleza",  
+  facet_var = "def_naturaleza",           
+  color_linea = "#4B0082",
+  facet_col = 2,
+  facet_row = 6,
+  mostrar_label = TRUE) +
+  labs(
+    title = "Número de casos por año y tipo de violencia",
+    x = "Año",
+    y = "Número total de casos (miles)")
+```
+
+### Escenario
+
+```{r}
+base_datos %>% 
+  count(escenario) %>% 
+  mutate(porc = round(100 * n / sum(n), 1)) %>% 
+  arrange(desc(n)) %>%
+  kable(format = "latex",
+        col.names = c("Escenario", "Número casos", "Proporción"),
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 ## Análisis multivariado
@@ -333,63 +412,9 @@ En cambio, para predictores cuantitativos se utiliza la correlación de Spearman
 
 Finalmente, los resultados de cada análisis se organizan en una tabla que muestra la variable evaluada, la prueba realizada, los valores estadísticos y de significancia, junto con una interpretación clara sobre si existe o no evidencia estadística de relación con la variable de respuesta.
 
-```{r}
-test_cualit <- function(df, var_resp, var_pred) {
-  tab <- table(df[[var_resp]], df[[var_pred]])
-  
-  if (any(chisq.test(tab)$expected < 5)) {
-    test <- tryCatch(
-      fisher.test(tab, simulate.p.value = TRUE, B = 1e5),
-      error = function(e) fisher.test(tab, simulate.p.value = TRUE, B = 5000)
-    )
-    cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
-    tibble(variable = var_pred,
-           prueba = "Fisher (simulación)",
-           estadistico = NA,
-           p.value = round(test$p.value,3),
-           cramersV = round(cramerv,3),
-           decision = ifelse(test$p.value < alpha,
-                             "Posible asociación",
-                             "No asociación"))
-  } else {
-    test <- chisq.test(tab, correct = FALSE)
-    cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
-    tibble(variable = var_pred,
-           prueba = "Chi-cuadrado",
-           estadistico = round(unname(test$statistic),3),
-           p.value = round(test$p.value,3),
-           cramersV = round(cramerv,3),
-           decision = ifelse(test$p.value < alpha,
-                             "Posible asociación",
-                             "No asociación"))
-  }
-}
-
-# Spearman
-test_cuant <- function(df, var_resp, var_pred) {
-  y <- as.numeric(as.factor(df[[var_resp]]))
-  x <- df[[var_pred]]
-  
-  test <- cor.test(x, y, method = "spearman", exact = FALSE)
-  decision <- ifelse(test$p.value < alpha,
-                     "Posible asociación",
-                     "No hay evidencia estadística suficiente de asociación")
-  
-  tibble(variable = var_pred,
-         prueba = "Spearman",
-         estadistico = round(unname(test$statistic),3),
-         p.value = round(test$p.value,3),
-         decision = decision)
-}
-
-alpha <- 0.05
-```
-
 #### Hospitalización
-```{r, warning=FALSE,message=FALSE}
-base_datos <- base_datos %>%
-  mutate(dif_dias_con = as.numeric(fec_con - fec_hecho))
 
+```{r, warning=FALSE,message=FALSE}
 respuesta <- "pac_hos" 
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","antec","def_naturaleza","sust_vict","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
@@ -397,15 +422,13 @@ pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","antec","def_
 pred_cuant  <- c("edad_")
 pruebas_hosp <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-knitr::kable(pruebas_hosp %>% arrange(desc(cramersV)))
+
+kable(pruebas_hosp %>% arrange(desc(cramersV)),format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 Sin evidencia estadística suficiente para asumir relación: gp_carcela y gp_desmovi
-
-```{r}
-prop.table(table(base_datos$def_naturaleza,base_datos$pac_hos),1)*100
-```
-
 
 #### Condición final
 ```{r, warning=FALSE,message=FALSE}
@@ -416,7 +439,10 @@ pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","antec","def_
 pred_cuant  <- c("edad_")
 pruebas_con_fin <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-knitr::kable(pruebas_con_fin %>% arrange(desc(cramersV)))
+
+kable(pruebas_con_fin %>% arrange(desc(cramersV)),format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 Sin evidencia estadística suficiente para asumir relación: sexo, ident_gene, consum_spa, sem_ges, gp_desplaz, gp_migrant,gp_carcela,gp_indigen,gp_pobicfb,gp_mad_com,gp_desmovi,gp_psiquia,gp_otros
 
@@ -431,7 +457,10 @@ pred_cuant  <- c("edad_")
 
 pruebas_antec <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-knitr::kable(pruebas_antec %>% arrange(desc(cramersV)))
+
+kable(pruebas_antec %>% arrange(desc(cramersV)),format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 Sin evidencia estadística suficiente para asumir relación: ident_gene
 
@@ -442,7 +471,10 @@ pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturale
 pred_cuant  <- c("edad_")
 pruebas_mental <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-knitr::kable(pruebas_mental %>% arrange(desc(cramersV)))
+
+kable(pruebas_mental %>% arrange(desc(cramersV)),format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 Sin evidencia estadística suficiente para asumir relación: ident_gene y gp_desmovi
 
@@ -452,14 +484,6 @@ prop.table(table(base_datos$sexo_agre,base_datos$ac_mental),1)*100
 ```
 
 
-```{r}
-prop.table(table(base_datos$pac_hos,base_datos$ac_mental),1)*100
-```
-
-```{r}
-prop.table(table(base_datos$cod_dpto_n,base_datos$ac_mental),1)*100
-```
-
 #### Remisión a protección
 ```{r, warning=FALSE,message=FALSE}
 respuesta <- "remit_prot" 
@@ -467,15 +491,10 @@ pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturale
 pred_cuant  <- c("edad_")
 pruebas_remit <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-knitr::kable(pruebas_remit %>% arrange(desc(cramersV)))
-```
 
-```{r}
-prop.table(table(base_datos$def_naturaleza,base_datos$remit_prot),1)*100
-```
-
-```{r}
-prop.table(table(base_datos$cod_dpto_n,base_datos$remit_prot),1)*100
+kable(pruebas_remit %>% arrange(desc(cramersV)),format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 #### Informe a autoridades competentes
@@ -485,61 +504,46 @@ pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturale
 pred_cuant  <- c("edad_")
 pruebas_inf_aut <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-knitr::kable(pruebas_inf_aut %>% arrange(desc(cramersV)))
-```
 
-
-```{r}
-prop.table(table(base_datos$def_naturaleza,base_datos$inf_aut),1)*100
-```
-
-```{r}
-prop.table(table(base_datos$cod_dpto_n,base_datos$inf_aut),1)*100
-```
-
-
-```{r}
-prop.table(table(base_datos$sexo_agre,base_datos$inf_aut),1)*100
-```
-
-```{r}
-prop.table(table(base_datos$area,base_datos$inf_aut),1)*100
+kable(pruebas_inf_aut %>% arrange(desc(cramersV)),format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 ### Tipo de seguridad social
 
 ```{r}
-prop.table(table(base_datos$tip_ss,base_datos$ac_mental),1)*100
+(prop.table(table(base_datos$tip_ss,base_datos$ac_mental),1)*100) %>%
+  as.data.frame() %>%
+  kable(format = "latex",
+        col.names = c("Tipo de aseguramiento", "Atención en salud mental", "Porcentaje"),
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 La mayoría de las víctimas afiliadas a regímenes especiales reciben atención en salud mental (65%), mientras que las víctimas en estado de afiliación indeterminado solo 13% la recibe.
 
-### Tipo de violencia
-```{r}
-base_datos %>% 
-  count(def_naturaleza) %>% 
-  mutate(porc = round(100 * n / sum(n), 1)) %>% 
-  arrange(desc(n))
-```
+### Modalidad de violencia
+
 
 ```{r}
-prop.table(table(base_datos$def_naturaleza,base_datos$ac_mental),1)*100
+(prop.table(table(base_datos$def_naturaleza,base_datos$ac_mental),1)*100) %>%
+  as.data.frame() %>%
+  kable(format = "latex",
+        col.names = c("Tipo de violencia", "Atención en salud mental", "Porcentaje"),
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 Más de la mitad de los casos de violencia contra mujeres corresponden a violencia física (51%)
 
 ```{r}
 aux <- base_datos %>% mutate(def_naturaleza = case_when(
-        def_naturaleza == "1" ~ "Física",
-        def_naturaleza == "2" ~ "Psicológica",
-        def_naturaleza == "3" ~ "Negligencia",
-        def_naturaleza == "4" ~ "Sexual",
-        def_naturaleza == "5" ~ "Sexual",
-        def_naturaleza == "6" ~ "Sexual",
-        def_naturaleza == "7" ~ "Sexual",
-        def_naturaleza == "10" ~ "Sexual",
-        def_naturaleza == "12" ~ "Sexual",
-        def_naturaleza == "14" ~ "Sexual",
-        def_naturaleza == "15" ~ "Sexual",
-        is.na(def_naturaleza) ~ "Sin información",
+        def_naturaleza == "Acoso sexual" ~ "Sexual",
+        def_naturaleza == "Acceso carnal" ~ "Sexual",
+        def_naturaleza == "Explotación sexual" ~ "Sexual",
+        def_naturaleza == "Trata de personas" ~ "Sexual",
+        def_naturaleza == "Actos sexuales" ~ "Sexual",
+        def_naturaleza == "Otras violencias sexuales" ~ "Sexual",
+        def_naturaleza == "Mutilación genital" ~ "Sexual",
         TRUE ~ def_naturaleza))
 ```
 
@@ -550,49 +554,46 @@ aux %>%
   group_by(def_naturaleza) %>%
   mutate(prop = n / sum(n)) %>%
   ggplot(aes(x = def_naturaleza, y = prop, fill = ac_mental)) +
-  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
-  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
-            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  geom_bar(stat = "identity", position = "fill", color = "white", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)),
+            position = position_fill(vjust = 0.5),
+            size = 3.2, color = "#4B0082", fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3", "#AE86D3","#C2BDBC")) +
+  scale_y_continuous(labels = scales::percent_format()) +
   labs(
+    title = "Distribución proporcional por tipo de violencia y atención en salud mental",
     x = "Tipo de violencia",
-    y = "Proporción (%)",
+    y = "Proporción de casos (%)",
     fill = "Atención en salud mental"
   ) +
-  scale_fill_manual(values = c("#90A9C3", "#AE86D3")) +
   theme_minimal() +
-  scale_y_continuous(labels = scales::percent_format()) +
-  theme(legend.position = "top")
-```
-
-### Escenario
-
-```{r}
-base_datos %>% 
-  count(escenario) %>% 
-  mutate(porc = round(100 * n / sum(n), 1)) %>% 
-  arrange(desc(n))
-```
-
-```{r}
-base_datos %>% 
-  count(escenario) %>% 
-  mutate(porc = round(100 * n / sum(n), 1)) %>% 
-  arrange(desc(n))
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.text = element_text(color = "black"),
+    legend.position = "top",
+    strip.text = element_text(face = "bold")
+  )
 ```
 
 ### Departamento de notificación
 ```{r}
-prop.table(table(base_datos$departamento_ocurrencia,base_datos$remit_prot),1)*100
+(prop.table(table(base_datos$departamento_ocurrencia,base_datos$remit_prot),1)*100) %>%  kable(format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 ```{r}
-prop.table(table(base_datos$departamento_ocurrencia,base_datos$ac_mental),1)*100
+(prop.table(table(base_datos$departamento_ocurrencia,base_datos$ac_mental),1)*100) %>% kable(format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 
 ### Informe a las autoridades
 ```{r}
-prop.table(table(base_datos$sexo_agre,base_datos$inf_aut),1)*100
+(prop.table(table(base_datos$sexo_agre,base_datos$inf_aut),1)*100) %>% kable(format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 
 ### Diagnósticos
@@ -600,7 +601,9 @@ prop.table(table(base_datos$sexo_agre,base_datos$inf_aut),1)*100
 base_datos %>% filter(cbmte != "No aplica" & !is.na(cbmte)) %>%  
   count(cbmte, sort = TRUE) %>%         # cuenta y ordena
   mutate(porc = round(100 * n / sum(n), 3)) %>%  # añade porcentaje
-  slice_max(order_by = n, n = 5)
+  slice_max(order_by = n, n = 5) %>% kable(format = "latex",
+        digits = 2) %>%
+  kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
 CHOQUE HIPOVOLEMICO,PARO CARDIACO,VIOLENCIA FISICA,DESNUTRICION PROTEICOCALORICA SEVERA, SEPSIS, MUERTE SIN ASISTENCIA
 
