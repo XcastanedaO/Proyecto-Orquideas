@@ -24,6 +24,9 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%
     pac_hos = factor(pac_hos, levels = c("No", "Sí")), 
   )
 
+data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
+
+
 # Construir matriz de diseño
 X <- model.matrix(ac_mental ~ 
                       edad_ + mujer_cabf + def_naturaleza +

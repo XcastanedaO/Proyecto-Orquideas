@@ -9,8 +9,6 @@ library(rstan)
 # Leer base de datos
 data_model_SIVIGILA <- read.csv("data_model_SIVIGILA.csv")
 
-data_model_SIVIGILA <- read.csv(file.choose())
-
 # Convertir a factor las variables para elegir nivel de referencia
 data_model_SIVIGILA <- data_model_SIVIGILA %>%
   mutate(
@@ -25,6 +23,7 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%
     conv_agre = factor(conv_agre, levels = c("No", "Sí")),
     pac_hos = factor(pac_hos, levels = c("No", "Sí")), 
   )
+data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
 
 # Muestreo estratificado
 # Calcular proporciones por categoría de respuesta
@@ -57,11 +56,11 @@ data_stan <- list(
 
 SIVIGILA_model <- stan(
   file = file.choose(),#"logistic_model.stan",
-  data = muestra,
-  iter = 50,
+  data = data_stan,
+  iter = 5000,
   chains = 4,
-  warmup = 1,
-  cores = 30
+  warmup = 1000,
+  cores = 3
 )
 
 saveRDS(SIVIGILA_model, file = "SIVIGILA_model.rds")
