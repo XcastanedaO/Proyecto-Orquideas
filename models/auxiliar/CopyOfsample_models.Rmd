@@ -1,0 +1,537 @@
+---
+title: "Modelo Logístico Bayesiano para Predicción de Atención en Salud Mental"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Cargar librerías necesarias
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(purrr)
+library(here)
+library(tidyr)
+library(rstan)
+library(bayesplot)
+library(pROC)
+library(explore)
+```
+
+
+# Lectura y preparación de la base de datos
+
+```{r}
+source("../utils/load_data.R")
+data_model <- load_data("data_model.csv", type = "processed")
+
+unique(data_model$ac_mental)
+```
+
+
+
+# Construcción de la matriz de diseño
+```{r}
+data_model |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
+```
+
+```{r}
+data <- data_model %>% select(c("ac_mental",
+                    "edad", "mujer_cabf","def_naturaleza",
+                    "area_", "sexo_agre", "parentezco_agresor", 
+                    "conv_agre", "pac_hos_" , "escenario", 
+                    "grupo_edad","actividad", 
+                    "año_not", "tip_ss_"))
+
+data |> is.na() |> colSums() %>% sort(decreasing = TRUE) |> data.frame() %>% setNames("na_count")
+```
+
+```{r}
+data %>% explore()
+```
+
+```{r}
+data %>% group_by(ac_mental) %>% summarise(n=n()) %>%
+  mutate(proportion = n / sum(n))
+```
+
+# Remover NA en las variables a utilizar
+
+```{r}
+## Remove missing values
+data <-data[!apply(is.na(data), 1, any), ]
+```
+
+
+
+
+```{r}
+data %>% group_by(ac_mental) %>% summarise(n=n()) %>%
+  mutate(proportion = n / sum(n))
+```
+
+```{r}
+data %>% filter(tip_ss_=="I") %>% group_by(ac_mental) %>% summarise(n=n())
+```
+
+
+## Muestreo estratificado (10,000 observaciones)
+
+```{r}
+# Calcular proporciones por categoría de respuesta
+prop_categ <- prop.table(table(data$ac_mental))
+tam_categ <- round(10000 * prop_categ)
+
+# Realizar muestreo estratificado según proporciones
+set.seed(123)
+muestra <- data %>%
+  split(.$ac_mental) %>%
+  map2_df(tam_categ, sample_n)
+
+# Verificar que las proporciones en la muestra se mantengan
+prop.table(table(muestra$ac_mental))
+```
+
+**Si se eliminan los NA de esas variables, cambia mucho las proporciones de la variable respuesta en la variable respuesta
+
+
+
+## Modelo Logístico Bayesiano para Predicción de Atención en Salud Mental:
+
+- Muestreo estratificado de 10.000 observaciones
+
+- **Respuesta**: Recibió o no atención en salud mental (ac_mental)
+
+### Modelo 1:
+
+- **Predictoras**: edad víctima (edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_) y escenario donde ocurrió el hecho(escenario)
+
+
+
+```{r}
+str(data)
+```
+```{r}
+data <- data %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c(2, 1)),
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Violencia física", "Violencia psicológica", "Violencia sexual")),
+    
+    area_ = factor(area_, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+    
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+    
+    parentezco_agresor = factor(parentezco_agresor, levels = c("Otro", "Pareja", "Familiar", "Ex_Pareja", "Padre", "Madre", "Conocido(a)", "Amigo(a)", "Desconocido(a)")),
+    
+    escenario = factor(escenario, levels = c("Otro", "Área deportiva y recreativa", "Comercio y áreas de servicios", "Espacios abiertos", "Establecimiento educativo", "Institución de salud", "Lugar de trabajo", "Lugares de esparcimiento con expendio de alcohol", "Vía Pública", "Vivienda")),
+    tip_ss_ =factor(tip_ss_, levels = c("I","C","E", "N", "P", "S")),
+    año_not = factor(año_not, levels = c("2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")), 
+      actividad = factor(actividad, levels=c("Otro", "Agricultores y trabajadores calificados agropecuarios,forestales y pesqueros"
+   ,"Directores y gerentes"                                                       
+   ,"Estudiante"                                                                  
+   ,"Habitante de Calle"                                                          
+   ,"Líderes(as) cívicos"                                                         
+   ,"Ninguna"                                                                     
+   ,"Ocupaciones elementales"                                                     
+   ,"Oficiales, operarios, artesanos y oficios relacionados"                      
+   ,"Operadores de instalaciones y máquinas y emsambladores"                      
+   ,"Persona dedicada al cuidado del hogar"                                       
+   ,"Persona en situación de prostitución"                                        
+   ,"Persona que cuida a otras"                                                   
+   ,"Personal de apoyo administrativo"                                            
+   ,"Profesionales, científicos e intelectuales"                                  
+   ,"Técnicos y profesionales del nivel medio"                                    
+   ,"Trabajadores de los servicios y vendedores de comercios y mercados" )),
+    conv_agre = factor(conv_agre, levels = c(2, 1)),
+    pac_hos_ = factor(pac_hos_, levels = c(2, 1)), 
+  )
+str(data)
+```
+
+# Models
+
+### model 1
+```{r}
+# Matriz de diseño
+X_1 <- model.matrix(ac_mental ~ 
+                    edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario,
+                  data = data)[, -1]
+
+
+# Preparar datos para stan
+datos_stan_1 <- list(
+  N = nrow(data),
+  K = ncol(X_1), ## Efectos fijos
+  X = X_1,
+  y = as.integer(data$ac_mental)
+)
+```
+
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+
+modelo_logistico_1 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_1,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 3
+)
+```
+
+```{r}
+model_1 <- readRDS("model_1.rds")
+print(model_1, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
+```
+```{r}
+# Extraer coeficientes estimados
+posterior_samples_1 <- extract(model_1)
+
+saveRDS(posterior_samples_1, file = "posterior_samples.rds")
+# posterior_ <- readRDS("posterior_samples_model_1.rds")
+
+# Calcular la media de los coeficientes estimados
+alpha_hat <- mean(posterior_samples_1$alpha)  
+beta_hat <- colMeans(posterior_samples_1$beta)  
+
+# Calcular probabilidades predichas
+probs_predichas <- plogis(alpha_hat + X_1 %*% beta_hat)
+
+# Convertir a clases (umbral de 0.5)
+predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
+# Matriz de confusión
+confusion_matrix <- table(Real = data$ac_mental, Predicho = predicciones_binarias)
+confusion_matrix
+```
+
+#### Métricas de desempeño y curva ROC
+
+```{r}
+TN <- confusion_matrix[1,1]
+FP <- confusion_matrix[1,2]
+FN <- confusion_matrix[2,1]
+TP <- confusion_matrix[2,2]
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+cat("Accuracy:", accuracy, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall (Sensibilidad):", recall, "\n")
+cat("F1-Score:", f1_score, "\n")
+
+roc_obj <- roc(data$ac_mental, as.numeric(probs_predichas))
+auc(roc_obj)
+plot(roc_obj, col = "#377eb8", main = "Curva ROC")
+```
+
+
+### Modelo 2:
+
+- **Predictoras**: edad víctima (edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_), escenario donde ocurrió el hecho(escenario), ocupación de la víctima(actividad), año de notificación del hecho(año_not), tipo de seguridad social(tip_ss_)
+
+```{r}
+# Matriz de diseño
+X_2 <- model.matrix(ac_mental ~ 
+                    edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario + actividad +
+                    año_not + tip_ss_,
+                  data = data)[, -1]
+
+# Preparar datos para stan
+datos_stan_2 <- list(
+  N = nrow(data),
+  K = ncol(X_2), ## Efectos fijos
+  X = X_2,
+  y = as.integer(data$ac_mental)
+)
+```
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+modelo_logistico_2 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_2,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 6
+)
+```
+
+```{r}
+modelo_logistico_2@stanmodel@dso <- new("cxxdso")
+
+saveRDS(modelo_logistico_2, file = "model_all_data_all_var.rds")
+```
+
+```{r}
+model_2 <- readRDS("model_2.rds")
+```
+
+```{r}
+print(model_2, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
+```
+
+```{r}
+# Gráficos de diagnóstico
+
+#traceplot(as.array(modelo_logistico, pars = c("alpha","beta")))
+mcmc_acf(as.matrix(modelo_logistico_2, pars = c("alpha", "beta")))
+
+mcmc_intervals(as.matrix(modelo_logistico_2, pars = "beta"))
+
+mcmc_hist(as.matrix(modelo_logistico_2, pars = "beta"))
+mcmc_trace(as.array(modelo_logistico_2), pars = c("alpha", "beta[1]", "beta[2]"))
+```
+
+```{r}
+# Extraer coeficientes estimados
+posterior_samples <- extract(model_2)
+
+saveRDS(posterior_samples, file = "posterior_samples_model_2.rds")
+posterior_samples_model_2 <- readRDS("posterior_samples_model_2.rds")
+
+# Calcular la media de los coeficientes estimados
+alpha_hat <- mean(posterior_samples_model_2$alpha)  
+beta_hat <- colMeans(posterior_samples_model_2$beta)  
+
+# Calcular probabilidades predichas
+probs_predichas <- plogis(alpha_hat + X_2 %*% beta_hat)
+
+# Convertir a clases (umbral de 0.5)
+predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
+# Matriz de confusión
+confusion_matrix <- table(Real = data$ac_mental, Predicho = predicciones_binarias)
+confusion_matrix
+```
+
+#### Métricas de desempeño y curva ROC
+
+```{r}
+TN <- confusion_matrix[1,1]
+FP <- confusion_matrix[1,2]
+FN <- confusion_matrix[2,1]
+TP <- confusion_matrix[2,2]
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+cat("Accuracy:", accuracy, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall (Sensibilidad):", recall, "\n")
+cat("F1-Score:", f1_score, "\n")
+
+roc_obj <- roc(data$ac_mental, as.numeric(probs_predichas))
+auc(roc_obj)
+plot(roc_obj, col = "#377eb8", main = "Curva ROC")
+```
+
+#### Interpretación: Odds Ratios
+
+```{r}
+# Calcular Odds Ratios
+odds_ratios <- exp(beta_hat)
+intercepto_OR <- exp(alpha_hat)
+
+# Crear tabla de resultados
+tabla_resultados <- data.frame(
+  Parametro = paste0("β", 1:length(odds_ratios)),
+  Variable = colnames(X_2),
+  Odds_Ratio = odds_ratios
+)
+
+# Mostrar tabla
+print(tabla_resultados, row.names = FALSE)
+```
+
+
+
+### Modelo 3:
+
+- **Predictoras**: edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_), escenario donde ocurrió el hecho(escenario),  tipo de seguridad social(tip_ss_)
+
+```{r}
+# Matriz de diseño
+X_3 <- model.matrix(ac_mental ~ 
+                    edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario + tip_ss_,
+                  data = data)[, -1]
+
+
+# Preparar datos para stan
+datos_stan_3 <- list(
+  N = nrow(data),
+  K = ncol(X_3), ## Efectos fijos
+  X = X_3,
+  y = as.integer(data$ac_mental)
+)
+```
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+modelo_logistico_3 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_3,
+  iter = 5000,
+  chains = 3,
+  warmup = 1000,
+  cores = 8
+)
+```
+
+```{r}
+model_3 <- readRDS("model_3.rds")
+```
+
+
+```{r}
+print(model_3, pars = c("alpha", "beta"), probs = c(0.025, 0.975))
+```
+
+```{r}
+# Extraer coeficientes estimados
+posterior_samples <- extract(modelo_logistico_3)
+
+# saveRDS(posterior_samples, file = "posterior_samples.rds")
+posterior_samples <- readRDS("posterior_sample_model_3.rds")
+
+# Calcular la media de los coeficientes estimados
+alpha_hat <- mean(posterior_samples$alpha)  
+beta_hat <- colMeans(posterior_samples$beta)  
+
+# Calcular probabilidades predichas
+probs_predichas <- plogis(alpha_hat + X_3 %*% beta_hat)
+
+# Convertir a clases (umbral de 0.5)
+predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
+# Matriz de confusión
+confusion_matrix <- table(Real = data$ac_mental, Predicho = predicciones_binarias)
+confusion_matrix
+```
+#### Métricas de desempeño y curva ROC
+
+```{r}
+# library(ROCR)
+TN <- confusion_matrix[1,1]
+FP <- confusion_matrix[1,2]
+FN <- confusion_matrix[2,1]
+TP <- confusion_matrix[2,2]
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+cat("Accuracy:", accuracy, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall (Sensibilidad):", recall, "\n")
+cat("F1-Score:", f1_score, "\n")
+par(mfrow = c(1, 1))  
+roc_obj <- roc(data$ac_mental, as.numeric(probs_predichas))
+auc(roc_obj)
+plot(roc_obj, col = "#377eb8", main = "Curva ROC", legacy.axes = TRUE, xlim = c(0, 1))
+
+# perfc<- performance(probs_predichas,"tpr","fpr %>% ")
+pdf("roc_curve.pdf", width =6, height = 5) 
+coords <- coords(roc_obj, "all", ret = c("fpr", "tpr"), transpose = FALSE)
+
+# Plot manually with desired limits
+plot(coords$fpr, coords$tpr,
+     type = "l",
+     col = "#c07dca",
+     lwd=2,
+     xlim = c(0, 1),
+     ylim = c(0, 1),
+     xlab = "1 - Specificity",
+     ylab = "Sensitivity",
+     main = "Curva ROC")
+abline(a = 0, b = 1, lty = 2, col = "gray")  
+dev.off()
+```
+
+
+#### Interpretación: Odds Ratios
+
+```{r}
+# Calcular Odds Ratios
+odds_ratios <- exp(beta_hat)
+intercepto_OR <- exp(alpha_hat)
+
+# Crear tabla de resultados
+tabla_resultados <- data.frame(
+  Parametro = paste0("β", 1:length(odds_ratios)),
+  Variable = colnames(X_3),
+  Odds_Ratio = odds_ratios
+)
+
+# Mostrar tabla
+print(tabla_resultados, row.names = FALSE)
+```
+### Modelo 4:
+
+- **Predictoras**: grupo edad víctima (grupo_edad), si/no cabeza de familia(mujer_cabf), tipo de violencia(def_naturaleza), área de ocurrencia(area_), sexo agresor(sexo_agre), parentezco agresor(parentezco_agresor), si/no convive con el agresor(conv_agre), si/no hospitalizado(pac_hos_), escenario donde ocurrió el hecho(escenario), ocupación de la víctima(actividad), año de notificación del hecho(año_not), tipo de seguridad social(tip_ss_) y comuna de la víctima(comuna_nuevo)
+
+```{r}
+# Matriz de diseño
+X_4 <- model.matrix(ac_mental ~ 
+                    grupo_edad + mujer_cabf + def_naturaleza +
+                    area_ + sexo_agre + 
+                    parentezco_agresor + conv_agre  + 
+                    pac_hos_ + escenario + actividad +
+                    año_not + tip_ss + comuna_nuevo,
+                  data = muestra)[, -1]
+
+
+# Preparar datos para Stan
+datos_stan_4 <- list(
+  N = nrow(muestra),
+  K = ncol(X_4), ## Efectos fijos
+  X = X_4,
+  y = as.integer(muestra$ac_mental)
+)
+```
+
+
+
+```{r}
+# Ajuste del modelo logístico en Stan
+modelo_logistico_4 <- stan(
+  file = "logistic_model.stan",
+  data = datos_stan_4,
+  iter = 3000,
+  chains = 3,
+  warmup = 750,
+  cores = 3
+)
+```
+
