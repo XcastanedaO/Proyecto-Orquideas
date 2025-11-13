@@ -3,12 +3,13 @@ title: Selección de Variables para el Modelo estadístico para
   identificar diagnósticos del impacto de la violencia contra la mujer en la salud
   mental.
 output:
-  html_document:
-    toc: false
-    df_print: paged
   pdf_document:
     toc: false
     number_sections: false
+    latex_engine: xelatex   # ✅ Maneja UTF-8 y caracteres especiales
+  html_document:
+    toc: false
+    df_print: paged
 knitr:
   opts_chunk:
     echo: false
@@ -16,8 +17,9 @@ editor_options:
   markdown:
     wrap: 72
 always_allow_html: true
-header-includes: \usepackage{float}
 ---
+
+
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
 knitr::opts_chunk$set(echo=FALSE)
@@ -204,13 +206,17 @@ test_cuant <- function(df, var_resp, var_pred) {
 alpha <- 0.05
 
 
-respuesta <- "ac_mental" 
+respuesta <- "ac_mental"
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturaleza","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela","gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","pac_hos","conv_agre","cod_dpto_n","tip_ss","zona_conf")
 pred_cuant  <- c("edad_")
 pruebas_mental <- bind_rows(
   map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
   map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x))
 )
+
+pruebas_mental %>% arrange(desc(cramersV)) %>%
+  select( -estadistico)
+
 
 knitr::kable(pruebas_mental %>% arrange(desc(cramersV)))
 ```
@@ -243,7 +249,6 @@ Las variables finalmente seleccionadas se agrupan en cuatro dimensiones
 clave:
 
 -   **Dimensión Socioeconómica:**
-    -   Tipo de seguridad social
     -   Jefatura del hogar
 -   **Dimensión Tipo y Severidad del Evento:**
     -   Tipo de violencia

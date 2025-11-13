@@ -1638,8 +1638,9 @@ víctima de violencia de género recibe o no atención en salud mental
 en la calidad de los datos y su relevancia para el estudio, seguida de
 una selección estadística basada en el análisis de asociación entre
 posibles variables predictoras y la variable de interés.</p>
-<div id="parte-1-depuración-y-selección-inicial-de-variables" class="section level2">
-<h2>Parte 1: Depuración y selección inicial de variables</h2>
+</div>
+<div id="parte-1-depuración-y-selección-inicial-de-variables" class="section level1">
+<h1>Parte 1: Depuración y selección inicial de variables</h1>
 <p>Inicialmente, se contaba con 82 variables asociadas a la información
 sobre los casos sospechosos de violencia de género notificados. Estas
 variables fueron explicadas de forma detallada en los informes previos
@@ -1700,9 +1701,9 @@ variables resultantes:</p>
 ## [57] &quot;remit_prot&quot;                &quot;inf_aut&quot;                  
 ## [59] &quot;evi_mlegal&quot;</code></pre>
 </div>
-<div id="parte-2-análisis-de-asociación-y-selección-final-de-variables-predictoras-candidatas" class="section level2">
-<h2>Parte 2: Análisis de asociación y selección final de variables
-predictoras candidatas</h2>
+<div id="parte-2-análisis-de-asociación-y-selección-final-de-variables-predictoras-candidatas" class="section level1">
+<h1>Parte 2: Análisis de asociación y selección final de variables
+predictoras candidatas</h1>
 <p>Como se ha mencionado, la variable de interés a analizar es
 <strong>Atención en salud mental</strong>, que indica si la víctima
 recibió o no atención psicológica tras la identificación del caso.</p>
@@ -1743,228 +1744,6 @@ perfecta).</p>
 <p>Para predictores cuantitativos se utilizó la correlación de
 <strong>Spearman</strong>, ya que no requiere supuestos de normalidad y
 permite detectar relaciones monotónicas.</p>
-<table style="width:100%;">
-<colgroup>
-<col width="19%" />
-<col width="16%" />
-<col width="16%" />
-<col width="10%" />
-<col width="11%" />
-<col width="24%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th align="left">variable</th>
-<th align="left">prueba</th>
-<th align="right">estadistico</th>
-<th align="right">p.value</th>
-<th align="right">cramersV</th>
-<th align="left">decision</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">def_naturaleza</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">7.234318e+04</td>
-<td align="right">0.000</td>
-<td align="right">0.291</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">cod_dpto_n</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">4.557159e+04</td>
-<td align="right">0.000</td>
-<td align="right">0.231</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">sexo_agre</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.903245e+04</td>
-<td align="right">0.000</td>
-<td align="right">0.151</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">tip_ss</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.898380e+04</td>
-<td align="right">0.000</td>
-<td align="right">0.149</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">tip_ss</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.898380e+04</td>
-<td align="right">0.000</td>
-<td align="right">0.149</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">pac_hos</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.301039e+04</td>
-<td align="right">0.000</td>
-<td align="right">0.123</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">conv_agre</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.031016e+04</td>
-<td align="right">0.000</td>
-<td align="right">0.111</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">mujer_cabf</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">2.753695e+03</td>
-<td align="right">0.000</td>
-<td align="right">0.059</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">consum_spa</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">2.619070e+03</td>
-<td align="right">0.000</td>
-<td align="right">0.058</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">gp_otros</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.741439e+03</td>
-<td align="right">0.000</td>
-<td align="right">0.045</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">orient_sex</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.041960e+03</td>
-<td align="right">0.000</td>
-<td align="right">0.040</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">per_etn</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.292036e+03</td>
-<td align="right">0.000</td>
-<td align="right">0.039</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">gp_pobicfb</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">6.228590e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.027</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">gp_migrant</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">5.168120e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.025</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">gp_psiquia</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">5.316200e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.025</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">gp_vic_vio</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">3.055180e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.019</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">gp_discapa</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">2.534750e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.017</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">gp_gestan</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">2.182520e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.016</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">zona_conf</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.771500e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.014</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">gp_desplaz</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.546230e+02</td>
-<td align="right">0.000</td>
-<td align="right">0.013</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">gp_indigen</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">3.979200e+01</td>
-<td align="right">0.000</td>
-<td align="right">0.007</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">gp_carcela</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">1.568400e+01</td>
-<td align="right">0.000</td>
-<td align="right">0.004</td>
-<td align="left">Posible asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">gp_mad_com</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">3.823000e+00</td>
-<td align="right">0.051</td>
-<td align="right">0.002</td>
-<td align="left">No asociacion</td>
-</tr>
-<tr class="even">
-<td align="left">gp_desmovi</td>
-<td align="left">Chi-cuadrado</td>
-<td align="right">2.280000e-01</td>
-<td align="right">0.633</td>
-<td align="right">0.001</td>
-<td align="left">No asociacion</td>
-</tr>
-<tr class="odd">
-<td align="left">edad_</td>
-<td align="left">Spearman</td>
-<td align="right">9.670574e+16</td>
-<td align="right">0.000</td>
-<td align="right">NA</td>
-<td align="left">Posible asociacion</td>
-</tr>
-</tbody>
-</table>
 <p>La decisión final de incluir una variable en el modelo se basó
 en:</p>
 <ol style="list-style-type: decimal">
@@ -1977,7 +1756,6 @@ menos, una asociación débil pero sustancial.</p></li>
 <li><p>La <strong>relevancia contextual</strong> de la variable, avalada
 por informes como el INS.</p></li>
 </ol>
-</div>
 </div>
 </div>
 <div id="resultados-y-justificación-de-las-variables-seleccionadas" class="section level1">
@@ -1997,7 +1775,6 @@ dimensiones clave:</p>
 <ul>
 <li><strong>Dimensión Socioeconómica:</strong>
 <ul>
-<li>Tipo de seguridad social</li>
 <li>Jefatura del hogar</li>
 </ul></li>
 <li><strong>Dimensión Tipo y Severidad del Evento:</strong>
