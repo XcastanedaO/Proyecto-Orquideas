@@ -96,7 +96,12 @@ recodificar_variables <- function(data) {
         def_naturaleza == "14" ~ "Otras violencias sexuales",
         def_naturaleza == "15" ~ "Mutilación genital",
         TRUE ~ as.character(def_naturaleza)
-      )
+      ),
+      area = case_when(
+        area == "1" ~ "Cabecera municipal",
+        area == "2" ~ "Centro poblado",
+        area == "3" ~ "Rural disperso",
+        TRUE ~ area),
     ) %>%
     mutate(across(
       all_of(vars_binarias),
