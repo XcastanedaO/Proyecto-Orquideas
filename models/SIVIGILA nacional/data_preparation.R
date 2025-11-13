@@ -1,12 +1,9 @@
-library(dplyr)
-library(tidyr)
-library(rstan)
+# Este archivo tiene como  re-codificar las variables para el ajuste del modelo
 
+# Leer base de datos
+data_model_SIVIGILA <- read.csv(file.choose())
 
-data_model <- read.csv("data_model.csv")
-
-
-data <- data_model %>% select(c("ac_mental",
+data_model_SIVIGILA <- data_model_SIVIGILA %>% select(c("ac_mental",
                                 "edad", "mujer_cabf","def_naturaleza",
                                 "area_", "sexo_agre", "parentezco_agresor", 
                                 "conv_agre", "pac_hos_" , "escenario"))
@@ -43,34 +40,3 @@ data <- data %>%
     conv_agre = factor(conv_agre, levels = c(2, 1)),
     pac_hos_ = factor(pac_hos_, levels = c(2, 1)), 
   )
-
-##### Modelo 4: con menos categorías en parentesco y escenario y sin tipo de seguridad social
-
-X_4 <- model.matrix(ac_mental ~ 
-                      edad + mujer_cabf + def_naturaleza +
-                      area_ + sexo_agre + 
-                      parentezco_agresor + conv_agre  + 
-                      pac_hos_ + escenario,
-                    data = data)[, -1]
-
-# Preparar datos para stan
-datos_stan_4 <- list(
-  N = nrow(data),
-  K = ncol(X_4), ## Efectos fijos
-  X = X_4,
-  y = as.integer(data$ac_mental)
-)
-
-modelo_logistico_4 <- stan(
-  file = "logistic_model.stan",
-  data = datos_stan_4,
-  iter = 5000,
-  chains = 4,
-  warmup = 1000,
-  cores = 30
-)
-
-saveRDS(modelo_logistico_4, file = "model_4.rds")
-posterior_sample <- extract(modelo_logistico_4)
-saveRDS(posterior_sample, file = "posterior_sample_model_4.rds")
-
