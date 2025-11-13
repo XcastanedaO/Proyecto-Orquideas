@@ -69,8 +69,8 @@ save_data <- function(data, file_name, type = "processed", format = "csv") {
   # Definir ruta del directorio donde se guardará
   # data_dir <- file.path(path, "data", type)
   data_dir <- here("data", type)
-  
-  # Verificar si la ruta existe
+
+    # Verificar si la ruta existe
   if (!dir.exists(data_dir)) {
     stop("La ruta donde se quiere guardar el archivo no existe.")
   }

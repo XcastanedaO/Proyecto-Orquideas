@@ -1,7 +1,8 @@
 # Este archivo tiene como  re-codificar las variables para el ajuste del modelo
 
 # Librerías y funciones necesarias
-source("../utils/load_data.R")
+library(here)
+source(here("utils", "load_data.R"))
 
 # Leer base de datos
 data_model_SIVIGILA <- readRDS(file.choose())
@@ -59,6 +60,9 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%  mutate(
     pac_hos == "2" ~ "No",
     TRUE ~ pac_hos)
 )
+
+# Seleccionar rango de edad de interés
+data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(edad_ >= 14 & edad_ <= 50)
 
 # Eliminar filas con valores faltantes
 data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]

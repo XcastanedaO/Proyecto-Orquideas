@@ -11,6 +11,21 @@ data_model_SIVIGILA <- read.csv("data_model_SIVIGILA.csv")
 
 data_model_SIVIGILA <- read.csv(file.choose())
 
+# Convertir a factor las variables para elegir nivel de referencia
+data_model_SIVIGILA <- data_model_SIVIGILA %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c("No", "Sí")),
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Física", "Psicológica", "Sexual")),
+    
+    area = factor(area, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+    
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+    
+    escenario = factor(escenario, levels = c("Espacio público y social","Vivienda")),
+    conv_agre = factor(conv_agre, levels = c("No", "Sí")),
+    pac_hos = factor(pac_hos, levels = c("No", "Sí")), 
+  )
+
 # Muestreo estratificado
 # Calcular proporciones por categoría de respuesta
 prop_categ <- prop.table(table(data_model_SIVIGILA$ac_mental))

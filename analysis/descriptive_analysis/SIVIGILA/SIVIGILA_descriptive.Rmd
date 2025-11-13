@@ -165,15 +165,17 @@ ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad, fill = n)) +
 ### Fechas
 
 ```{r}
-summary(base_datos[c("fec_hecho", "fec_con", "fec_not")]) %>%
+tabla_fechas <- summary(base_datos[c("fec_hecho", "fec_con", "fec_not")]) %>%
   as.list() %>%
-  enframe(name = "Estadístico", value = "Valor") %>%
-  tidyr::unnest_wider(Valor) %>%
+  tibble::enframe(name = "Estadístico", value = "Valor") %>%
+  tidyr::unnest_wider(Valor, names_sep = "_")
+
+tabla_fechas %>%
   kable(format = "latex",
         caption = "Resumen de variables de fecha",
-        digits = 2,
-        col.names = c("Estadístico", "fec_hecho", "fec_con", "fec_not")) %>%
+        digits = 2) %>%
   kable_styling(latex_options = "H", full_width = FALSE, position = "center")
+
 ```
 
 ```{r}

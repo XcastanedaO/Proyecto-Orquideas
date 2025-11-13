@@ -9,7 +9,20 @@ library(rstan)
 # Leer base de datos
 data_model_SIVIGILA <- read.csv("data_model_SIVIGILA.csv")
 
-data_model_SIVIGILA <- read.csv(file.choose())
+# Convertir a factor las variables para elegir nivel de referencia
+data_model_SIVIGILA <- data_model_SIVIGILA %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c("No", "Sí")),
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Física", "Psicológica", "Sexual")),
+    
+    area = factor(area, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+    
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+    
+    escenario = factor(escenario, levels = c("Espacio público y social","Vivienda")),
+    conv_agre = factor(conv_agre, levels = c("No", "Sí")),
+    pac_hos = factor(pac_hos, levels = c("No", "Sí")), 
+  )
 
 # Construir matriz de diseño
 X <- model.matrix(ac_mental ~ 
@@ -27,11 +40,11 @@ data_stan <- list(
 )
 
 SIVIGILA_model <- stan(
-  file = file.choose(),#"logistic_model.stan",
-  data = data_model_SIVIGILA,
-  iter = 50,
+  file = "logistic_model.stan",
+  data = data_stan,
+  iter = 5000,
   chains = 4,
-  warmup = 1,
+  warmup = 1000,
   cores = 30
 )
 

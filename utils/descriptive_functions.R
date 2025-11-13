@@ -43,12 +43,34 @@ grafico_barras <- function(data,
 # Función para recodificar variables ####
 recodificar_variables <- function(data) {
   
-  vars_binarias <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
-                     "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "mujer_cabf",
-                     "gp_desmovi", "gp_psiquia", "gp_vic_vio", "gp_otros","ac_mental","pac_hos","conv_agre")
+  vars_binarias <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela", "antec", "consum_spa","dist_esp_o", 
+                     "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "mujer_cabf","dist_esp_r","zona_conf",
+                     "gp_desmovi", "gp_psiquia", "gp_vic_vio", "gp_otros","ac_mental","pac_hos","conv_agre",
+                     "sust_vict","dist_esp_n","con_fin","remit_prot","evi_mlegal")
   
   data %>%
     mutate(
+      ambito_lug = case_when(
+        is.na(ambito_lug) ~ "Sin información", 
+        ambito_lug == "1"~ "Escolar", 
+        ambito_lug == "2" ~ "Laboral",
+        ambito_lug == "3" ~ "Institucional",
+        ambito_lug == "4" ~ "Virtual",
+        ambito_lug == "5" ~ "Comunitario",
+        ambito_lug == "6" ~ "Hogar",
+        ambito_lug == "7" ~ "Otros ámbitos",
+        TRUE ~ as.character(ambito_lug)
+      ),
+      per_etn = case_when(
+        is.na(per_etn) ~ "Sin información", 
+        per_etn == "1"~ "Indígena", 
+        per_etn == "2" ~ "ROM/Gitano",
+        per_etn == "3" ~ "Raizal",
+        per_etn == "4" ~ "Palenquero",
+        per_etn == "5" ~ "Negro/Mulato/Afro Colombiano",
+        per_etn == "6" ~ "Otro",
+        TRUE ~ as.character(per_etn)
+      ),
       tip_ss = case_when(
         is.na(tip_ss) ~ "Sin información", 
         tip_ss == "S" ~ "Subsidiado",
