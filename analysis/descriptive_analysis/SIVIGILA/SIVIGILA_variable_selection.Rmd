@@ -243,7 +243,6 @@ Las variables finalmente seleccionadas se agrupan en cuatro dimensiones
 clave:
 
 -   **Dimensión Socioeconómica:**
-    -   Tipo de seguridad social
     -   Jefatura del hogar
 -   **Dimensión Tipo y Severidad del Evento:**
     -   Tipo de violencia
