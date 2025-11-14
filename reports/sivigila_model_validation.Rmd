@@ -1,8 +1,10 @@
 ---
-title: "Modelo de regresión logístico bayesiano: SIVIGILA y MEData"
-subtitle: "Resultados y validación"
+title: 'Modelo de regresión logístico bayesiano: SIVIGILA y MEData'
+subtitle: Resultados y validación
 date: "2025-11-13"
 output:
+  word_document:
+    toc: true
   pdf_document:
     toc: true
     number_sections: false
@@ -13,8 +15,7 @@ editor_options:
   markdown:
     wrap: 72
 always_allow_html: true
-header-includes:
-  - \usepackage{float}
+header-includes: \usepackage{float}
 ---
 
 ```{r}
@@ -43,22 +44,22 @@ library(pROC)
 source(here("utils", "load_data.R"))
 ```
 
-En este informe se desarrollará el proceso de revisión y validación de resultados para los dos modelos de regresión logísticos bayesianos que se implementaron con la información sobre violencia de género obtenida de las fuentes de MEData; casos de la ciudad de Medellín y SIVIGILA, casos a nivel de Colombia con el objetivo de estimar la probabilidad de que una víctima de violencia de género **reciba** (sí) o **no reciba** (no) atención psicológica tras el hecho de violencia.
+En este informe se desarrollará el proceso de revisión y validación de resultados para los dos modelos de regresión logística bayesiana implementados con la información sobre violencia de género obtenida de MEData (casos de la ciudad de Medellín) y de SIVIGILA (casos a nivel nacional). El objetivo es estimar la probabilidad de que una víctima de violencia de género reciba (sí) o no reciba (no) atención en salud mental tras el hecho de violencia.
 
-Ambos modelos tienen como variable de respuesta atención en salud mental, la cual indica si la víctima recibió o no atención en salud mental derivada del hecho. Las características (predictores) considerado también se comparten a excepción de la variable que indica el parentesco que tenía la víctima con el agresor, esta variable solo es considerada en el modelo de MEData. Además también se diferencian en que el modelo de SIVIGILA considera solo casos donde la víctima tenía para el momento del hecho una edad entre 14 y 50 años. 
+Ambos modelos tienen como variable de respuesta la recepción de atención en salud mental, que indica si la víctima recibió o no dicho servicio. Las características (predictores) consideradas son en general las mismas, con excepción de la variable que describe el parentesco entre la víctima y el agresor, incluida únicamente en el modelo basado en MEData. Asimismo, el modelo construido con información de SIVIGILA se restringe a víctimas que tenían entre 14 y 50 años al momento del hecho.
 
-Para revisar y validar los resultados de los modelos se tendrá en cuenta la razón de odds (odds ratio) y medidas de desempeño como el AUC y Curva ROC (*Receiver Operating Characteristic*), las cuales se explican a continuación:
+Para la revisión y validación de los resultados se tendrán en cuenta la razón de odds (odds ratio) y medidas de desempeño como el AUC y la curva ROC (Receiver Operating Characteristic), las cuales se explican a continuación:
 
 # Razón de odds
 En este caso, la **razón de odds** (odds ratio, OR) indica cómo una variable influye en la probabilidad de que una víctima reciba atención en salud mental tras un evento de violencia de género.
 
-Dado el tipo de modelo los coeficientes $\beta_j$ estimados están expresados en escala logarítmica, por lo que se **transforman con la función exponencial** para facilitar su interpretación:
+En los modelos de regresión logística bayesiana, los coeficientes obtenidos corresponden a distribuciones posteriores. Para facilitar su interpretación, se transforman mediante la función exponencial, lo que produce la distribución posterior del odds ratio (OR):
 
 $$
 OR_j = \exp(\beta_j)
 $$
 
-La interpretación del odds ratio es sencilla y se realiza de la siguiente manera:
+La interpretación del OR se basa en sus valores resumen (por ejemplo, la mediana) y su intervalo creíble del 95%:
 
 -   Si $\boldsymbol{OR_j > 1}$, la probabilidad de recibir atención aumenta con esa característica.
 
@@ -67,8 +68,6 @@ La interpretación del odds ratio es sencilla y se realiza de la siguiente maner
 -   Si $\boldsymbol{OR_j = 1}$, la característica no tiene efecto.
 
 Es importante mencionar que el valor del odds ratio obtenido se interpreta como cuántas veces más (o menos) probable es que ocurra el evento (recibir atención) en presencia de dicha característica, en comparación con su ausencia o con la categoría de referencia.
-
-se utiliza una herramienta llamada **curva ROC** (*Receiver Operating Characteristic*) y un valor asociado a ella conocido como **AUC** (*Área Bajo la Curva*).
 
 # Medidas de desempeño: AUC y curva ROC
 
@@ -88,7 +87,9 @@ Por su parte, el **AUC** mide el área bajo la curva ROC. Sus valores van de 0 a
 
 Por tanto, el AUC actúa como un resumen numérico de la capacidad del modelo para clasificar correctamente los casos.
 
-# MEData
+# Resultados y validación
+
+## MEData
 
 ```{r}
 # Lectura y adecuación de la base de datos
@@ -150,7 +151,7 @@ base_datos_MED <- base_datos_MED %>%
   )
 ```
 
-```{r,cache=TRUE}
+```{r}
 # Lectura de los resultados
 X_MEData <- model.matrix(ac_mental ~
                       edad + mujer_cabf + def_naturaleza +
@@ -301,93 +302,89 @@ title(sub = "Figura 4. Curva ROC del modelo 2 de atención en salud mental MEDat
 
 Finalmente, este modelo obtuvo un `r auc(roc_obj_2)`, lo que significa que identifica correctamente, en la gran mayoría de los casos, si una víctima de violencia de género recibió atención psicológica a partir de las características observadas. Asimismo, en la figura anterior se presenta la curva ROC, que también que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia el buen desempeño del modelo.
 
-# SIVIGILA
+## SIVIGILA
+
+A continuación se presentan las razones de odds estimadas para todas las variables del modelo es importante tener en cuenta que la tabla anterior indica que las categorías de agresor masculino y agresor femenino no dieron significativas, es decir, no se asocian con mayor ni menor probabilidad de recibir atención en salud mental, comparado con el sexo intersexual. Al igual que centro poblado respecto a cabecera municipal. Por lo tanto, la interpretación de odds ratios para estas categorías no es relevante.
 
 ```{r}
 # Lectura y adecuación de la base de datos
-base_datos_SIVIGILA <- load_data("data_model_SIVIGILA.csv", type = "processed")
-
-# Eliminar NA 
-base_datos_SIVIGILA <- base_datos_SIVIGILA[!apply(is.na(base_datos_SIVIGILA), 1, any), ]
-
-# Convertir a tipo de dato necesario
-base_datos_SIVIGILA <- base_datos_SIVIGILA %>%
-  mutate(across(
-    .cols = !all_of(c("edad_")),
-    .fns = as.factor
-  ))
+base_datos_SIVIGILA <- readRDS(file.path(here(),"models","SIVIGILA nacional","SIVIGILA_model_sample.rds"))
 ```
 
 
 ```{r}
-# # Construir matriz de diseño
-# X <- model.matrix(ac_mental ~ 
-#                       edad_ + mujer_cabf + def_naturaleza +
-#                       area + sexo_agre + conv_agre  + 
-#                       pac_hos + escenario,
-#                     data = base_datos_SIVIGILA)[, -1]
-# 
-# # Extraer muestras
-# posterior_samples <- readRDS(file.path(here(),"models","SIVIGILA nacional","posterior_sample_model_3.rds"))
-# 
-# # Calcular la media de los coeficientes estimados
-# alpha_hat <- mean(posterior_samples$alpha)
-# beta_hat <- colMeans(posterior_samples$beta)
-# 
-# # Calcular Odds Ratios
-# odds_ratios <- exp(beta_hat)
-# intercepto_OR <- exp(alpha_hat)
-# 
-# # Crear tabla de resultados
-# tabla_resultados <- data.frame(
-#   Parametro_1 = paste0("β", 1:10),
-#   Variable_1 = c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino"),
-#   Odds_Ratio_1 = round(odds_ratios[1:10],2)
-# )
-# 
-# tabla_resultados$Parametro_2 <- c(paste0("β", 11:20), "")
-# tabla_resultados$Variable_2 <- c("Convivencia agresor", "Hospitalización", "Esc.deportivo/recreativo","Esc. Comercio y servicios", "Espacios abiertos", "Esc.educativo","Institución de salud", "Esc.laboral", "Esc.con alcohol","Vía Pública", "Vivienda")
-# tabla_resultados$Odds_Ratio_2 <- c(round(odds_ratios[11:20],2), NA)
-# 
-# # Mostrar tabla
-# kable(tabla_resultados, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2),
-#       caption = "Tabla 2. Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo de SIVIGILA.")
+# Construir matriz de diseño
+X <- model.matrix(ac_mental ~
+                      edad_ + mujer_cabf + def_naturaleza +
+                      area + sexo_agre + conv_agre  +
+                      pac_hos + escenario,
+                    data = base_datos_SIVIGILA)[, -1]
+
+# Extraer muestras
+posterior_samples <- readRDS(file.path(here(),"models","SIVIGILA nacional","posterior_sample_SIVIGIL.rds"))
+
+# Calcular la media de los coeficientes estimados
+alpha_hat <- mean(posterior_samples$alpha)
+beta_hat <- colMeans(posterior_samples$beta)
+
+# Calcular Odds Ratios
+odds_ratios <- exp(beta_hat)
+intercepto_OR <- exp(alpha_hat)
+
+# Crear tabla de resultados
+tabla_resultados <- data.frame(
+  Parametro_1 = paste0("β", 1:6),
+  Variable_1 = c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado"),
+  Odds_Ratio_1 = round(odds_ratios[1:6],2)
+)
+
+tabla_resultados$Parametro_2 <- c(paste0("β", 7:12))  # 6 elementos
+tabla_resultados$Variable_2 <- c("Área:rural disperso","Agresor femenino", 
+                                 "Agresor Masculino","Convivencia agresor",
+                                 "Hospitalización","Vivienda")
+
+tabla_resultados$Odds_Ratio_2 <- round(odds_ratios[7:12], 2)  # 6 elementos
+
+
+# Mostrar tabla
+kable(tabla_resultados, format = "markdown", col.names = rep(c("Parámetro", "Categoría", "Odds Ratio"),2),
+      caption = "Tabla 2. Odds ratios (Razones de probabilidad) estimadas para las variables predictoras del modelo de SIVIGILA.")
 ```
 
-
+Estos resultados indican que entre mujeres con características similares, aquellas que sufrieron violencia física, psicológica y sexual son más propensas a recibir atención en salud mental que las mujeres que sufrieron negligencia y abandono (71%, 91% y 341%), al igual que aquellas mujeres que viven en zona rural dispersa, con una mayor probabilidad relativa de atención del 22% en comparación con mujeres que viven en la cabecera municipal. En contraste, cuando la mujer es cabeza de familia (37% menos propensas) o convive con el agresor (4% menos) es menos propensas a recibir atención, en comparación con casos donde no lo son y no conviven con el agresor, respectivamente. Finalmente, un hallazgo relevante es que las mujeres que fueron hospitalizadas tras el hecho de violencia son 125% más propensas a recibir atención psicológica.
 
 
 ```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.width = 3, fig.height = 3}
-# # Calcular probabilidades predichas
-# probs_predichas <- plogis(alpha_hat + X_3 %*% beta_hat)
-# 
-# # Convertir a clases (umbral de 0.5)
-# predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
-# 
-# # Matriz de confusión
-# confusion_matrix <- table(Real = data$ac_mental, Predicho = predicciones_binarias)
-# 
-# TN <- confusion_matrix[1,1]
-# FP <- confusion_matrix[1,2]
-# FN <- confusion_matrix[2,1]
-# TP <- confusion_matrix[2,2]
-# 
-# accuracy <- (TP + TN) / (TP + TN + FP + FN)
-# precision <- TP / (TP + FP)
-# recall <- TP / (TP + FN)
-# f1_score <- 2 * (precision * recall) / (precision + recall)
-# 
-# # cat("Accuracy:", accuracy, "\n")
-# # cat("Precision:", precision, "\n")
-# # cat("Recall (Sensibilidad):", recall, "\n")
-# # cat("F1-Score:", f1_score, "\n")
-# 
-# roc_obj <- roc(data$ac_mental, as.numeric(probs_predichas))
-# # auc(roc_obj)
-# plot(roc_obj, col = "#AE86D3")
-# title(sub = "Figura 3. Curva ROC del modelo de atención en salud mental SIVIGILA.")
+# Calcular probabilidades predichas
+probs_predichas <- plogis(alpha_hat + X %*% beta_hat)
+
+# Convertir a clases (umbral de 0.5)
+predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
+
+# Matriz de confusión
+confusion_matrix <- table(Real = base_datos_SIVIGILA$ac_mental, Predicho = predicciones_binarias)
+
+TN <- confusion_matrix[1,1]
+FP <- confusion_matrix[1,2]
+FN <- confusion_matrix[2,1]
+TP <- confusion_matrix[2,2]
+
+accuracy <- (TP + TN) / (TP + TN + FP + FN)
+precision <- TP / (TP + FP)
+recall <- TP / (TP + FN)
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+# cat("Accuracy:", accuracy, "\n")
+# cat("Precision:", precision, "\n")
+# cat("Recall (Sensibilidad):", recall, "\n")
+# cat("F1-Score:", f1_score, "\n")
+
+roc_obj <- roc(base_datos_SIVIGILA$ac_mental, as.numeric(probs_predichas))
+# auc(roc_obj)
+plot(roc_obj, col = "#AE86D3")
+title(sub = "Figura 3. Curva ROC del modelo de atención en salud mental SIVIGILA.")
 ```
 
 Finalmente, el modelo obtuvo un `r auc(roc_obj)`, lo que refleja una muy alta capacidad predictiva. Es decir, el modelo identifica correctamente, en la gran mayoría de los casos, si una víctima de violencia de género recibió atención psicológica a partir de las características observadas.
 
-En la figura anterior se presenta la curva ROC del modelo, que se aproxima visiblemente a la esquina superior izquierda, lo cual evidencia su buen desempeño.
+Ahora bien, este modelo obtuvo un **AUC de 0.8727**, menor al modelo anterior. Este resultado brinda la oportunidad de plantear nuevos modelos que logren captar más ampliamente la dinámica del contexto. 
