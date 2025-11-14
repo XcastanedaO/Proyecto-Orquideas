@@ -1,0 +1,247 @@
+---
+title: "Análisis Descriptivo información proporcionada por SIVIGILA del 2013 al 2024."
+date: "2025-11-13"
+output:
+  pdf_document:
+    toc: true
+    number_sections: false
+knitr:
+  opts_chunk:
+    echo: false
+editor_options:
+  markdown:
+    wrap: 72
+always_allow_html: true
+header-includes:
+  - \usepackage{float}
+---
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+library(here)
+```
+
+\newpage
+
+# Introducción de los datos
+
+Para este análisis se utilizó la base de datos **Vigilancia Integrada de
+la Violencia de Género**, proporcionada por el Instituto Nacional de
+Salud de Colombia **(INS)**. Esta fuente recopila información sobre
+casos **sospechosos o probables de violencia de género** reportados al
+**Sistema Nacional de Vigilancia en Salud Pública (SIVIGILA)** durante
+el período comprendido entre **2013 y 2024**.
+
+La descripción detallada del conjunto de datos, así como el proceso de
+depuración y limpieza, se encuentra documentada en el Informe de
+depuración de la base de datos. Además, se dispone de un diccionario de
+datos suministrado junto con las bases y de las versiones de la ficha de
+notificación del evento, que contienen las definiciones y orientaciones
+sobre la mayoría de las variables. La ficha más reciente corresponde al
+año 2024, disponible en el siguiente enlace: [(Ficha 875 - Violencia de
+Género (INS,
+2024))](https://www.ins.gov.co/buscador-eventos/Lineamientos/875_Violencia_Genero_2024.pdf).
+
+Posteriormente, se llevó a cabo un proceso de selección de variables
+finales para la construcción del modelo, el cual se detalla en el
+Informe de selección de variables.
+
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+base_datos <- read.csv(paste0(here(), "/data/processed/data_model_SIVIGILA.csv"))
+```
+
+De esta manera, se obtiene una base de datos compuesta por
+`r nrow(base_datos)` observaciones y`r ncol(base_datos)` variables que
+describen las características de la víctima, el presunto agresor, las
+circunstancias del hecho y la atención en salud brindada.
+
+Estas variables fueron utilizadas posteriormente para el ajuste del
+modelo estadístico cuyo objetivo es explicar la probabilidad de que la
+víctima reciba o no atención en salud mental, a partir de sus
+características sociodemográficas, del presunto agresor y del contexto
+del hecho. Las variables incluidas en el modelo final son:
+
+```{r}
+colnames(base_datos)
+```
+
+-   Jefatura del hogar (**mujer_cabf**): indica si la víctima era la
+    persona responsable del hogar.
+
+-   Edad de la víctima (**edad\_**): variable numérica que registra la
+    edad en años.
+
+-   Tipo de violencia (**def_naturaleza**): indica el tipo de violencia
+    ejercida sobre la víctima: física, sexual, psicológica o negligencia
+    o abandono .
+
+-   Área (**area**): identifica donde ocurrió el caso: una cabecera
+    municipal, centro poblado o zona rural dispersa.
+
+-   Sexo del agresor (**sexo_agre**): señala el sexo reportado del
+    presunto agresor: masculino, femenino e intersexual.
+
+-   Convivencia con agresor (conv_agre): indica si la víctima convivía o
+    no con el agresor.
+
+-   Hospitalización (**pac_hos**): indica si la víctima necesitó ser
+    hospitalizada como consecuencia del hecho o no.
+
+-   Escenario del hecho (**escenario**): Se refiere al tipo de lugar
+    donde ocurrió la agresión. En la base se encuentran las categorías:
+    vivienda, espacio público y social.
+
+A partir de estas variables seleccionadas y depuradas, se procedió a
+construir un modelo estadístico que permita identificar los factores
+asociados a la probabilidad de que una mujer víctima de violencia de
+género reciba atención en salud mental luego de ser atendida. Para ello,
+se definió una variable respuesta binaria que indica si la víctima
+recibió o no este tipo de atención, y se incorporaron como variables
+explicativas las características de la víctima, del presunto agresor y
+del contexto del hecho previamente descritas.
+
+# Materiales y métodos
+
+\## Modelo de Regresión Logística
+
+Para identificar los factores que más influyen en que una mujer víctima
+de violencia de género reciba atención en salud mental después de ser
+atendida en urgencias, se utilizó un enfoque cuantitativo basado en un
+modelo estadístico llamado **regresión logística**.
+
+Este modelo permite estimar la probabilidad de que ocurra un evento con
+dos posibles resultados: en este caso, que la víctima **reciba** (sí) o
+**no reciba** (no) atención psicológica tras el hecho de violencia. El
+modelo analiza diversas características relacionadas con la víctima, el
+agresor y el contexto, y estima cómo cada una de estas variables influye
+en dicha probabilidad.
+
+$$
+Y_i=    
+\begin{cases}        
+1, & \text{víctima \(i\) recibe atención en salud mental} \\        
+0, & \text{      en caso contrario}    
+\end{cases}
+$$
+
+Cada víctima tiene una probabilidad asignada de recibir atención, basada
+en sus características, y esta probabilidad se modela como:
+
+$$
+Y_i \sim Bernoulli (\theta_i), \text{para } i =1, 2,...,526.460
+$$
+
+Para realizar los cálculos de la probabilidad, el modelo transforma esas
+probabilidades en una escala distinta, llamada **log-odds** (o logit o
+logaritmo del cociente de probabilidades), que permite relacionar
+directamente las características observadas con la probabilidad de
+atención psicológica.
+
+Matemáticamente, la relación se expresa así:
+
+$$
+\text{logit}(\theta_i) = \log\left(\frac{\theta_i}{1-\theta_i}\right) = \mathbf{X} \boldsymbol{\beta}
+$$
+
+Esto indica que el modelo combina todas las características observadas
+de cada víctima para calcular la probabilidad de que reciba atención en
+salud mental:
+
+$$
+\theta_i = \frac{e^{\mathbf{X} \boldsymbol{\beta}}}{1 + e^{\mathbf{X} \boldsymbol{\beta}}} 
+\quad \quad \quad \text{y} \quad \quad \quad \mathbf{X} \boldsymbol{\beta} = \alpha + \sum_{j=1}^{k} \beta_j x_{ik}.
+$$
+
+Donde:
+
+-   $X$ es la matriz de diseño: reúne las características observadas de
+    cada víctima (edad, tipo de violencia, lugar de los hechos, entre
+    otras).
+
+-   $\beta$ es el conjunto de parámetros: indican el peso de cada una de
+    las características en la probabilidad y son cantidades a estimar.
+
+-   $\alpha$ es el intercepto del modelo.
+
+## Enfoque bayesiano
+
+En este estudio, la estimación de los parámetros del modelo de regresión
+logística se realizó bajo un enfoque estadístico **Bayesiano**, que
+combina dos fuentes de información:
+
+-   Información previa sobre los parámetros del modelo (conocida como
+    **distribución a priori**, denotada por $f(\beta)$), basada en
+    investigaciones previas o conocimiento experto.
+
+-   Información observada, proveniente de los datos recopilados de las
+    víctimas (representada por la verosimilitud $f(y,X|\beta)$).
+
+Este enfoque permite incorporar el conocimiento previo y obtener
+estimaciones más robustas, especialmente útil cuando hay incertidumbre o
+información limitada.
+
+El resultado es la **distribución posterior**, que refleja lo que se
+sabe sobre los parámetros luego de observar los datos:
+
+$$
+    f(\boldsymbol{\beta} | y, \mathbf{X}) \quad \alpha \quad     f(y, \mathbf{X} | \boldsymbol{\beta})\cdot f(\boldsymbol{\beta})
+$$
+
+En términos sencillos, este enfoque entrega una distribución de
+probabilidades para cada parámetro, mostrando qué tan probable es cada
+valor después de considerar la información disponible. Esto permite
+cuantificar la incertidumbre y es especialmente útil en estudios con
+datos complejos o incompletos, como en salud pública o ciencias
+sociales.
+
+Para reflejar esta incertidumbre, se asignaron **distribuciones normales
+poco informativas** a los parámetros, asumiendo que, antes de observar
+los datos, cada coeficiente podía tomar una amplia gama de valores
+centrados en cero sin privilegiar ninguno: $\beta \sim N(0,1)$
+
+## Razón de odds
+
+Como se mencionó anteriormente, una forma clara de interpretar los
+resultados del modelo es a través de la **razón de odds** (odds ratio,
+OR), que indica cómo una variable influye en la probabilidad de que una
+víctima reciba atención en salud mental tras un evento de violencia de
+género.
+
+Los coeficientes $\beta_j$ están expresados en escala logarítmica, por
+lo que se **transforman con la función exponencial** para facilitar su
+interpretación:
+
+$$
+OR_j = e^{\mathbf{X} \boldsymbol{\beta}}
+$$
+
+La interpretación del odds ratio es sencilla y se realiza de la
+siguiente manera:
+
+-   Si $OR_j>1$, la probabilidad de recibir atención aumenta con esa
+    característica.
+
+-   Si $OR_j<1$, la probabilidad disminuye.
+
+-   Si $OR_j=1$, la característica no tiene efecto.
+
+Lo anterior es útil para evaluar de qué forma es la influencia de cada
+característica en la probabilidad. Sin embargo, el valor del odds ratio
+obtenido se interpreta como cuántas veces más (o menos) probable es que
+ocurra el evento (recibir atención) en presencia de dicha
+característica, en comparación con su ausencia o con la categoría de
+referencia.
+
+# Ajuste del modelo
+
+Para el ajuste del modelo se incluyeron 8 variables predictoras, lo que
+dio lugar a la estimación de 12 parámetros en total.
+
+Dado que la distribución posterior del modelo no puede obtenerse de
+forma analítica, se emplearon algoritmos de **Markov Chain Monte Carlo
+(MCMC)** para aproximarla. Este enfoque permite generar muestras de la
+distribución posterior y, con ellas, obtener estimaciones de los
+parámetros, intervalos de credibilidad y medidas de incertidumbre
+asociadas.
+
+El modelo se implementó en el lenguaje *Stan*, mediante la librería
+*rstan* en *RStudio*.
