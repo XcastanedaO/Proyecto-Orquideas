@@ -19,7 +19,7 @@ header-includes: \usepackage{float}
 ---
 
 ```{r}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
 
 # Librerías
 library(patchwork)
@@ -384,7 +384,4 @@ roc_obj <- roc(base_datos_SIVIGILA$ac_mental, as.numeric(probs_predichas))
 plot(roc_obj, col = "#AE86D3")
 title(sub = "Figura 3. Curva ROC del modelo de atención en salud mental SIVIGILA.")
 ```
-
-Finalmente, el modelo obtuvo un `r auc(roc_obj)`, lo que refleja una muy alta capacidad predictiva. Es decir, el modelo identifica correctamente, en la gran mayoría de los casos, si una víctima de violencia de género recibió atención psicológica a partir de las características observadas.
-
-Ahora bien, este modelo obtuvo un **AUC de 0.8727**, menor al modelo anterior. Este resultado brinda la oportunidad de plantear nuevos modelos que logren captar más ampliamente la dinámica del contexto. 
+Ahora bien, este modelo obtuvo un **AUC de** `r auc(roc_obj)`, menor al modelo anterior. Este resultado brinda la oportunidad de plantear nuevos modelos que logren captar más ampliamente la dinámica del contexto. 
