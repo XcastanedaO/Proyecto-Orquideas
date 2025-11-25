@@ -18,13 +18,6 @@ load_data <- function(file_name, type = "raw", ...) {
   #data_dir <- file.path("data", type)
   data_dir <- here("data", type)
 
-  # path <- dirname(getwd())
-  # if(sub(".*/", "", path) != "Proyecto-Orquideas"){
-  #   path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
-  # }
-  
-  # Crear la ruta completa al archivo
-  # file_path <- file.path(path, data_dir, file_name)
   file_path <- file.path(data_dir, file_name)
 
   # Verificar si el archivo existe
@@ -49,7 +42,6 @@ load_data <- function(file_name, type = "raw", ...) {
 }
 
 # Función para guardar conjunto de datos en formatos .csv, .txt, .rds y .xlsx
-
 save_data <- function(data, file_name, type = "processed", format = "csv") {
   # Validación del tipo de directorio
   if (!type %in% c("raw", "interim", "processed","auxiliary")) {
@@ -60,14 +52,7 @@ save_data <- function(data, file_name, type = "processed", format = "csv") {
   if (!format %in% c("csv", "xlsx","rds", "txt")) {
     stop("El formato debe ser 'csv', 'xlsx', 'rds' o 'txt'")
   }
-  
-  # path <- dirname(getwd())
-  # if(sub(".*/", "", path) != "Proyecto-Orquideas"){
-  #   path <- paste0(dirname(getwd()),"/Proyecto-Orquideas")
-  # }
-  
-  # Definir ruta del directorio donde se guardará
-  # data_dir <- file.path(path, "data", type)
+
   data_dir <- here("data", type)
 
     # Verificar si la ruta existe
