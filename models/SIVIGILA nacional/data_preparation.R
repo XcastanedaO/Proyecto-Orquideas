@@ -1,4 +1,5 @@
-# Este archivo tiene como  re-codificar las variables para el ajuste del modelo
+# Este archivo tiene como objetivo preparar la data como se requiere para el modelo: 
+# recodificación de variables, restricción de la edad y registros completos
 
 # Librerías y funciones necesarias
 library(here)

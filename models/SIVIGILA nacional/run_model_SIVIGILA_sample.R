@@ -1,5 +1,6 @@
 #Este archivo permite ajustar un modelo logistico donde la variable de respuesta es salud mental.
-# Se consideran todos los registros de la base de datos
+# Se realiza un muestreo estratificado por departamento y salud mental.
+# Esta base
 
 # Librerías necesarias
 library(dplyr)
@@ -119,15 +120,17 @@ data_stan <- list(
   y = as.integer(muestra$ac_mental)
 )
 
+# Ajustar modelo
 SIVIGILA_model <- stan(
   file = file.choose(),#"logistic_model.stan",
   data = data_stan,
-  iter = 5000,
+  iter = 2000,
   chains = 4,
   warmup = 1000,
   cores = 3
 )
 
+# Guardar resultados: resultados del modelo y muestras de la distribución posterior
 saveRDS(SIVIGILA_model, file = "SIVIGILA_model.rds")
 posterior_sample_SIVIGILA <- extract(SIVIGILA_model)
 saveRDS(posterior_sample_SIVIGILA, file = "posterior_sample_SIVIGIL.rds")

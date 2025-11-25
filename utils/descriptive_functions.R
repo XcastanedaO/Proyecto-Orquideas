@@ -8,7 +8,7 @@ grafico_barras <- function(data,
                            color_barras = "#AE86D3",
                            top10 = FALSE) {
   
-  # Top 10 categorías según frecuencia
+  # Define si se grafica los 10 niveles con mayor frecuencia o con todos los niveles según el valor de top10
   if (top10) {
     data <- data %>%
       count(!!sym(var_x), sort = TRUE) %>%
@@ -23,7 +23,7 @@ grafico_barras <- function(data,
       geom_bar(fill = color_barras, color = "white", alpha = 0.85)
   }
   
-  # Escala y etiquetas comunes
+  # Formato para escala y etiquetas predefinido
   p <- p +
     scale_y_continuous(labels = label_number(scale = 1/1000)) +
     theme_minimal() +
@@ -32,7 +32,7 @@ grafico_barras <- function(data,
       axis.text = element_text(color = "black")
     )
   
-  # Agregar facet_wrap si aplica
+  # Agregar facet_wrap o no según valor del parámetro
   if (!is.null(facet_var)) {
     p <- p + facet_wrap(as.formula(paste("~", facet_var)))
   }
@@ -43,6 +43,7 @@ grafico_barras <- function(data,
 # Función para recodificar variables ####
 recodificar_variables <- function(data) {
   
+  # Funciones que toman valores 1,2 o no toman valor
   vars_binarias <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela", "antec", "consum_spa","dist_esp_o", 
                      "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "mujer_cabf","dist_esp_r","zona_conf",
                      "gp_desmovi", "gp_psiquia", "gp_vic_vio", "gp_otros","ac_mental","pac_hos","conv_agre",
@@ -125,6 +126,7 @@ recodificar_variables <- function(data) {
         area == "3" ~ "Rural disperso",
         TRUE ~ as.character(area))
     ) %>%
+    # Código para recodificar variables binarias
     mutate(across(
       all_of(vars_binarias),
       ~ case_when(
@@ -134,6 +136,7 @@ recodificar_variables <- function(data) {
         TRUE ~ as.character(.)
       )
     )) %>%
+    # Convertir las variables a factor
     mutate(across(c(tip_ss,area,sexo_agre,escenario,departamento_ocurrencia,per_etn,ambito_lug,all_of(vars_binarias),def_naturaleza), as.factor))
 }
 
@@ -150,9 +153,8 @@ grafico_lineas <- function(data,
                            color_linea = "#4B0082",
                            mostrar_label = TRUE) {
   
+  # Definir si se grafica con los 10 niveles con más casos o con todos los niveles según el valor de top10
   df <- data
-  
-  # Si se desea trabajar con top 10 de var_y
   if (top10) {
     if (is.null(group)) {
       df <- df %>% 
@@ -177,7 +179,7 @@ grafico_lineas <- function(data,
     p <- p + geom_label(aes(label = !!sym(var_y)), color = color_linea, size = 2.5)
   }
   
-  # Personalización general
+  # Formato predeterminado del gráfico
   p <- p +
     theme_minimal() +
     theme(
@@ -192,7 +194,7 @@ grafico_lineas <- function(data,
                                ceiling(max(x, na.rm = TRUE)), 1)
     )
   
-  # Facetas (si aplica)
+  # Mostrar el gráfico en facetas de acuerdo al valor que toma facet_var
   if (!is.null(facet_var)) {
     p <- p + facet_wrap(as.formula(paste("~", facet_var)),
                         ncol = facet_col,
@@ -203,16 +205,20 @@ grafico_lineas <- function(data,
   return(p)
 }
 
-# Funciones para implementar funciones no paramétricas #####
+# Funciones para implementar pruebas estadísticas no parámetricas: fisher, chi - cuadrado, coef. cramer #####
 test_cualit <- function(df, var_resp, var_pred) {
   alpha <- 0.05
+  
+  # Tabla cruzada
   tab <- table(df[[var_resp]], df[[var_pred]])
   
+  # Definir si se implementa prueba fisher o chi-cuadrado
   if (any(chisq.test(tab)$expected < 5)) {
     test <- tryCatch(
       fisher.test(tab, simulate.p.value = TRUE, B = 1e5),
       error = function(e) fisher.test(tab, simulate.p.value = TRUE, B = 5000)
     )
+    # Calcular coeficiente de cramer
     cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
     tibble(variable = var_pred,
            prueba = "Fisher (simulación)",
@@ -224,6 +230,7 @@ test_cualit <- function(df, var_resp, var_pred) {
                              "No asociación"))
   } else {
     test <- chisq.test(tab, correct = FALSE)
+    # Calcular coeficiente de cramer
     cramerv <- DescTools::CramerV(tab, bias.correct = TRUE)
     tibble(variable = var_pred,
            prueba = "Chi-cuadrado",
@@ -236,13 +243,14 @@ test_cualit <- function(df, var_resp, var_pred) {
   }
 }
 
-# Kruskal–Wallis
+# Función para implementar prueba no parámetrica: Kruskal–Wallis #####
 test_cuant <- function(df, var_resp, var_pred) {
   alpha <- 0.05
   
-  # Variables
-  y <- df[[var_resp]]          # variable categórica sin orden
-  x <- as.numeric(df[[var_pred]])  # variable cuantitativa
+  # variable categórica sin orden
+  y <- df[[var_resp]]          
+  # variable cuantitativa
+  x <- as.numeric(df[[var_pred]])  
   
   # Ejecutar prueba de Kruskal–Wallis
   test <- kruskal.test(x ~ as.factor(y), data = df)

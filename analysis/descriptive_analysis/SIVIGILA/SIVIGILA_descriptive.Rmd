@@ -17,7 +17,10 @@ header-includes:
 ---
 
 ```{r, include=FALSE}
+# Configuración del documento
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
+
+# Librerías necesarias
 library(dplyr)
 library(ggplot2)
 source("../../../utils/load_data.R")
@@ -79,12 +82,14 @@ El siguiente análisis permite identificar patrones relevantes tanto en las cara
 # Lectura de la base de datos y adaptación de la base de datos
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
+# Leer base de datos depurada
 base_datos <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
 ```
 
 La base de datos utilizada para este análisis descriptivo es el resultado de juntar y depurar las bases de datos proporcionadas por SIVIGILA, la cual recopila información sobre los casos sospechosos de violencia de género que fueron reportados. Así, la base depurada tiene un total `r nrow(base_datos)` de filas y se seleccionaron `r ncol(base_datos)` columnas de interés, las cuales son:
 
 ```{r}
+# Mostrar columnas de la base de datos
 colnames(base_datos)
 ```
 
@@ -96,12 +101,14 @@ Para conocer más sobre las variables se cuenta con un diccionario de datos que 
 # Conversión tipo de dato
 base_datos <- base_datos %>% mutate(edad_ = as.numeric(as.character(edad_)))
 
+# Implementar función para recodificar variables de números a palabras
 base_datos <- recodificar_variables(base_datos)
 ```
 
 # Esquema general de la base de datos
 
 ```{r}
+# Resumen estadístico con variables de interés
 resumen <- skim(base_datos %>% select(c(orient_sex,tip_ss,per_etn,nom_grupo,mujer_cabf,antec,consum_spa,pais_residencia,departamento_residencia,dist_esp_r,def_naturaleza,departamento_ocurrencia,dist_esp_o,area,zona_conf,escenario,ambito_lug,sust_vict,sexo_agre,conv_agre,departamento_notificacion,dist_esp_n,pac_hos,con_fin,cbmte,ac_mental,remit_prot,inf_aut,evi_mlegal))) 
 
 resumen %>% filter(skim_type == tail(unique(skim_type), 1))
@@ -117,6 +124,7 @@ Del resumen anterior se concluye que la mayoría de las víctimas pertenecen al 
 ### Análisis edad
 
 ```{r}
+# Resumen estadístico de la variable edad
 summary(as.numeric(as.character(base_datos$edad_))) %>%
   enframe(name = "Estadístico", value = "Valor") %>%
   kable(format = "latex",
@@ -128,6 +136,7 @@ summary(as.numeric(as.character(base_datos$edad_))) %>%
 Se observa que los valores de la edad incluyen casos atípicos (máximo de 131 años). Para comprender mejor la distribución, se analiza gráficamente: 
 
 ```{r,fig.width=5, fig.height=5, out.width="50%",fig.align='center'}
+# Graficar distribución de edad en años, destacando edad 14 y 50
 base_datos %>%
   mutate(edad_ = as.numeric(as.character(edad_))) %>%
   ggplot(aes(x = edad_)) +
@@ -151,6 +160,7 @@ base_datos %>%
 se obtiene que el 65% de los casos se concentra entre los 14 y 50 años.
 
 ```{r}
+# Frecuencia y frecuencia acumulada para 0-14, 14-50 y mayor a 5o años
 base_datos %>%
   mutate(rango = case_when(
     edad_ < 14 ~ "<14",
@@ -180,7 +190,7 @@ base_datos <- base_datos %>%
 df_heatmap <- base_datos %>%  mutate(ano_hecho = year(fec_hecho)) %>% 
   count(ano_hecho, grupo_edad)
 
-# Gráfico
+# Graficar mapa de calor de casos por año y rango de edad
 ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad, fill = n)) +
   geom_tile(color = "white") +
   geom_text(aes(label = n), color = "black", size = 3) +
@@ -197,11 +207,8 @@ ggplot(df_heatmap, aes(x = ano_hecho, y = grupo_edad, fill = n)) +
 
 ### Análisis temporal
 
-```{r}
-# summary(base_datos[c("fec_hecho", "fec_con", "fec_not")])
-```
-
 ```{r,fig.width=7, fig.height=7, out.width="60%",fig.align='center'}
+# Línea de tiempo año vs número de casos para cada variable fecha
 base_datos %>%
   pivot_longer(all_of(c("fec_hecho", "fec_con", "fec_not")),
                names_to = "tipo_fecha",
@@ -231,17 +238,19 @@ El gráfico anterior indica que la fecha de consulta y la fecha del hecho presen
 A continuación, se analiza el comportamiento de la fecha hecho dado que es la fecha de interés. Primero se toma la serie mensual para separar tendencia, estacionalidad y residuales: 
 
 ```{r,fig.width=5, fig.height=5, out.width="50%",fig.align='center'}
+# Adecuar datos para convertir a serie mensual
 serie_mensual <- base_datos %>% 
   mutate(ano_mes = floor_date(fec_hecho, "month")) %>% 
   count(ano_mes) %>%
   arrange(ano_mes)
 
-# Convertir a objeto ts (suponiendo que comienza en enero de 2012)
+# Convertir a objeto ts 
 ts_mensual <- ts(serie_mensual$n, 
                  start = c(year(min(serie_mensual$ano_mes)), 
                            month(min(serie_mensual$ano_mes))),
                  frequency = 12)
 
+# Descomponer serie 
 descomp_ts_mensual <- decompose(ts_mensual, type = "additive") 
 plot(descomp_ts_mensual)
 ```
@@ -253,6 +262,7 @@ Se confirma la tendencia general de crecimiento y se evidencia un comportamiento
 estacionalidad <- descomp_ts_mensual$seasonal
 meses <- rep(1:12, length.out = length(estacionalidad))
 
+# Adecuar información a mostrar
 tendencia_estacional <- data.frame(
   mes = meses,
   valor = estacionalidad
@@ -272,6 +282,7 @@ tendencia_estacional %>%
 ```
 
 ```{r}
+# Cantidad de casos el primero de enero
 aux <- base_datos %>%
   mutate(
     dia = day(fec_hecho),                      
@@ -283,6 +294,7 @@ aux <- base_datos %>%
 El primero de enero es una día donde ocurren muchos casos de violencia a comparación del resto de día del año. Para este día se obtiene un total de `r aux` casos. Por este motivo, el siguiente gráfico se hace excluyendo este día para entender mejor el comportamiento general:
 
 ```{r,fig.width=7, fig.height=7, out.width="60%",fig.align='center'}
+# Graficar distribución diaria de notificaciones para meses de interés
 base_datos %>%
   mutate(
     dia = day(fec_hecho),
@@ -307,10 +319,12 @@ labs(
 Los gráficos anteriores permiten concluir que los casos de violencia tienden a concentrarse en los días 5, 10 y 25 de cada mes. Finalmente, se analiza la diferencia en días entre la fecha del hecho y fecha de notificación:
 
 ```{r}
+# Calcular para cada caso diferencia en días de fecha de notificación y fecha de hecho
 base_datos <- base_datos %>% mutate(dif_dias = ceiling(as.numeric(fec_not - fec_hecho)))
 ```
 
 ```{r}
+# Resumen estadístico de diferencia en días entre fecha de notificación y fecha de hecho
 summary(base_datos$dif_dias) %>%
   enframe(name = "Estadístico", value = "Valor") %>%
   kable(format = "latex",
@@ -324,6 +338,7 @@ Debido a que la distribución presenta asimetría positiva, se opta por continua
 ```{r,fig.width=5, fig.height=5, out.width="50%",fig.align='center'}
 data <- base_datos %>% filter(dif_dias <= 10)
 
+# Graficar distribución de casos por diferencia en días (<10 días)
 grap_edad <- grafico_barras(
   data,
   "dif_dias",
@@ -344,6 +359,7 @@ grap_edad <- grafico_barras(
 ```
 
 ```{r,fig.width=5, fig.height=5, out.width="50%",fig.align='center'}
+# Graficar línea de tiempo de diferencia de días promedio por año
 grap_edad_prom <- base_datos %>%
   group_by(anio = year(fec_hecho)) %>%
   summarise(promedio = ceiling(mean(dif_dias, na.rm = TRUE))) %>%
@@ -373,6 +389,7 @@ grap_edad_prom <- base_datos %>%
 ```
 
 ```{r,fig.width=4, fig.height=2,fig.align='center'}
+# Unir dos gráficos anteriores
 grid.arrange(grap_edad,grap_edad_prom, ncol = 2, widths = c(1, 1), respect = TRUE)
 ```
 
@@ -409,23 +426,17 @@ Para identificar la pertenencia de la víctima a un grupo poblacional especial s
 A este último grupo pertenecen las víctimas que no se identificaron con ninguno de los grupos anteriores.
 
 ```{r}
+# Seleccionar variables de interés: grupos poblacionales
 vars_gp <- c("gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
              "gp_desmovi", "gp_psiquia", "gp_vic_vio")
 
+# Resumen estadístico: grupos poblacionales
 summary(base_datos[vars_gp])
-# tabla_gp <- summary(base_datos[vars_gp]) %>%
-#   as.list() %>%
-#   tibble::enframe(name = "Estadístico", value = "Valor") %>%
-#   tidyr::unnest_wider(Valor, names_sep = "_")
-# 
-# tabla_gp %>%
-#   kable(format = "latex",
-#         ) %>%
-#   kable_styling(latex_options = "H", full_width = FALSE, position = "center")
 ```
 
 ```{r}
+# Tabla que indica número de víctimas por cantidad de grupos poblacionales a los que pertenece
 resumen_gp <- base_datos %>%
   mutate(
     # Convertir "Sí" en 1, y NA o "No" en 0 antes de sumar
@@ -449,6 +460,7 @@ Una vez conocida la distribución de los grupos, se identifica el número de ví
 Se observa que el `r resumen_gp$prop_gp_otros[1]`% de las victimas no se identificaron con alguno de los grupos anteriores. Entre quienes sí lo hacen, predomina la pertenencia a uno o dos grupos simultáneamente.
 
 ```{r}
+# Mostrar tabla número de víctimas por cantidad de grupo poblacionales a los que pertenece
 resumen_gp$conteo[[1]] %>%
   kable(format = "latex",
         col.names = c("Cantidad de grupos","Cantidad de registros"),
@@ -459,6 +471,7 @@ resumen_gp$conteo[[1]] %>%
 
 ### Modalidad de violencia
 ```{r}
+# Tabla de número de casos y proporción respecto al total por tipo de violencia
 base_datos %>% 
   count(def_naturaleza) %>% 
   mutate(porc = round(100 * n / sum(n), 1)) %>% 
@@ -473,6 +486,7 @@ base_datos %>%
 El 51.3% de los casos de violencia corresponde a violencia física, seguido de acceso carnal (18.6%) y negligencia o abandono (11%).
 
 ```{r,fig.width=9, fig.height=9, out.width="70%",fig.align='center'}
+# Número de casos por año para cada tipo de violencia
 base_datos %>%
   mutate(anio = year(fec_hecho)) %>% 
   count(def_naturaleza, anio, name = "n") %>% 
@@ -496,6 +510,7 @@ Del gráfico anterior se concluye que, en general, todos los tipos de violencia 
 ### Escenario
 
 ```{r}
+# Tabla con número de casos y proporción respecto al total por escenario
 base_datos %>% 
   count(escenario) %>% 
   mutate(porc = round(100 * n / sum(n), 1)) %>% 
@@ -523,14 +538,18 @@ Finalmente, los resultados de cada análisis se organizan en una tabla que muest
 La variable de respuesta del primer conjunto de variables analizadas es si la víctima fue o no hospitalizada. Los resultados indican que todas las variables predictoras presentan asociación con esta variable, siendo las más fuertes las que indican el tipo de seguridad social de la víctima y su pertenencia a grupos poblacionales, con un coeficiente de Cramer de 0.7.
 
 ```{r, warning=FALSE,message=FALSE}
+# Seleccionar variables de interés para ajustar pruebas
 respuesta <- "pac_hos" 
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","antec","def_naturaleza","sust_vict","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
              "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")
 pred_cuant  <- c("edad_")
+
+# Ajustar pruebas
 pruebas_hosp <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
 
+# Formatear resultados
 pruebas_hosp %>%
   arrange(desc(cramersV)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), "", .))) %>%  # ← reemplaza NA por vacío
@@ -546,14 +565,17 @@ pruebas_hosp %>%
 La variable de respuesta del segundo conjunto de variables corresponde a la condición final de la víctima (viva o muerta). Los resultados muestran que todas las variables predictoras tienen algún grado de asociación, aunque con una fuerza de relación baja según el coeficiente de Cramer (0.0 – 0.08).
 
 ```{r, warning=FALSE,message=FALSE}
+# Seleccionar variables de interés para ajustar pruebas
 respuesta <- "con_fin" 
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","antec","def_naturaleza","sust_vict","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", 
              "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros")
 pred_cuant  <- c("edad_")
+
+# Ajustar pruebas
 pruebas_con_fin <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
-
+# Formatear resultados
 pruebas_con_fin %>%
   arrange(desc(cramersV)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), "", .))) %>%  # ← reemplaza NA por vacío
@@ -569,16 +591,17 @@ pruebas_con_fin %>%
 En el tercer conjunto de variables, la variable de respuesta es si la víctima presenta antecedentes de violencia. Se encontró asociación con todas las variables predictoras, siendo la más fuerte aquella que indica si el caso fue informado a las autoridades, con un coeficiente de Cramer de 0.6.
 
 ```{r, warning=FALSE,message=FALSE}
+# Seleccionar variables de interés para ajustar pruebas
 respuesta <- "antec" 
 pred_cualit <- c("sexo_agre", "orient_sex","consum_spa","def_naturaleza","mujer_cabf","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela",  
              "gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","zona_conf","conv_agre","ambito_lug","cod_dpto_r","escenario","ac_mental","inf_aut")
-
 pred_cuant  <- c("edad_")
 
-
+# Ajustar pruebas
 pruebas_antec <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
 
+# Formatear resultados
 pruebas_antec %>%
   arrange(desc(cramersV)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), "", .))) %>%  # ← reemplaza NA por vacío
@@ -593,12 +616,16 @@ pruebas_antec %>%
 En el cuarto conjunto de variables, la variable de respuesta es si la víctima recibió o no atención en salud mental. Los resultados indican asociación con todas las variables predictoras, siendo la más fuerte la que indica si la víctima convive o no con el agresor, con un coeficiente de Cramer de 0.3.
 
 ```{r, warning=FALSE,message=FALSE}
+# Seleccionar variables de interés para ajustar pruebas
 respuesta <- "ac_mental" 
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturaleza","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela","gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","pac_hos","conv_agre","cod_dpto_n","tip_ss","zona_conf")
 pred_cuant  <- c("edad_")
+
+# Ajustar pruebas
 pruebas_mental <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
 
+# Formatear resultados
 pruebas_mental %>%
   arrange(desc(cramersV)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), "", .))) %>%  # ← reemplaza NA por vacío
@@ -613,12 +640,16 @@ pruebas_mental %>%
 En el quinto conjunto de variables, la variable de respuesta es si la víctima fue remitida a protección. Todas las variables predictoras muestran asociación, siendo la más fuerte la que indica si la persona es consumidora de SPA, con un coeficiente de Cramer de 0.4.
 
 ```{r, warning=FALSE,message=FALSE}
+# Seleccionar variables de interés para ajustar pruebas
 respuesta <- "remit_prot" 
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturaleza","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela","gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","pac_hos","conv_agre","cod_dpto_n","zona_conf","inf_aut","antec","area","sust_vict")
 pred_cuant  <- c("edad_")
+
+# Ajustar pruebas
 pruebas_remit <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
 
+# Formatear resultados
 pruebas_remit %>%
   arrange(desc(cramersV)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), "", .))) %>%  # ← reemplaza NA por vacío
@@ -634,12 +665,16 @@ pruebas_remit %>%
 En el último conjunto de variables, la variable de respuesta es si el caso fue informado a las autoridades competentes. Se encontró que todas las variables predictoras están asociadas, siendo la de antecedentes de violencia la de mayor fuerza de relación con un coeficiente de Cramer de 0.6.
 
 ```{r, warning=FALSE,message=FALSE}
+# Seleccionar variables de interés para ajustar pruebas
 respuesta <- "inf_aut" 
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturaleza","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela","gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","pac_hos","conv_agre","cod_dpto_n","tip_ss","zona_conf","antec","area","sust_vict","per_etn","consum_spa","zona_conf")
 pred_cuant  <- c("edad_")
+
+# Ajustar pruebas
 pruebas_inf_aut <- bind_rows(map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
                           map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x)))
 
+# Formatear resultados
 pruebas_inf_aut %>%
   arrange(desc(cramersV)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), "", .))) %>%  # ← reemplaza NA por vacío
@@ -652,6 +687,7 @@ pruebas_inf_aut %>%
 ### Tipo de seguridad social
 
 ```{r}
+# Proporción de casos por tipo de seguridad social y atención en salud mental
 (prop.table(table(base_datos$tip_ss,base_datos$ac_mental),1)*100) %>%
   as.data.frame() %>% 
   kable(format = "latex",
@@ -667,6 +703,7 @@ Se observa que la mayoría de las víctimas afiliadas a regímenes especiales re
 Como se evidenció anteriormente, más de la mitad de los casos de violencia contra mujeres corresponde a violencia física (51%). Sin embargo, solo el 41.8% de estas víctimas recibe atención en salud mental, en contraste con los casos de violencia sexual, donde el 69% de las víctimas sí recibió este tipo de atención.
 
 ```{r}
+# Recodificar tipo de violencia
 aux <- base_datos %>% mutate(def_naturaleza = case_when(
         def_naturaleza == "Acoso sexual" ~ "Sexual",
         def_naturaleza == "Acceso carnal" ~ "Sexual",
@@ -679,6 +716,7 @@ aux <- base_datos %>% mutate(def_naturaleza = case_when(
 ```
 
 ```{r,fig.width=7, fig.height=5, out.width="50%",fig.align='center'}
+# Graficar número de casos por tipo de violencia y atención en salud mental
 aux %>%
   group_by(def_naturaleza, ac_mental) %>%
   summarise(n = n(), .groups = "drop") %>%
@@ -710,6 +748,7 @@ aux %>%
 La siguiente tabla muestra la proporción de victimas que remitieron a protección por departamento. 
 
 ```{r}
+# proproción de casos que remitieron a protección por departamento
 (prop.table(table(base_datos$departamento_ocurrencia,base_datos$remit_prot),1)*100) %>%  kable(format = "latex",
         digits = 2) %>%
   kable_styling(latex_options = "H",full_width = FALSE, position = "center")
@@ -720,6 +759,7 @@ La siguiente tabla muestra la proporción de víctimas remitidas a protección p
 Ahora bien, al analizar el porcentaje de víctimas que recibieron atención en salud mental, se observa que en San Andrés (62%) y Vaupés (72%) los valores también son altos. En Casanare el porcentaje mejora respecto a la remisión a protección, pero Bogotá y Santander continúan con niveles bajos. Además, destacan Guanía y Nariño con porcentajes superiores al 70%, frente a Sucre, donde menos del 40% recibió atención.
 
 ```{r}
+# Proporción de víctimas que recibieron atención en salud mental por departamento
 (prop.table(table(base_datos$departamento_ocurrencia,base_datos$ac_mental),1)*100) %>% kable(format = "latex",digits = 2) %>%
   kable_styling(latex_options = "H",full_width = FALSE, position = "center")
 ```
@@ -729,6 +769,7 @@ Ahora bien, al analizar el porcentaje de víctimas que recibieron atención en s
 Se encontró que cuando el agresor es mujer, solo el 36% de los casos se informa a las autoridades, mientras que cuando el agresor es hombre, el porcentaje asciende a 56%
 
 ```{r}
+# Proporción de casos que se informaron a las autoridades por sexo
 (prop.table(table(base_datos$sexo_agre,base_datos$inf_aut),1)*100) %>% kable(format = "latex",
  digits = 2       ) %>%
   kable_styling(latex_options = "H",full_width = FALSE, position = "center")
@@ -739,6 +780,7 @@ Se encontró que cuando el agresor es mujer, solo el 36% de los casos se informa
 Los cinco principales diagnósticos CIE-10 asociados al fallecimiento de las víctimas fueron: choque hipovolémico, paro cardíaco, violencia física, desnutrición proteico-calórica severa, sepsis y muerte sin asistencia.
 
 ```{r}
+# Número de casos por causa de la muerte y proporción con respecto al total
 base_datos %>% filter(cbmte != "No aplica" & !is.na(cbmte)) %>%  
   count(cbmte, sort = TRUE) %>%         # cuenta y ordena
   mutate(porc = round(100 * n / sum(n), 3)) %>%  # añade porcentaje

@@ -42,15 +42,18 @@ data_stan <- list(
   y = as.integer(data_model_SIVIGILA$ac_mental)
 )
 
+
+# Ajustar el modelo
 SIVIGILA_model <- stan(
   file = "logistic_model.stan",
   data = data_stan,
-  iter = 5000,
+  iter = 2000,
   chains = 4,
   warmup = 1000,
   cores = 30
 )
 
+# Guardar resultados: resultados del modelo y muestras de la distribución posterior
 saveRDS(SIVIGILA_model, file = "SIVIGILA_model.rds")
 posterior_sample <- extract(SIVIGILA_model)
 saveRDS(posterior_sample_SIVIGILA, file = "posterior_sample_SIVIGIL.rds")

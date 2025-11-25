@@ -5,8 +5,6 @@ date: "2025-11-13"
 output:
   word_document:
     toc: true
-  pdf_document:
-    toc: true
     number_sections: false
 knitr:
   opts_chunk:
@@ -19,6 +17,7 @@ header-includes: \usepackage{float}
 ---
 
 ```{r}
+# Configuración del documento
 knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = FALSE)
 
 # Librerías
@@ -112,11 +111,13 @@ base_datos_MED <- base_datos_MED %>%
     .fns = as.factor
   ))
 
+# Seleccionar variables de interés
 base_datos_MED <- base_datos_MED %>% select(c("ac_mental",
                                 "edad", "mujer_cabf","def_naturaleza",
                                 "area_", "sexo_agre", "parentezco_agresor",
                                 "conv_agre", "pac_hos_" , "escenario"))
 
+# Recodificar variables
 base_datos_MED <- base_datos_MED %>% mutate(escenario = case_when(
   escenario %in% c("Otro", "Área deportiva y recreativa",
                    "Comercio y áreas de servicios", "Espacios abiertos",
@@ -222,12 +223,16 @@ for (param_name in names(posterior_samples_MEData)) {
 resumen <- do.call(rbind, resumen) |> 
   rownames_to_column(var = "param")
 
+# Cambiar nombres de las categorías
 resumen$categoria <- c("Edad víctima", "Jefatura hogar", "V.física", "V.psicológica","V.sexual", "Área:centro poblado", "Área:rural disperso","Agresor femenino", "Agresor Masculino", "Pareja","Familiar", "Ex-pareja","Conocido(a)","Convivencia agresor", "Hospitalización", "Esc. vivienda")
 
+# Calcular ancho del intervalo de confianza
 resumen$ancho_IC <- resumen$IC_97.5 - resumen$IC_2.5
 
+# Seleccionar columnas de interés
 resumen <- resumen %>% select(categoria,media,mediana,IC_2.5,IC_97.5,ancho_IC)
 
+# Formatear tabla
 kable(resumen, format = "markdown", col.names = c("Categoría", "Media","Mediana","IC_2.5","IC_97.5","Ancho_IC"),
       caption = "Tabla 1. Media, mediana e intervalo de credibilidad al 95% para cada parámetro estimado.")
 ```
@@ -271,17 +276,15 @@ Ahora bien, este modelo obtuvo un **AUC de 0.8727**, menor al modelo anterior pe
 
 ```{r, echo = FALSE, warning=FALSE, message= FALSE, fig.width = 3, fig.height = 3}
 #  Calcular probabilidades predichas
-
 probs_predichas_MEData <- plogis(alpha_hat_MEData + X_MEData %*% beta_hat_MEData)
 
 #  Convertir a clases (umbral de 0.5)
-
 predicciones_binarias_MEData <- ifelse(probs_predichas_MEData > 0.5, 1, 0)
 
  # Matriz de confusión
-
 confusion_matrix_MEData <- table(Real = base_datos_MED$ac_mental, Predicho =  predicciones_binarias_MEData)
 
+# Cálculos necesarios para métricas de validación
 TN_2 <- confusion_matrix_MEData[1,1]
 FP_2 <- confusion_matrix_MEData[1,2]
 FN_2 <- confusion_matrix_MEData[2,1]
@@ -289,13 +292,9 @@ TP_2 <- confusion_matrix_MEData[2,2]
 accuracy_2 <- (TP_2 + TN_2) / (TP_2 + TN_2 + FP_2 + FN_2)
 precision_2 <- TP_2 / (TP_2 + FP_2)
 recall_2 <- TP_2 / (TP_2 + FN_2)
-f1_score_2 <- 2 * (precision_2 * recall_2) / (precision_2 + recall_2)
-# cat("Accuracy:", accuracy_2, "\n")
-# cat("Precision:", precision_2, "\n")
-# cat("Recall (Sensibilidad):", recall_2, "\n")
-# cat("F1-Score:", f1_score_2, "\n")
 roc_obj_2 <- roc(base_datos_MED$ac_mental, as.numeric(probs_predichas_MEData))
-# auc(roc_obj_2)
+
+# Gráfica curva ROC
 plot(roc_obj_2, col = "#AE86D3")
 title(sub = "Figura 4. Curva ROC del modelo 2 de atención en salud mental MEData")
 ```
@@ -364,6 +363,7 @@ predicciones_binarias <- ifelse(probs_predichas > 0.5, 1, 0)
 # Matriz de confusión
 confusion_matrix <- table(Real = base_datos_SIVIGILA$ac_mental, Predicho = predicciones_binarias)
 
+# Cálculos necesarios para métricas de validación
 TN <- confusion_matrix[1,1]
 FP <- confusion_matrix[1,2]
 FN <- confusion_matrix[2,1]
@@ -373,14 +373,9 @@ accuracy <- (TP + TN) / (TP + TN + FP + FN)
 precision <- TP / (TP + FP)
 recall <- TP / (TP + FN)
 f1_score <- 2 * (precision * recall) / (precision + recall)
-
-# cat("Accuracy:", accuracy, "\n")
-# cat("Precision:", precision, "\n")
-# cat("Recall (Sensibilidad):", recall, "\n")
-# cat("F1-Score:", f1_score, "\n")
-
 roc_obj <- roc(base_datos_SIVIGILA$ac_mental, as.numeric(probs_predichas))
-# auc(roc_obj)
+
+# Graficar curva ROC
 plot(roc_obj, col = "#AE86D3")
 title(sub = "Figura 3. Curva ROC del modelo de atención en salud mental SIVIGILA.")
 ```

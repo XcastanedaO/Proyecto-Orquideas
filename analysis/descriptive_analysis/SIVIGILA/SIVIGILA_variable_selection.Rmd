@@ -6,7 +6,7 @@ output:
   pdf_document:
     toc: false
     number_sections: false
-    latex_engine: xelatex   # ✅ Maneja UTF-8 y caracteres especiales
+    latex_engine: xelatex   
   html_document:
     toc: false
     df_print: paged
@@ -22,8 +22,10 @@ always_allow_html: true
 
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
+# Configuración del documento
 knitr::opts_chunk$set(echo=FALSE)
 
+# Librerías necesarias
 library(here)
 library(dplyr)
 library(purrr)
@@ -80,8 +82,10 @@ mental en víctimas de violencia de género. A continuación, se listan las
 variables resultantes:
 
 ```{r, echo=FALSE, warning=FALSE,message=FALSE}
+# Leer base de datos depurada
 base_datos <- readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
 
+# Mostrar columnas que componen la base de datos
 colnames(base_datos)
 ```
 
@@ -92,6 +96,7 @@ en salud mental**, que indica si la víctima recibió o no atención
 psicológica tras la identificación del caso.
 
 ```{r}
+# Crear tabla para mostrar distribución de variable ac_mental
 ac_mental_distribution <- table(base_datos$ac_mental)/nrow(base_datos)*100
 ac_mental_distribution
 ```
@@ -137,7 +142,7 @@ Para predictores cuantitativos se utilizó la correlación de
 detectar relaciones monotónicas.
 
 ```{r, warning=FALSE,message=FALSE}
-# Para variables cualitativas
+# Función para pruebas no parámetricas (variables cualitativas)
 test_cualit <- function(df, var_resp, var_pred) {
   tab <- table(df[[var_resp]], df[[var_pred]])
   
@@ -172,7 +177,7 @@ test_cualit <- function(df, var_resp, var_pred) {
 ```
 
 ```{r}
-# Para variables cuantitativas
+# Función para pruebas no parámetricas (variables cuantitativas)
 test_cuant <- function(df, var_resp, var_pred) {
   y <- as.numeric(as.factor(df[[var_resp]]))
   x <- suppressWarnings(as.numeric(df[[var_pred]]))
@@ -205,19 +210,22 @@ test_cuant <- function(df, var_resp, var_pred) {
 ```{r}
 alpha <- 0.05
 
-
+# Seleccionar variabels de interés para las pruebas
 respuesta <- "ac_mental"
 pred_cualit <- c("per_etn", "sexo_agre", "orient_sex","consum_spa","def_naturaleza","mujer_cabf","tip_ss","gp_discapa", "gp_desplaz", "gp_migrant", "gp_carcela","gp_gestan", "gp_indigen", "gp_pobicfb", "gp_mad_com", "gp_desmovi", "gp_psiquia", "gp_vic_vio","gp_otros","pac_hos","conv_agre","cod_dpto_n","tip_ss","zona_conf")
 pred_cuant  <- c("edad_")
+
+# Implementar las funciones
 pruebas_mental <- bind_rows(
   map_dfr(pred_cualit, ~test_cualit(base_datos, respuesta, .x)),
   map_dfr(pred_cuant,  ~test_cuant(base_datos, respuesta, .x))
 )
 
+# Seleccionar los resultados de interés
 pruebas_mental %>% arrange(desc(cramersV)) %>%
   select( -estadistico)
 
-
+# Formatear y mostrar 
 knitr::kable(pruebas_mental %>% arrange(desc(cramersV)))
 ```
 

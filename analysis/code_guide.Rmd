@@ -7,10 +7,12 @@ date: "2024-11-11"
 El siguiente código muestra cómo leer y guardar datos con las funciones *load_data()* y *save_data()* que se encuentran en utils/load_data.R
 
 ```{r setup, include=FALSE}
+# Configuración del documento
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
+# Leer funciones auxiliares
 source("../utils/load_data.R")
 ```
 
