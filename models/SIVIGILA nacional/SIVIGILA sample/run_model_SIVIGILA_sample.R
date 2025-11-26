@@ -133,4 +133,4 @@ SIVIGILA_model <- stan(
 # Guardar resultados: resultados del modelo y muestras de la distribución posterior
 saveRDS(SIVIGILA_model, file = "SIVIGILA_model.rds")
 posterior_sample_SIVIGILA <- extract(SIVIGILA_model)
-saveRDS(posterior_sample_SIVIGILA, file = "posterior_sample_SIVIGIL.rds")
+saveRDS(posterior_sample_SIVIGILA, file = "posterior_SIVIGILA.rds")
