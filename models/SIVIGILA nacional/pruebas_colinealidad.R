@@ -63,6 +63,8 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%  mutate(
     TRUE ~ pac_hos)
 )
 
+# Gráfico de violines
+
 # Seleccionar rango de edad de interés
 data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(edad_ >= 14 & edad_ <= 50)
 
@@ -197,6 +199,18 @@ ggplot(data_model_SIVIGILA, aes(x = factor(ac_mental),
        y = "Edad") +
   theme_minimal() +
   guides(fill = "none")
+
+library(ggplot2)
+data_model_SIVIGILA$ac_mental <- as.factor(data_model_SIVIGILA$ac_mental)
+ggplot(data_model_SIVIGILA %>% filter(!is.na(edad_)), aes(x = edad_, color = ac_mental, fill = ac_mental,group = ac_mental)) +
+  geom_density(alpha = 0.3) +
+  labs(
+    x = "Edad",
+    y = "Densidad",
+    title = "Densidad de Edad por Atención en Salud"
+  ) +
+  theme_minimal()
+
 
 
 
