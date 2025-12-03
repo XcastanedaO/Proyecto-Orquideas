@@ -48,20 +48,13 @@ así:
 -   **Lesiones por violencia intrafamiliar** tiene `r nrow(intraf_data)`
     registros y `r ncol(intraf_data)` columnas.
 
-Con respecto a la base del 2024, se observa inicialmente que en ella se encuentran registros que no
-están relacionados con el indicador VGB. El indicador se compone por los
-casos de presunto delito sexual, violencia interpersonal e familiar. Por
-ende, se seleccionan los casos que corresponden a las últimas tres
-categorías:
+Con respecto a la base de datos del 2024, se evidencia inicialmente la presencia de registros que no guardan relación con el indicador VGB. Dicho indicador está conformado por los casos de presunto delito sexual, violencia interpersonal y violencia intrafamiliar. En consecuencia, se procede a filtrar y seleccionar únicamente los registros correspondientes a estas tres categorías. Adicionalmente, la variable Contexto de violencia incluye los siguientes niveles:
 
 ```{r}
 unique(n_f_data_24$Contexto.de.Violencia)
 aux_nf_nrow <- nrow(n_f_data_24)
 ```
 
-Obteniendo una base con `r nrow(n_f_data_24)` registros y
-`r ncol(n_f_data_24)` columnas. Se descartaron
-`r aux_nf_nrow - nrow(n_f_data_24)` registros.
 
 ```{r}
 n_f_data_24 <- n_f_data_24 %>% clean_names()
@@ -70,7 +63,7 @@ interp_data <- interp_data%>% clean_names()
 intraf_data <- intraf_data%>% clean_names()
 ```
 
-Se eliminan los registros asociados a "7 Lesiones por Eventos de Transporte" y "8 Lesiones Accidentales".
+Por ende, se eliminan los registros asociados a "7 Lesiones por Eventos de Transporte" y "8 Lesiones Accidentales".
 
 ```{r}
 n_f_data_24 <- n_f_data_24 %>% filter(!(
@@ -81,7 +74,10 @@ n_f_data_24 <- n_f_data_24 %>% filter(!(
 )
 ```
 
-Las bases de datos de 2024 y 2015-2023 no comparten las siguientes
+Obteniendo una base con `r nrow(n_f_data_24)` registros y
+`r ncol(n_f_data_24)` columnas. 
+
+Por otro lado, las bases de datos de 2024 y 2015-2023 no comparten las siguientes
 variables:
 
 ```{r}
@@ -106,7 +102,6 @@ unificar las bases.
 n_f_data_24 <- n_f_data_24 %>% select(-all_of(unique_cols))
 ```
 
-Inicialmente, se construirá una variable que relacione de donde provienen los datos para unificar los datos.
 
 ```{r}
 n_f_data_24$bd <- "2024"
@@ -130,8 +125,6 @@ variables:
 ```{r}
 colnames(n_f_data)
 ```
-
-
 
 ```{r, include=FALSE}
 replace_info <- function(df) {
@@ -205,13 +198,16 @@ principal (violencia intrafamiliar, interpersonal y presunto delito
 sexual) en la variable **contexto_de_violencia**.
 
 ```{r}
-sort(summary(as.factor(n_f_data$contexto_de_violencia)))
+
+n_f_data  %>% group_by(contexto_de_violencia) %>% summarise(cantidad = n()) %>%
+  arrange(contexto_de_violencia)
+
 ```
 
 Pensando en separar esa sub-agrupación y en contar con una variable que
 describa la naturaleza de la violencia, se propone lo siguiente:
 
--   construir una variable llamada **intrafamiliar_sub** con niveles:
+-   Construir una variable llamada **intrafamiliar_sub** con niveles:
     violencia de pareja, violencia contra adulto mayor, Violencia contra
     niños, niñas y adolescentes, Violencia entre otros familiares y No
     aplica cuando sea un tipo de violencia diferente a la intrafamiliar.
@@ -246,7 +242,7 @@ n_f_data <- n_f_data %>% mutate(
 )
 ```
 
-Se renombran los niveles de la variable contexto de violencia.
+<!-- Se renombran los niveles de la variable contexto de violencia. -->
 
 ```{r}
 n_f_data <- n_f_data %>% mutate(
@@ -279,11 +275,20 @@ n_f_data <- n_f_data %>% mutate(
 
 Número de casos en las variables creadas y recodificadas 
 
+* Intrafamiliar_sub:
+
 ```{r}
-sort(summary(as.factor(n_f_data$intrafamiliar_sub)))
+# sort(summary(as.factor(n_f_data$intrafamiliar_sub)))
+
+n_f_data  %>% group_by(intrafamiliar_sub) %>% summarise(cantidad = n()) %>%
+  arrange(intrafamiliar_sub)
 ```
+* Contexto de violencia
+
 ```{r}
-sort(summary(as.factor(n_f_data$contexto_de_violencia)))
+# sort(summary(as.factor(n_f_data$contexto_de_violencia)))
+n_f_data  %>% group_by(contexto_de_violencia) %>% summarise(cantidad = n()) %>%
+  arrange(contexto_de_violencia)
 ```
 
 
@@ -585,7 +590,7 @@ n_f_data <- n_f_data %>%
     presunto_agresor = str_replace(presunto_agresor, "^(.)", ~str_to_upper(.x))  
   )
 
-sort(unique(n_f_data$presunto_agresor))
+# sort(unique(n_f_data$presunto_agresor))
 ```
 
 
@@ -713,7 +718,7 @@ n_f_data <- n_f_data %>%
 
 ### Circunstancia del hecho
 
-De acuerdo al diccionario representa la relación entre la víctima y la
+De acuerdo al diccionario, representa la relación entre la víctima y la
 situación del entorno en el momento de los hechos.
 
 Se realiza las siguientes estandarizaciones: 
@@ -739,10 +744,10 @@ Reetiquetado para mayor precisión contextual:
 
 Agrupación de registros de naturaleza similar:
 
- * Presunta esclavitud sexual o prostitución forzada + Presunta explotación sexual
+ * Presunta esclavitud sexual o prostitución forzada, Presunta explotación sexual
 → Presunta explotación sexual y comercial
 
- * Retención ilegal + Secuestro + secuestro
+ * Retención ilegal, Secuestro
 → Retención ilegal - secuestro
 
 ```{r}
@@ -792,11 +797,16 @@ aux_data <- n_f_data %>% filter(contexto_de_violencia == "Violencia intrafamilia
 ```{r}
 n_f_data  %>% group_by(circunstancia_del_hecho) %>% summarise(cantidad = n())
 ```
-Se va a agrupar circunstacia del hecho en un tipo de violencia dado los reportes de INMLC y dada cada tipo de violencia. Contexto de violencia no tendrá ninguna modificación y así circunstancia del hecho (para intrafamiliar) es catalogada como la variable "Factor desencadenante de la agresión".
 
-Se creó la variable def_naturaleza para agrupar y clasificar de forma estandarizada la naturaleza de cada caso, a partir de los valores depurados de circunstancia_del_hecho.
+## Naturaleza del hecho
 
-- Violencia intrafamiliar
+Al observar la cantidad de niveles presentes en circunstancias del hecho se decide agrupar esta variable en un tipo de violencia de género (sexual, intrafamiliar, etc). Esta agrupación, se realiza de acuerdo a los reportes de INMLC.
+
+La variable contexto de violencia no tendrá ninguna modificación y así circunstancia del hecho es catalogada como la variable "Factor desencadenante de la agresión".
+
+La variable def_naturaleza creada a partir de circunstancia del hecho, se contruye como sigue:
+
+**Violencia intrafamiliar:**
 Incluye registros donde la circunstancia del hecho correspondió a conflictos o agresiones dentro del entorno familiar o de pareja, tales como:
 
  * Conflicto de pareja
@@ -815,8 +825,8 @@ Incluye registros donde la circunstancia del hecho correspondió a conflictos o 
 
  * Violencia intrafamiliar (todas sus variantes)
 
-- Violencia interpersonal
-Agrupa agresiones o confrontaciones entre personas fuera del ámbito familiar o territorial, incluyendo situaciones como:
+**Violencia interpersonal**:
+Circunstancia del hecho que agrupa agresiones o confrontaciones entre personas fuera del ámbito familiar o territorial, incluyendo situaciones como:
 
  * Venganza o ajuste de cuentas
 
@@ -862,8 +872,8 @@ Agrupa agresiones o confrontaciones entre personas fuera del ámbito familiar o 
 
  * Negligencia
 
-- Violencia económica
-Consolida hechos que implican afectación material, patrimonial o intentos de apropiación coercitiva, incluyendo:
+**Violencia económica**:
+Consolida circunstancias del hecho que implican afectación material, patrimonial o intentos de apropiación coercitiva, incluyendo:
 
  * Violencia económica
 
@@ -875,7 +885,7 @@ Consolida hechos que implican afectación material, patrimonial o intentos de ap
 
  * Atraco callejero o intento de
 
-- Violencia sociopolítica
+**Violencia sociopolítica**:
 Comprende hechos ocurridos en contextos asociados al conflicto armado, crimen organizado o motivaciones estructurales de poder, tales como:
 
  * Acción bandas criminales
@@ -918,12 +928,12 @@ Comprende hechos ocurridos en contextos asociados al conflicto armado, crimen or
 
  * Machismo
 
-- Sin informacion
+**Sin informacion**:
 Se asignó a los registros cuya etiqueta original fue exactamente:
 
  * Sin información
 
-- Otra
+**Otra**:
 Se utilizó para agrupar circunstancias que no corresponden a los contextos anteriores, tales como:
 
  * Abandono
@@ -932,7 +942,7 @@ Se utilizó para agrupar circunstancias que no corresponden a los contextos ante
 
  * Enfermedad física o mental
 
- *  * Infidelidad
+ * Infidelidad
 
 
 ```{r}
@@ -1054,7 +1064,9 @@ n_f_data <- n_f_data %>%
         "Abandono",
         "Consumo de alcohol y/o sustancias psicoactivas",
         "Enfermedad física o mental",
-        "Infidelidad"
+        "Infidelidad",
+        "Cambios forzados en la corporalidad y la performatividad del género",
+        "Matrimonio forzado"
       ) ~ "Otra",
       
       TRUE ~ circunstancia_del_hecho
@@ -1063,42 +1075,113 @@ n_f_data <- n_f_data %>%
 
 ```
 
+Así, la variable creada **def_naturaleza** queda compuesta como sigue:
+
 ```{r}
 n_f_data %>% group_by(def_naturaleza) %>% summarise(n=n())
 ```
 ```{r}
-n_f_data %>% filter(def_naturaleza %in% c("Aborto forzado", "Cambios forzados en la corporalidad y la performatividad del género","Embarazo forzado", "Matrimonio forzado", "Presunta responsabilidad en la prestación de servicios de salud","Abuso dentro de establecimiento prestador de servicios de salud" )) %>% group_by(bd, def_naturaleza, contexto_de_violencia) %>% summarise(n=n())
+# n_f_data %>% filter(def_naturaleza %in% c("Aborto forzado", "Cambios forzados en la corporalidad y la performatividad del género","Embarazo forzado", "Matrimonio forzado", "Presunta responsabilidad en la prestación de servicios de salud","Abuso dentro de establecimiento prestador de servicios de salud" )) %>% group_by(bd, def_naturaleza, contexto_de_violencia) %>% summarise(n=n())
 ```
 
 ```{r}
-n_f_data %>% filter(def_naturaleza %in% c("Sin informacion" )) %>% group_by(contexto_de_violencia) %>% summarise(n=n())
+# n_f_data %>% filter(def_naturaleza %in% c("Sin informacion" )) %>% group_by(contexto_de_violencia) %>% summarise(n=n())
 ```
+
+<!-- # ```{r} -->
+<!-- # n_f_data %>% filter(def_naturaleza %in% c("Otra" )) %>% group_by(contexto_de_violencia) %>% summarise(n=n()) -->
+<!-- # ``` -->
+<!-- # No se desagrega los niveles de def_naturaleza de Otra y Sin Información según su contexto de violencia, porque por ahora se trabajará los tipos de violencia como circunstancia y no como contexto. -->
 
 ```{r}
-n_f_data %>% filter(def_naturaleza %in% c("Otra" )) %>% group_by(contexto_de_violencia) %>% summarise(n=n())
+# n_f_data %>% filter(contexto_de_violencia=="Violencia intrafamiliar") %>% group_by(def_naturaleza) %>% summarise(cantidad = n())
 ```
-No se desagrega los niveles de def_naturaleza de Otra y Sin Información según su contexto de violencia, porque por ahora se trabajará los tipos de violencia como circunstancia y no como contexto.
+Ahora bien, la distribución de los registros de la variable **def_naturaleza** creada a partir de **circunstancia del hecho**, es la siguiente: 
 
-```{r}
-n_f_data %>% filter(contexto_de_violencia=="Violencia intrafamiliar") %>% group_by(def_naturaleza) %>% summarise(cantidad = n())
-```
+| Def_naturaleza | Cantidad de personas |
+|:---:|:---:|
+| **Aborto forzado** | **2** |
+| Aborto (forzado) | 2 |
+| **Abuso dentro de establecimiento prestador de servicios de salud** | **487** |
+| **Cambios forzados en la corporalidad y la performatividad del género** | **1** |
+| **Embarazo forzado** | **3** |
+| **Matrimonio forzado** | **1** |
+| **Otra **| **366** |
+| Abandono | 7 |
+| Consumo de alcohol y/o sustancias psicoactivas | 48 |
+| Enfermedad física o mental | 149 |
+| Infidelidad | 27 |
+| **Presunta responsabilidad en la prestación de servicios de salud** | **118** |
+| **Sin información** | **34511** |
+| **Violencia económica** | **18182** |
+| Atraco callejero o intento de | 6500 |
+| Económicas | 10 |
+| Pillaje | 8 |
+| Hurto | 11479 |
+| **Violencia interpersonal** | **296299** |
+| Abuso de autoridad | 707 |
+| Aglomeración de público | 64 |
+| Ajuste de cuentas | 9716 |
+| Amenaza o intimidación | 2374 |
+| Bala perdida | 484 |
+| Celos | 5166 |
+| Contacto engañoso vía internet | 266 |
+| Disturbios civiles | 58 |
+| Ejercicio de actividades ilícitas | 535 |
+| Embriaguez (alcohólica y no alcohólica) | 6180 |
+| Homofobia | 28 |
+| Incendio | 1 |
+| Intervención legal | 359 |
+| Intolerancia | 15895 |
+| Linchamiento | 58 |
+| Matoneo | 97 |
+| Negligencia | 31 |
+| Retención legal | 7647 |
+| Riña | 246540 |
+| Sicariato | 79 |
+| Tortura | 14 |
+| **Violencia intrafamiliar** | **518657** |
+| Conflicto de pareja | 22679 |
+| Conflicto familiar | 8853 |
+| Violencia a niños, niñas y adolescentes | 49079 |
+| Violencia al adulto mayor | 10128 |
+| Violencia de pareja | 348873 |
+| Violencia entre otros familiares | 78981 |
+| **Violencia sexual** | **179680** |
+| Abuso sexual | 157402 |
+| Acceso carnal violento | 4444 |
+| Acceso carnal violento/acto sexual violento con persona protegida | 3949 |
+| Acoso sexual | 1645 |
+| Acto sexual violento | 15 |
+| Acto sexual violento con persona protegida | 43 |
+| Agresión o ataque sexual | 568 |
+| Asalto sexual | 10069 |
+| Desnudez forzada | 23 |
+| Explotación sexual y comercial | 28 |
+| Obligar a presenciar actos sexuales | 62 |
+| Obligar a realizar actos sexuales | 112 |
+| Pornografía | 763 |
+| Presunta esclavitud sexual o prostitución forzada | 104 |
+| Presunta explotación sexual | 10 |
+| Presunta explotación sexual de niños, niñas o adolescentes | 315 |
+| Presunta trata de personas con fines de explotación sexual | 60 |
+| Tráfico o trata de personas | 6 |
+| Violencia sexual en el contexto del conflicto armado | 18 |
+| Violencia sociopolítica | 7320 |
+| Total general de registros | 1055627 |
 
 
 
+Finalmente, la definición de tipologías de violencia se construyó tomando como marco los reportes oficiales del zMasatugó (INMLC), priorizando aquellos niveles que guardan relación directa con dinámicas de poder, discriminación y agresión desproporcionada basada en el género. En este sentido, se justifica el trabajo exclusivo con los niveles **Violencia sexual**, **Violencia intrafamiliar**, **Violencia sociopolítica** y **Violencia interpersonal** (excluyendo hechos como Bala perdida y Riña), dado que estos representan escenarios donde la agresión ocurre en el marco de relaciones de control, abuso, coerción o vulneración sistemática que afectan de manera diferenciada a mujeres, niñas y poblaciones históricamente expuestas a violencias de género. Por el contrario, categorías como Violencia económica (dado sus pocos registros y circunstancias del hecho no asociadas a VGB), Sin información, Otra o Sin información, contienen eventos cuya naturaleza se asocia con factores circunstanciales, no específicos del género (p. ej., abandono, consumo de sustancias o condiciones de salud), lo que reduce su capacidad explicativa dentro del fenómeno de violencia basada en género y por ende no se incluyen. 
 
 
 ```{r}
 # f_final_data %>% filter(def_naturaleza == "Violencia intrafamiliar") %>% group_by(circuns) %>% summarise(cantidad = n())
 ```
 
-```{r}
-n_f_data
-```
-```{r}
-n_f_data %>%
-  filter(duplicated(.)) 
-```
-## Save data 
+
+
+<!-- ## Save data  -->
 ```{r}
 n_f_data <- n_f_data %>%
   mutate(across(
@@ -1106,9 +1189,6 @@ n_f_data <- n_f_data %>%
   ))
 ```
 
-```{r}
-n_f_data %>% colnames()
-```
 
 ```{r}
 n_f_data <- n_f_data %>%
