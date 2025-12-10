@@ -1,0 +1,383 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE)
+library(dplyr)
+library(ggplot2)
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(tidyr)
+library(stringi)
+library(knitr)
+library(readr)
+library(sf)
+library(gmodels)   
+library(DescTools)
+library(kableExtra)
+library(explore)
+```
+
+
+```{r}
+data_model_SIVIGILA <-readRDS(paste0(here(),"/data/interim/SIVIGILA_debugged_v2.rds"))
+
+# Selección de variables de interés
+data_model_SIVIGILA <- data_model_SIVIGILA %>% select(c("ac_mental",
+                                "edad_", "mujer_cabf","def_naturaleza",
+                                "area", "sexo_agre", "conv_agre", "pac_hos" , "escenario", "departamento_ocurrencia", "tip_ss"))
+
+
+# Re-codificación de variables
+data_model_SIVIGILA <- data_model_SIVIGILA %>%  mutate(
+  ac_mental = case_when(
+    ac_mental == "1" ~ "Sí",
+    ac_mental == "2" ~ "No",
+    TRUE ~ ac_mental),
+
+  edad_ = as.numeric(edad_),
+ 
+  departamento_ocurrencia = case_when(
+    departamento_ocurrencia == "Bogotá, D.c." ~ "Bogotá, D.C.",
+    departamento_ocurrencia == "Archipiélago De San Andrés, Providencia y Santa Catalina"~ "San Andrés"
+    TRUE ~ departamento_ocurrencia
+  ),
+  
+  mujer_cabf = case_when(
+    mujer_cabf == "1" ~ "Sí",
+    mujer_cabf == "2" ~ "No",
+    TRUE ~ mujer_cabf),
+    
+  escenario = case_when(
+    escenario %in% c("7", "12", "8", "9","3", "11", "4","10", "1") ~ "Espacio público y social",
+    escenario == "2" ~ "Vivienda",
+    TRUE ~ escenario),
+  
+  def_naturaleza = case_when(
+    def_naturaleza == "1" ~ "Física",
+    def_naturaleza == "2" ~ "Psicológica",
+    def_naturaleza == "3" ~ "Negligencia y abandono",
+    def_naturaleza == "5" ~ "Sexual",
+    def_naturaleza == "6" ~ "Sexual",
+    def_naturaleza == "7" ~ "Sexual",
+    def_naturaleza == "10" ~ "Sexual",
+    def_naturaleza == "12" ~ "Sexual",
+    def_naturaleza == "14" ~ "Sexual",
+    def_naturaleza == "15" ~ "Sexual",
+    TRUE ~ def_naturaleza),
+  
+  area = case_when(
+    area == "1" ~ "Cabecera municipal",
+    area == "2" ~ "Centro poblado",
+    area == "3" ~ "Rural disperso",
+    TRUE ~ area),
+  
+  conv_agre = case_when(
+    conv_agre == "1" ~ "Sí",
+    conv_agre == "2" ~ "No",
+    TRUE ~ conv_agre),
+  
+  pac_hos = case_when(
+    pac_hos == "1" ~ "Sí",
+    pac_hos == "2" ~ "No",
+    TRUE ~ pac_hos)
+)
+
+```
+
+```{r}
+# Seleccionar rango de edad de interés
+# data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(edad_ >= 14 & edad_ <= 50)
+data_model_SIVIGILA <- data_model_SIVIGILA %>% mutate(
+  ciclo_vital = case_when(
+    edad_ %in% c(0:19) ~ "Niñez y adolescencia",
+    edad_ %in% c(20:34) ~ "Juventud",
+    edad_ %in% c(35:59) ~ "Adultez",
+    TRUE ~ "OTRO" # edades mayores a 60 años
+  )
+)
+
+data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(ciclo_vital != "OTRO")
+
+data_model_SIVIGILA %>% explore()
+
+# Eliminar filas con valores faltantes
+data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
+
+# Convertir a factor las variables para elegir nivel de referencia
+data_model_SIVIGILA <- data_model_SIVIGILA %>%
+  mutate(
+    mujer_cabf = factor(mujer_cabf, levels = c("No", "Sí")),
+    def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Física", "Psicológica", "Sexual")),
+    
+    area = factor(area, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+    
+    sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+    
+    escenario = factor(escenario, levels = c("Espacio público y social","Vivienda")),
+    conv_agre = factor(conv_agre, levels = c("No", "Sí")),
+    pac_hos = factor(pac_hos, levels = c("No", "Sí")), 
+  )
+
+data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
+# Guardar base de datos
+# save_data(data_model_SIVIGILA, "data_model_SIVIGILA", type = "processed", format = "csv")
+```
+```{r}
+data_model_SIVIGILA$departamento_ocurrencia <- relevel(data_model_SIVIGILA$departamento_ocurrencia, ref = "Antioquia")
+```
+
+
+```{r}
+data_model_SIVIGILA$departamento_ocurrencia <- relevel(as.factor(data_model_SIVIGILA$departamento_ocurrencia), ref = "Antioquia")
+```
+
+```{r}
+sapply(train_data, function(x) {
+  if (is.factor(x)) levels(x)[1] else NA
+})
+
+
+```
+
+
+```{r}
+# Var respuesta
+var_resp <- data_model_SIVIGILA %>%
+  count(ac_mental) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = ac_mental, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082", 
+            fontface = "bold",
+            size = 3.5) + 
+  labs(x = "Atención en salud mental", y = "Cantidad de casos") + 
+  theme_minimal()
+```
+
+
+```{r}
+order <- c("Niñez y adolescencia", "Juventud", "Adultez")
+ciclo_vital_plot <- data_model_SIVIGILA %>%
+  count(ciclo_vital) %>%
+  mutate( ciclo_vital = factor(ciclo_vital, levels = order),
+    proporcion = n / sum(n) * 100) %>%
+  ggplot(aes(x = ciclo_vital, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.85) +  
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082", 
+            fontface = "bold",
+            size = 3.5) + 
+  labs(x = "Ciclo vital", y = "Cantidad de casos") + 
+  theme_minimal()
+ciclo_vital_plot
+```
+
+
+```{r}
+hosp_ac_plot <- data_model_SIVIGILA %>%
+  group_by(pac_hos, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(pac_hos) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = pac_hos, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  scale_fill_manual(values = c("#90A9C3","#AE86D3")) +
+  labs(
+    x = "Hospitalización",
+    y = NULL,
+    fill = "Atención en salud mental") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme_minimal() +
+  theme(legend.position = "top")
+hosp_ac_plot
+```
+
+
+```{r}
+tip_v <- data_model_SIVIGILA %>%
+  group_by(def_naturaleza, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(def_naturaleza) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = def_naturaleza, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  labs(
+    x = "Tipo de violencia",
+    y = "Proporción (%)",
+    fill = "Atención en salud mental"
+  ) +
+  scale_fill_manual(values = c("#90A9C3", "#AE86D3")) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(legend.position = "top")
+tip_v
+```
+
+```{r}
+ciclo_ac <- data_model_SIVIGILA %>%
+  group_by(ciclo_vital, ac_mental) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(ciclo_vital) %>%
+  mutate(ciclo_vital = factor(ciclo_vital, levels = order),
+    prop = n / sum(n)) %>%
+  ggplot(aes(x = ciclo_vital, y = prop, fill = ac_mental)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  labs(
+    x = "Ciclo vital",
+    y = "Proporción (%)",
+    fill = "Atención en salud mental"
+  ) +
+  scale_fill_manual(values = c("#90A9C3", "#AE86D3")) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(legend.position = "top")
+ciclo_ac
+```
+
+```{r}
+dep <- data_model_SIVIGILA %>%
+  count(departamento_ocurrencia) %>%
+  mutate(proporcion = n / sum(n) * 100) %>%
+  # filter(proporcion >= 3) %>%
+  ggplot(aes(x = departamento_ocurrencia, y = n)) +
+  geom_col(fill = "#AE86D3", alpha = 0.8) +  # Color de las barras
+  geom_text(aes(label = paste0(round(proporcion, 1), "%")), 
+            vjust = -0.2, 
+            color = "#4B0082",  # Morado oscuro
+            fontface = "bold",
+            size = 3) +  # Texto en negrita
+  labs(title = "", x = "", y = "Frecuencia") +
+  theme_minimal()+
+  coord_flip() 
+dep
+```
+
+
+
+```{r}
+ggsave("../../reports/sivigila_nacional/ac.pdf", var_resp, width = 6, height = 4)
+ggsave("../../reports/sivigila_nacional/ciclo.pdf", ciclo_vital_plot, width = 8, height = 4)
+ggsave("../../reports/sivigila_nacional/hosp_ac.pdf", hosp_ac_plot, width = 5, height = 4)
+ggsave("../../reports/sivigila_nacional/tipo_v_ac.pdf", tip_v, width = 7, height = 4)
+ggsave("../../reports/sivigila_nacional/ciclo_ac.pdf", ciclo_ac, width = 6, height = 4)
+ggsave("../../reports/sivigila_nacional/dep.pdf", dep, width = 6, height = 6)
+```
+
+```{r}
+# Seleccionar rango de edad de interés
+# data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(edad_ >= 14 & edad_ <= 50)
+# 
+# # Eliminar filas con valores faltantes
+# data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
+# 
+# # Convertir a factor las variables para elegir nivel de referencia
+# data_model_SIVIGILA <- data_model_SIVIGILA %>%
+#   mutate(
+#     mujer_cabf = factor(mujer_cabf, levels = c("No", "Sí")),
+#     def_naturaleza = factor(def_naturaleza, levels = c("Negligencia y abandono", "Física", "Psicológica", "Sexual")),
+#     
+#     area = factor(area, levels = c("Cabecera municipal", "Centro poblado", "Rural disperso")),
+#     
+#     sexo_agre = factor(sexo_agre, levels = c("I","F", "M")),
+#     
+#     escenario = factor(escenario, levels = c("Espacio público y social","Vivienda")),
+#     conv_agre = factor(conv_agre, levels = c("No", "Sí")),
+#     pac_hos = factor(pac_hos, levels = c("No", "Sí")), 
+#   )
+
+# Guardar base de datos
+# save_data(data_model_SIVIGILA, "data_model_SIVIGILA", type = "processed", format = "csv")
+```
+
+## Modelo logístico frecuentista
+
+```{r}
+data_model_SIVIGILA$ac_mental = ifelse(data_model_SIVIGILA$ac_mental== "Sí",1, 0)
+```
+```{r}
+data_model_SIVIGILA %>% count(ac_mental)
+```
+```{r}
+data_model_SIVIGILA %>% colnames()
+```
+## Train y test
+
+```{r}
+
+library(caret)
+
+set.seed(123)
+
+train_index <- createDataPartition(
+  data_model_SIVIGILA$ac_mental, 
+  p = 0.8, 
+  list = FALSE
+)
+
+train_data <- data_model_SIVIGILA[train_index, ]
+test_data  <- data_model_SIVIGILA[-train_index, ]
+
+```
+
+```{r}
+sapply(train_data, function(x) {
+  if (is.factor(x)) levels(x)[1] else NA
+})
+
+```
+
+```{r}
+train_data %>% count(ac_mental)
+```
+
+```{r}
+model = glm(ac_mental ~ mujer_cabf + def_naturaleza + area + sexo_agre + conv_agre + pac_hos + escenario + departamento_ocurrencia + ciclo_vital, data = train_data, family = binomial(link = "logit"))
+
+```
+```{r}
+sapply(data_model_SIVIGILA, function(x) {
+  if (is.factor(x)) levels(x)[1] else NA
+})
+```
+
+```{r}
+summary(model)
+```
+## Curva
+
+```{r}
+testpredict = predict(model, newdata = test_data, type = c("response"))
+#The confusion matrix is generated
+tab = table(test_data$ac_mental, testpredict>0.50)
+#The correct classification rate is calculated
+TCC = sum(diag(tab))/sum(tab)
+TCC
+```
+
+```{r}
+library(PRROC)
+PRROC_obj <- roc.curve(scores.class0 = testpredict,
+weights.class0=test_data$ac_mental,
+curve=TRUE)
+plot(PRROC_obj)
+```
+```{r}
+ggsave("../../reports/sivigila_nacional/curva_freq.pdf", (PRROC_obj), width = 6, height = 6)
+```
+
