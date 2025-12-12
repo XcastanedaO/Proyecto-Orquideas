@@ -19,6 +19,7 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>% select(c("ac_mental",
 data_model_SIVIGILA <- data_model_SIVIGILA %>% 
   mutate(departamento_ocurrencia = case_when(
     departamento_ocurrencia == "Bogotá, D.c." ~ "Bogotá, D.C.",
+    departamento_ocurrencia == "Archipiélago De San Andrés, Providencia y Santa Catalina"~ "San Andrés",
     TRUE ~ departamento_ocurrencia
   ))
 
@@ -105,6 +106,18 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%  mutate(
     pac_hos == "2" ~ "No",
     TRUE ~ pac_hos)
 )
+
+## Ciclo vida
+data_model_SIVIGILA <- data_model_SIVIGILA %>% mutate(
+  ciclo_vital = case_when(
+    edad_ %in% c(0:19) ~ "Niñez y adolescencia",
+    edad_ %in% c(20:34) ~ "Juventud",
+    edad_ %in% c(35:59) ~ "Adultez",
+    TRUE ~ "OTRO" # edades mayores a 60 años
+  )
+)
+
+data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(ciclo_vital != "OTRO")
 
 # Eliminar filas con valores faltantes
 data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]

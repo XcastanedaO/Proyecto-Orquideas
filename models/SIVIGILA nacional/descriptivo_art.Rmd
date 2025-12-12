@@ -45,7 +45,7 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%  mutate(
  
   departamento_ocurrencia = case_when(
     departamento_ocurrencia == "Bogotá, D.c." ~ "Bogotá, D.C.",
-    departamento_ocurrencia == "Archipiélago De San Andrés, Providencia y Santa Catalina"~ "San Andrés"
+    departamento_ocurrencia == "Archipiélago De San Andrés, Providencia y Santa Catalina"~ "San Andrés",
     TRUE ~ departamento_ocurrencia
   ),
   
@@ -86,7 +86,35 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%  mutate(
   pac_hos = case_when(
     pac_hos == "1" ~ "Sí",
     pac_hos == "2" ~ "No",
-    TRUE ~ pac_hos)
+    TRUE ~ pac_hos),
+  
+   region = case_when(
+      departamento_ocurrencia %in% c(
+        "Antioquia", "Bogotá, D.C.", "Boyacá", "Caldas", "Cundinamarca",
+        "Huila", "Norte De Santander", "Quindío", "Risaralda",
+        "Santander", "Tolima"
+      ) ~ "Andina",
+      
+      departamento_ocurrencia %in% c(
+        "Atlántico", "Bolívar", "Cesar", "Córdoba", "La Guajira",
+        "Magdalena", "Sucre",
+        "Archipiélago De San Andrés, Providencia Y Santa Catalina"
+      ) ~ "Caribe",
+      
+      departamento_ocurrencia %in% c(
+        "Chocó", "Cauca", "Nariño", "Valle Del Cauca"
+      ) ~ "Pacífico",
+      
+      departamento_ocurrencia %in% c(
+        "Arauca", "Casanare", "Meta", "Vichada"
+      ) ~ "Orinoquía",
+      
+      departamento_ocurrencia %in% c(
+        "Amazonas", "Caquetá", "Guaviare", "Guainía",
+        "Putumayo", "Vaupés"
+      ) ~ "Amazonía",
+      
+      TRUE ~ "Sin región"  )
 )
 
 ```
@@ -105,7 +133,6 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>% mutate(
 
 data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(ciclo_vital != "OTRO")
 
-data_model_SIVIGILA %>% explore()
 
 # Eliminar filas con valores faltantes
 data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
@@ -125,10 +152,9 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%
     pac_hos = factor(pac_hos, levels = c("No", "Sí")), 
   )
 
-data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
-# Guardar base de datos
-# save_data(data_model_SIVIGILA, "data_model_SIVIGILA", type = "processed", format = "csv")
+
 ```
+
 ```{r}
 data_model_SIVIGILA$departamento_ocurrencia <- relevel(data_model_SIVIGILA$departamento_ocurrencia, ref = "Antioquia")
 ```
