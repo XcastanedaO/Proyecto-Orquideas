@@ -119,8 +119,19 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>% mutate(
 
 data_model_SIVIGILA <- data_model_SIVIGILA %>% filter(ciclo_vital != "OTRO")
 
+data_model_SIVIGILA %>% explore()
 # Eliminar filas con valores faltantes
 data_model_SIVIGILA <- data_model_SIVIGILA[!apply(is.na(data_model_SIVIGILA), 1, any), ]
+
+replace_missing_info <- function(df) {
+  df[] <- lapply(df, function(col) {
+    if (is.character(col) | is.factor(col)) {  # Apply only to text columns
+      col[col %in% c("Sin información", "Sin Información")] <- NA_character_
+    }
+    return(col)
+  })
+  return(df)
+}
 
 # Convertir a factor las variables para elegir nivel de referencia
 data_model_SIVIGILA <- data_model_SIVIGILA %>%
