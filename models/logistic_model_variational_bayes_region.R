@@ -21,7 +21,6 @@ library(caret)
 library(brms)
 library(posterior)
 library(bayesplot)
-
 library(cmdstanr)
 
 data_model_SIVIGILA <-readRDS(paste0(here(),"/data/processed/data_model_SIVIGILA_geo.rds"))
@@ -93,26 +92,7 @@ train_index <- createDataPartition(data_model_SIVIGILA$ac_mental, p = 0.8, list 
 train_data <- data_model_SIVIGILA[train_index, ]
 test_data <- data_model_SIVIGILA[-train_index, ]
 
-
-
-# Set cmdstanr as backend
-# set_cmdstan_path()
-# 
-# model <- brm(
-#   formula = ac_mental ~ mujer_cabf+def_naturaleza+area+sexo_agre+ conv_agre+ ciclo_vital + departamento_ocurrencia ,
-#   family = bernoulli(link = "logit"),
-#   data = train_data,
-#   prior = set_prior("normal(0, 5)", class = "b"),
-#   chains = 4,
-#   iter = 2000,
-#   warmup = 1000,
-#   seed = 123
-# )
-# 
-# saveRDS(model, "logistic_model_ref.rds")
-
-## Ajuste de modelo
-log_model <- cmdstan_model("models/logistic_model_stan.stan")
+log_model_region <- cmdstan_model("models/logistic_model_stan_region.stan")
 
 N <- nrow(train_data)
 
@@ -127,8 +107,11 @@ stan_data <- list(
   def_naturaleza = as.integer(train_data$def_naturaleza),    # 1..4
   sexo_agre      = as.integer(train_data$sexo_agre),         # 1..3
   conv_agre      = as.integer(train_data$conv_agre),         # 1..2
+  area      = as.integer(train_data$area),         # 1..2
+  escenario      = as.integer(train_data$escenario),         # 1..2
+  pac_hos      = as.integer(train_data$pac_hos),         # 1..2
   ciclo_vital    = as.integer(train_data$ciclo_vital),       # 1..3
-  departamento   = as.integer(train_data$departamento_ocurrencia) # 1..33
+  region   = as.integer(train_data$region) # 1..33
 )
 
 X <- model.matrix(ac_mental ~
