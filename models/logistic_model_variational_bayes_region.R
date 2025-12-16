@@ -128,24 +128,20 @@ library(posterior)
 
 # saveRDS(fit_vb_2, "models/fit_vb_fullrank_2.rds")
 
-draws<- as_draws_df(fit_vb_region$draws())
+draws <- as_draws_df(fit_vb_region$draws())
 saveRDS(draws, "models/draws_region.rds")
+draws <- readRDS("models/draws_region.rds")
 
 results_full_2 <- summary(draws)
 
 fit_vb_region$cmdstan_diagnose()
 
-mcmc_hist(draws, pars = c("beta_mujer[1]",  "beta_mujer[2]", "beta_naturaleza[1]")   )
+mcmc_hist(draws, pars = c("beta_region[1]","beta_region[2]" ,"beta_region[3]" ,"beta_region[4]", "beta_region[5]"))
 
-
+cat(quantile(draws$`beta_mujer[1]`, 0.025), quantile(draws$`beta_mujer[1]`, 0.975))
 
 fit_vb_region$metadata()$elbo
-# Subset correcto de betas
-beta_draws <- subset_draws(
-  draws,
-  variable = paste0("beta[", 1:K, "]")
-)
-
+#
 save_data(results, "results_meanfield", type = "interim", format = "xlsx")
 save_data(results_full, "results_fullrank", type = "interim", format = "xlsx")
 save_data(results_full_2, "results_fullrank2", type = "interim", format = "xlsx")
@@ -161,6 +157,36 @@ summary_beta <- summarise_draws(
 beta_dep <- grep("^beta_departamento", names(draws), value = TRUE)
 
 rowMeans(as.matrix(draws[, beta_dep])) %>% sum()
+
+## Significancia de parámetros
+
+check_significance <- function(x, level = 0.95) {
+  alpha <- 1 - level
+  ci <- quantile(x, probs = c(alpha / 2, 1 - alpha / 2))
+  
+  tibble(
+    mean = mean(x),
+    sd   = sd(x),
+    q2.5 = ci[1],
+    q97.5 = ci[2],
+    significant = !(ci[1] <= 0 & ci[2] >= 0)
+  )
+}
+summary_params <- draws %>%
+  select(starts_with("beta")) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "parameter",
+    values_to = "value"
+  ) %>%
+  group_by(parameter) %>%
+  summarise(check_significance(value), .groups = "drop")
+
+significant_params <- summary_params %>%
+  filter(significant)
+
+significant_params
+
 
 
 #### Curva
