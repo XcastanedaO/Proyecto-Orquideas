@@ -22,7 +22,7 @@ library(brms)
 library(posterior)
 library(bayesplot)
 library(cmdstanr)
-
+set_cmdstan_path()
 data_model_SIVIGILA <-readRDS(paste0(here(),"/data/processed/data_model_SIVIGILA_geo.rds"))
 
 # Asegurar variable respuesta como 0/1
@@ -114,13 +114,8 @@ stan_data <- list(
   region   = as.integer(train_data$region) # 1..33
 )
 
-X <- model.matrix(ac_mental ~
-                    mujer_cabf + def_naturaleza +
-                    sexo_agre + conv_agre  +
-                    ciclo_vital + departamento_ocurrencia,
-                  data = train_data)
 
-fit_vb_2 <- log_model$variational(
+fit_vb_region <- log_model_region$variational(
   data = stan_data,
   algorithm = "fullrank",
   output_samples = 10000,
@@ -133,17 +128,18 @@ library(posterior)
 
 # saveRDS(fit_vb_2, "models/fit_vb_fullrank_2.rds")
 
-draws <- readRDS("models/draws_fullrank_2.rds")
+draws<- as_draws_df(fit_vb_region$draws())
+saveRDS(draws, "models/draws_region.rds")
 
 results_full_2 <- summary(draws)
 
-fit_vb_2$cmdstan_diagnose()
+fit_vb_region$cmdstan_diagnose()
 
 mcmc_hist(draws, pars = c("beta_mujer[1]",  "beta_mujer[2]", "beta_naturaleza[1]")   )
 
 
 
-fit_vb$metadata()$elbo
+fit_vb_region$metadata()$elbo
 # Subset correcto de betas
 beta_draws <- subset_draws(
   draws,
@@ -153,7 +149,7 @@ beta_draws <- subset_draws(
 save_data(results, "results_meanfield", type = "interim", format = "xlsx")
 save_data(results_full, "results_fullrank", type = "interim", format = "xlsx")
 save_data(results_full_2, "results_fullrank2", type = "interim", format = "xlsx")
-
+save_data(results_full_2, "results_fullrank2_region", type = "interim", format = "xlsx")
 # Resumen posterior
 summary_beta <- summarise_draws(
   beta_draws,
@@ -171,7 +167,7 @@ rowMeans(as.matrix(draws[, beta_dep])) %>% sum()
 
 # Calcular la media de los coeficientes estimados
 alpha_hat <- mean(draws$alpha)
-beta_hat <- colMeans(draws[, 4:50])
+beta_hat <- colMeans(draws[, 4:29])
 
 # Calcular Odds Ratios
 odds_ratios <- exp(beta_hat)
@@ -189,13 +185,22 @@ colnames(X_sexo_agre) <- paste0("beta_sexo_agre[", seq_len(ncol(X_sexo_agre)), "
 X_conv_agre <- model.matrix(~ conv_agre - 1, data = test_data)
 colnames(X_conv_agre) <- paste0("beta_conv_agre[", seq_len(ncol(X_conv_agre)), "]")
 
+X_area <- model.matrix(~ area - 1, data = test_data)
+colnames(X_area) <- paste0("beta_area[", seq_len(ncol(X_area)), "]")
+
+X_escenario <- model.matrix(~ escenario - 1, data = test_data)
+colnames(X_escenario) <- paste0("beta_escenario[", seq_len(ncol(X_escenario)), "]")
+
+X_pac_hos <- model.matrix(~ pac_hos - 1, data = test_data)
+colnames(X_pac_hos) <- paste0("beta_pac_hos[", seq_len(ncol(X_pac_hos)), "]")
+
 X_ciclo_vital <- model.matrix(~ ciclo_vital - 1, data = test_data)
 colnames(X_ciclo_vital) <- paste0("beta_ciclo_vital[", seq_len(ncol(X_ciclo_vital)), "]")
 
-X_departamento <- model.matrix(~ departamento_ocurrencia - 1, data = test_data)
-colnames(X_departamento) <- paste0(
-  "beta_departamento[",
-  seq_len(ncol(X_departamento)),
+X_region <- model.matrix(~ region - 1, data = test_data)
+colnames(X_region) <- paste0(
+  "beta_region[",
+  seq_len(ncol(X_region)),
   "]"
 )
 
@@ -204,8 +209,11 @@ X_test <- cbind(
   X_naturaleza,
   X_sexo_agre,
   X_conv_agre,
+  X_area,
+  X_escenario,
+  X_pac_hos,
   X_ciclo_vital,
-  X_departamento
+  X_region
 )
 
 # Calcular probabilidades predichas
