@@ -128,35 +128,23 @@ library(posterior)
 
 # saveRDS(fit_vb_2, "models/fit_vb_fullrank_2.rds")
 
-draws <- as_draws_df(fit_vb_region$draws())
-saveRDS(draws, "models/draws_region.rds")
+# draws_reg <- as_draws_df(fit_vb_region$draws())
+# saveRDS(draws, "models/draws_region.rds")
 draws <- readRDS("models/draws_region.rds")
 
 results_full_2 <- summary(draws)
 
-fit_vb_region$cmdstan_diagnose()
+# fit_vb_region$cmdstan_diagnose()
 
 mcmc_hist(draws, pars = c("beta_region[1]","beta_region[2]" ,"beta_region[3]" ,"beta_region[4]", "beta_region[5]"))
 
-cat(quantile(draws$`beta_mujer[1]`, 0.025), quantile(draws$`beta_mujer[1]`, 0.975))
 
-fit_vb_region$metadata()$elbo
-#
-save_data(results, "results_meanfield", type = "interim", format = "xlsx")
-save_data(results_full, "results_fullrank", type = "interim", format = "xlsx")
-save_data(results_full_2, "results_fullrank2", type = "interim", format = "xlsx")
-save_data(results_full_2, "results_fullrank2_region", type = "interim", format = "xlsx")
-# Resumen posterior
-summary_beta <- summarise_draws(
-  beta_draws,
-  mean,
-  sd,
-  ~quantile2(.x, probs = c(0.025, 0.975))
-)
+# save_data(results, "results_meanfield", type = "interim", format = "xlsx")
+# save_data(results_full, "results_fullrank", type = "interim", format = "xlsx")
+# save_data(results_full_2, "results_fullrank2", type = "interim", format = "xlsx")
+# save_data(results_full_2, "results_fullrank2_region", type = "interim", format = "xlsx")
 
-beta_dep <- grep("^beta_departamento", names(draws), value = TRUE)
 
-rowMeans(as.matrix(draws[, beta_dep])) %>% sum()
 
 ## Significancia de parámetros
 
@@ -172,7 +160,7 @@ check_significance <- function(x, level = 0.95) {
     significant = !(ci[1] <= 0 & ci[2] >= 0)
   )
 }
-summary_params <- draws %>%
+summary_params_reg <- draws_reg %>%
   select(starts_with("beta")) %>%
   pivot_longer(
     cols = everything(),
@@ -182,11 +170,11 @@ summary_params <- draws %>%
   group_by(parameter) %>%
   summarise(check_significance(value), .groups = "drop")
 
-significant_params <- summary_params %>%
+significant_params_reg <- summary_params_reg %>%
   filter(significant)
 
 significant_params
-
+exp(significant_params)
 
 
 #### Curva
@@ -196,7 +184,7 @@ alpha_hat <- mean(draws$alpha)
 beta_hat <- colMeans(draws[, 4:29])
 
 # Calcular Odds Ratios
-odds_ratios <- exp(beta_hat)
+odds_ratios_reg <- exp(beta_hat)
 intercepto_OR <- exp(alpha_hat)
 
 X_mujer <- model.matrix(~ mujer_cabf - 1, data = test_data)
@@ -252,26 +240,6 @@ eta_hat <- as.numeric(
 
 p_hat <- plogis(eta_hat)
 
-# library(pROC)
-# 
-# roc_obj <- roc(
-#   response  = test_data$ac_mental,
-#   predictor = p_hat,
-#   levels = c(0, 1),
-#   direction = "<"
-# )
-# 
-# auc_value <- auc(roc_obj)
-# auc_value
-# 
-# plot(
-#   roc_obj,
-#   col = "blue",
-#   lwd = 2,
-#   main = paste0("ROC Curve (AUC = ", round(auc_value, 3), ")")
-# )
-# 
-# abline(a = 0, b = 1, lty = 2, col = "gray")
 
 library(PRROC)
 PRROC_obj <- roc.curve(scores.class0 = p_hat,

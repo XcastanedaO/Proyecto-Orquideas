@@ -95,22 +95,6 @@ test_data <- data_model_SIVIGILA[-train_index, ]
 
 
 
-# Set cmdstanr as backend
-# set_cmdstan_path()
-# 
-# model <- brm(
-#   formula = ac_mental ~ mujer_cabf+def_naturaleza+area+sexo_agre+ conv_agre+ ciclo_vital + departamento_ocurrencia ,
-#   family = bernoulli(link = "logit"),
-#   data = train_data,
-#   prior = set_prior("normal(0, 5)", class = "b"),
-#   chains = 4,
-#   iter = 2000,
-#   warmup = 1000,
-#   seed = 123
-# )
-# 
-# saveRDS(model, "logistic_model_ref.rds")
-
 ## Ajuste de modelo
 log_model <- cmdstan_model("models/logistic_model_stan.stan")
 
@@ -127,17 +111,15 @@ stan_data <- list(
   def_naturaleza = as.integer(train_data$def_naturaleza),    # 1..4
   sexo_agre      = as.integer(train_data$sexo_agre),         # 1..3
   conv_agre      = as.integer(train_data$conv_agre),         # 1..2
+  area      = as.integer(train_data$area),         # 1..2
+  escenario      = as.integer(train_data$escenario),         # 1..2
+  pac_hos      = as.integer(train_data$pac_hos),         # 1..2
   ciclo_vital    = as.integer(train_data$ciclo_vital),       # 1..3
   departamento   = as.integer(train_data$departamento_ocurrencia) # 1..33
 )
 
-X <- model.matrix(ac_mental ~
-                    mujer_cabf + def_naturaleza +
-                    sexo_agre + conv_agre  +
-                    ciclo_vital + departamento_ocurrencia,
-                  data = train_data)
 
-fit_vb_2 <- log_model$variational(
+fit_vb_dep <- log_model$variational(
   data = stan_data,
   algorithm = "fullrank",
   output_samples = 10000,
@@ -148,50 +130,65 @@ fit_vb_2 <- log_model$variational(
 
 library(posterior)
 
-# saveRDS(fit_vb_2, "models/fit_vb_fullrank_2.rds")
+# 
+# draws <- as_draws_df(fit_vb_dep$draws())
+# saveRDS(draws, "models/draws_dep.rds")
 
-draws <- readRDS("models/draws_fullrank_2.rds")
+# draws <- readRDS("models/draws_fullrank_2.rds")
+
+draws <- readRDS("models/draws_dep.rds")
 
 results_full_2 <- summary(draws)
 
-fit_vb_2$cmdstan_diagnose()
+# fit_vb_2$cmdstan_diagnose()
 
 mcmc_hist(draws, pars = c("beta_mujer[1]",  "beta_mujer[2]", "beta_naturaleza[1]")   )
 
 
+# save_data(results, "results_meanfield", type = "interim", format = "xlsx")
+# save_data(results_full, "results_fullrank", type = "interim", format = "xlsx")
+# save_data(results_full_2, "results_fullrank2", type = "interim", format = "xlsx")
+# save_data(significant_params, "signif_dep", type = "interim", format = "xlsx")
+# rowMeans(as.matrix(draws[, beta_dep])) %>% sum()
 
-fit_vb$metadata()$elbo
-# Subset correcto de betas
-beta_draws <- subset_draws(
-  draws,
-  variable = paste0("beta[", 1:K, "]")
-)
+## Parámetros significativos 
+check_significance <- function(x, level = 0.95) {
+  alpha <- 1 - level
+  ci <- quantile(x, probs = c(alpha / 2, 1 - alpha / 2))
+  
+  tibble(
+    mean = mean(x),
+    sd   = sd(x),
+    q2.5 = ci[1],
+    q97.5 = ci[2],
+    significant = !(ci[1] <= 0 & ci[2] >= 0)
+  )
+}
+summary_params <- draws %>%
+  select(starts_with("beta")) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "parameter",
+    values_to = "value"
+  ) %>%
+  group_by(parameter) %>%
+  summarise(check_significance(value), .groups = "drop")
 
-save_data(results, "results_meanfield", type = "interim", format = "xlsx")
-save_data(results_full, "results_fullrank", type = "interim", format = "xlsx")
-save_data(results_full_2, "results_fullrank2", type = "interim", format = "xlsx")
+significant_params <- summary_params %>%
+  filter(significant)
 
-# Resumen posterior
-summary_beta <- summarise_draws(
-  beta_draws,
-  mean,
-  sd,
-  ~quantile2(.x, probs = c(0.025, 0.975))
-)
-
-beta_dep <- grep("^beta_departamento", names(draws), value = TRUE)
-
-rowMeans(as.matrix(draws[, beta_dep])) %>% sum()
-
+significant_params$odds_mean <- exp(significant_params$mean)
+significant_params$odds_025 <- exp(significant_params$q2.5)
+significant_params$odds_075<- exp(significant_params$q97.5)
 
 #### Curva
 
 # Calcular la media de los coeficientes estimados
 alpha_hat <- mean(draws$alpha)
-beta_hat <- colMeans(draws[, 4:50])
+beta_hat <- colMeans(draws[, 4:57])
 
 # Calcular Odds Ratios
-odds_ratios <- exp(beta_hat)
+odds_ratios_dep <- exp(beta_hat)
 intercepto_OR <- exp(alpha_hat)
 
 X_mujer <- model.matrix(~ mujer_cabf - 1, data = test_data)
@@ -205,6 +202,15 @@ colnames(X_sexo_agre) <- paste0("beta_sexo_agre[", seq_len(ncol(X_sexo_agre)), "
 
 X_conv_agre <- model.matrix(~ conv_agre - 1, data = test_data)
 colnames(X_conv_agre) <- paste0("beta_conv_agre[", seq_len(ncol(X_conv_agre)), "]")
+
+X_area <- model.matrix(~ area - 1, data = test_data)
+colnames(X_area) <- paste0("beta_area[", seq_len(ncol(X_area)), "]")
+
+X_escenario <- model.matrix(~ escenario - 1, data = test_data)
+colnames(X_escenario) <- paste0("beta_escenario[", seq_len(ncol(X_escenario)), "]")
+
+X_pac_hos <- model.matrix(~ pac_hos - 1, data = test_data)
+colnames(X_pac_hos) <- paste0("beta_pac_hos[", seq_len(ncol(X_pac_hos)), "]")
 
 X_ciclo_vital <- model.matrix(~ ciclo_vital - 1, data = test_data)
 colnames(X_ciclo_vital) <- paste0("beta_ciclo_vital[", seq_len(ncol(X_ciclo_vital)), "]")
@@ -221,6 +227,9 @@ X_test <- cbind(
   X_naturaleza,
   X_sexo_agre,
   X_conv_agre,
+  X_area,
+  X_escenario,
+  X_pac_hos,
   X_ciclo_vital,
   X_departamento
 )
@@ -235,26 +244,6 @@ eta_hat <- as.numeric(
 
 p_hat <- plogis(eta_hat)
 
-# library(pROC)
-# 
-# roc_obj <- roc(
-#   response  = test_data$ac_mental,
-#   predictor = p_hat,
-#   levels = c(0, 1),
-#   direction = "<"
-# )
-# 
-# auc_value <- auc(roc_obj)
-# auc_value
-# 
-# plot(
-#   roc_obj,
-#   col = "blue",
-#   lwd = 2,
-#   main = paste0("ROC Curve (AUC = ", round(auc_value, 3), ")")
-# )
-# 
-# abline(a = 0, b = 1, lty = 2, col = "gray")
 
 library(PRROC)
 PRROC_obj <- roc.curve(scores.class0 = p_hat,

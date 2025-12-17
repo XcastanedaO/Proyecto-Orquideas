@@ -172,6 +172,9 @@ sapply(train_data, function(x) {
 
 ```
 
+```{r}
+data_model_SIVIGILA$resp <- ifelse(data_model_SIVIGILA$ac_mental==1, "Sí", "No")
+```
 
 ```{r}
 # Var respuesta
@@ -294,6 +297,26 @@ dep <- data_model_SIVIGILA %>%
 dep
 ```
 
+```{r}
+region2 <- data_model_SIVIGILA %>%
+  group_by(region, resp) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(region) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = region, y = prop, fill = resp)) +
+  geom_bar(stat = "identity", position = "fill", alpha = 0.85) +
+  geom_text(aes(label = scales::percent(prop, accuracy = 0.1)), 
+            position = position_fill(vjust = 0.5), size = 3.5, color = "#4B0082",fontface = "bold") +
+  labs(
+    x = "Tipo de violencia",
+    y = "Proporción (%)",
+    fill = "Atención en salud mental"
+  ) +
+  scale_fill_manual(values = c("#90A9C3", "#AE86D3")) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  theme(legend.position = "top")
+```
 
 
 ```{r}
@@ -303,6 +326,7 @@ ggsave("../../reports/sivigila_nacional/hosp_ac.pdf", hosp_ac_plot, width = 5, h
 ggsave("../../reports/sivigila_nacional/tipo_v_ac.pdf", tip_v, width = 7, height = 4)
 ggsave("../../reports/sivigila_nacional/ciclo_ac.pdf", ciclo_ac, width = 6, height = 4)
 ggsave("../../reports/sivigila_nacional/dep.pdf", dep, width = 6, height = 6)
+ggsave("reports/region2.pdf", region2, width = 6, height = 5)
 ```
 
 ```{r}

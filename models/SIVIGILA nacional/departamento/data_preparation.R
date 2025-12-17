@@ -53,7 +53,7 @@ data_model_SIVIGILA <- data_model_SIVIGILA %>%
         "Putumayo", "Vaupés"
       ) ~ "Amazonía",
       
-      TRUE ~ "Sin región"  
+ 
     )
   )
 
