@@ -201,8 +201,8 @@ generated quantities {
   S_region =
     sqrt(
       (1.0 / (5 - 1))
-      * beta_departamento'
+      * beta_region'
       * (diag_matrix(rep_vector(1.0, 5)) - (1.0 / 5) * D1)
-      * beta_departamento
+      * beta_region
     );
 }
