@@ -132,11 +132,11 @@ library(posterior)
 
 # 
 # draws <- as_draws_df(fit_vb_dep$draws())
-# saveRDS(draws, "models/draws_dep.rds")
+# saveRDS(draws, "models/draws_dep_anova.rds")
 
 # draws <- readRDS("models/draws_fullrank_2.rds")
 
-draws <- readRDS("models/draws_dep.rds")
+draws <- readRDS("models/draws_dep_anova.rds")
 
 results_full_2 <- summary(draws)
 
@@ -252,9 +252,54 @@ PRROC_obj <- roc.curve(scores.class0 = p_hat,
 plot(PRROC_obj)
 
 ### ANOVA
-commune_sim <- c(fit_vb_dep_anova@sim[[1]][[1]]$,fit_models12@sim[[1]][[2]]$S_commune ,fit_models12@sim[[1]][[3]]$S_commune)
-scheme_sim <- c(fit_models12@sim[[1]][[1]]$S_scheme,fit_models12@sim[[1]][[2]]$S_scheme,fit_models12@sim[[1]][[3]]$S_scheme)
-development_sim <- c(fit_models12@sim[[1]][[1]]$S_development,fit_models12@sim[[1]][[2]]$S_development,fit_models12@sim[[1]][[3]]$S_development)
-security_sim <- c(fit_models12@sim[[1]][[1]]$S_security,fit_models12@sim[[1]][[2]]$S_security,fit_models12@sim[[1]][[3]]$S_security)
-gender_sim <- c(fit_models12@sim[[1]][[1]]$S_gender,fit_models12@sim[[1]][[2]]$S_gender,fit_models12@sim[[1]][[3]]$S_gender)
-period_sim <- c(fit_models12@sim[[1]][[1]]$S_period,fit_models12@sim[[1]][[2]]$S_period,fit_models12@sim[[1]][[3]]$S_period)
+## ANOVA
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+  qnt <- quantile(x, probs=c(.025, .975), na.rm = na.rm, ...)
+  H <- 1.5 * IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- NA
+  y[x > (qnt[2] + H)] <- NA
+  y
+}
+
+attach(draws)
+
+
+
+# Remove sample values that are significantly below or above the 5% and 95% quantiles,
+# respectively, based on the interquartile range (IQR) and save results as data frames
+
+
+sample_data <- lapply(c(draws$S_mujer, draws$S_naturaleza, draws$S_sexo_agre, draws$S_area, draws$S_conv_agre,
+                        draws$S_escenario, draws$S_pac_hos, draws$S_pac_hos, draws$S_ciclo_vital, draws$S_departamento), 
+                      function(f) {
+                        data <- remove_outliers(f)
+                        data <- as.data.frame(data)
+                        colnames(data) <- "V1"
+                        data
+                      })
+
+# Merge data frame with final samples
+S_alphas <- do.call(rbind, sample_data)
+# Create data frame with the names of the qualitative predictors
+groups <- data.frame(rep(c("Mujer","Naturaleza","sexo_agre","S_conv_agre","S_pac_hos", "S_ciclo_vital", "S_departamento"), each = 10000))
+# Combine S_alphas and groups by columns, obtaining a new data frame
+S_alphas_grup <- cbind(S_alphas,groups) 
+# Assign column names to the new data frame "S_alphas_grup"
+colnames(S_alphas_grup) <- c("S_alpha","Grupo") 
+
+# Plot Bayesian ANOVA
+f <- function(x) {
+  r <- quantile(x, probs = c(0, 0.05, 0.5, 0.95, 1)) 
+  names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
+  r
+}
+
+
+Anova <- ggplot(S_alphas_grup, aes(x=Grupo, y=S_alpha)) + 
+  stat_summary(fun.data = f, geom="boxplot",
+               fill='steelblue',width = 0.03,position = position_dodge(width=0.8))+
+  stat_summary(fun=median, geom="point", shape=21, size=3, col = "black",bg="cadetblue2")+
+  theme(aspect.ratio = .6)+
+  labs(y = expression(S[alpha]), x = "", title = "Bayesian ANOVA")+
+  coord_flip()
