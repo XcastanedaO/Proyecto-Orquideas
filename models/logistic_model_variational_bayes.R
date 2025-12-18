@@ -250,3 +250,11 @@ PRROC_obj <- roc.curve(scores.class0 = p_hat,
                        weights.class0=test_data$ac_mental,
                        curve=TRUE)
 plot(PRROC_obj)
+
+### ANOVA
+commune_sim <- c(fit_vb_dep_anova@sim[[1]][[1]]$,fit_models12@sim[[1]][[2]]$S_commune ,fit_models12@sim[[1]][[3]]$S_commune)
+scheme_sim <- c(fit_models12@sim[[1]][[1]]$S_scheme,fit_models12@sim[[1]][[2]]$S_scheme,fit_models12@sim[[1]][[3]]$S_scheme)
+development_sim <- c(fit_models12@sim[[1]][[1]]$S_development,fit_models12@sim[[1]][[2]]$S_development,fit_models12@sim[[1]][[3]]$S_development)
+security_sim <- c(fit_models12@sim[[1]][[1]]$S_security,fit_models12@sim[[1]][[2]]$S_security,fit_models12@sim[[1]][[3]]$S_security)
+gender_sim <- c(fit_models12@sim[[1]][[1]]$S_gender,fit_models12@sim[[1]][[2]]$S_gender,fit_models12@sim[[1]][[3]]$S_gender)
+period_sim <- c(fit_models12@sim[[1]][[1]]$S_period,fit_models12@sim[[1]][[2]]$S_period,fit_models12@sim[[1]][[3]]$S_period)

@@ -128,9 +128,9 @@ library(posterior)
 
 # saveRDS(fit_vb_2, "models/fit_vb_fullrank_2.rds")
 
-# draws_reg <- as_draws_df(fit_vb_region$draws())
-# saveRDS(draws, "models/draws_region.rds")
-draws <- readRDS("models/draws_region.rds")
+draws_reg <- as_draws_df(fit_vb_region$draws())
+saveRDS(draws_reg, "models/draws_region.rds")
+# draws <- readRDS("models/draws_region.rds")
 
 results_full_2 <- summary(draws)
 
