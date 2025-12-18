@@ -131,7 +131,7 @@ library(posterior)
 # draws<- as_draws_df(fit_vb_region$draws())
 # saveRDS(draws, "models/draws_region_anova.rds")
 
-draws <- readRDS("models/draws_region_anova.rds")
+draws_reg <- readRDS("models/draws_region_anova.rds")
 
 results_full_2 <- summary(draws)
 
@@ -177,12 +177,14 @@ significant_params_reg <- summary_params_reg %>%
 significant_params
 
 
-
+summary_params_reg$odds_mean <- exp(summary_params_reg$mean)
+summary_params_reg$odds_025 <- exp(summary_params_reg$q2.5)
+summary_params_reg$odds_075<- exp(summary_params_reg$q97.5)
 #### Curva
 
 # Calcular la media de los coeficientes estimados
-alpha_hat <- mean(draws$alpha)
-beta_hat <- colMeans(draws[, 4:29])
+alpha_hat <- mean(draws_reg$alpha)
+beta_hat <- colMeans(draws_reg[, 4:29])
 
 # Calcular Odds Ratios
 odds_ratios_reg <- exp(beta_hat)
@@ -232,9 +234,9 @@ X_test <- cbind(
 )
 
 # Calcular probabilidades predichas
-beta_draws <- draws[, colnames(X_test)]
+beta_draws <- draws_reg[, colnames(X_test)]
 
-alpha_hat <- mean(draws$alpha) 
+alpha_hat <- mean(draws_reg$alpha) 
 eta_hat <- as.numeric(
   alpha_hat + X_test %*% colMeans(beta_draws)
 )
@@ -264,8 +266,8 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
 # respectively, based on the interquartile range (IQR) and save results as data frames
 
 
-sample_data <- lapply(c(draws$S_mujer, draws$S_naturaleza, draws$S_sexo_agre, draws$S_area, draws$S_conv_agre,
-                        draws$S_escenario, draws$S_pac_hos,  draws$S_ciclo_vital, draws$S_region), 
+sample_data <- lapply(c(draws_reg$S_mujer, draws_reg$S_naturaleza, draws_reg$S_sexo_agre, draws_reg$S_area, draws_reg$S_conv_agre,
+                        draws_reg$S_escenario, draws_reg$S_pac_hos,  draws_reg$S_ciclo_vital, draws_reg$S_region), 
                       function(f) {
                         data <- remove_outliers(f)
                         data <- as.data.frame(data)
@@ -297,5 +299,7 @@ Anova_reg <-  ggplot(S_alphas_grup, aes(x=Grupo, y=S_alpha)) +
   theme(aspect.ratio = .6)+
   labs(y = expression(S[alpha]), x = "", title = "Bayesian ANOVA")+
   coord_flip()
+
+Anova_reg
 ggsave("reports/anova_reg.pdf", Anova_reg, width = 8, height = 5)
 
