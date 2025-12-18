@@ -1,5 +1,3 @@
-
-
 library(dplyr)
 library(ggplot2)
 source("utils/load_data.R")
@@ -21,7 +19,6 @@ library(caret)
 library(brms)
 library(posterior)
 library(bayesplot)
-
 library(cmdstanr)
 
 data_model_SIVIGILA <-readRDS(paste0(here(),"/data/processed/data_model_SIVIGILA_geo.rds"))
@@ -126,9 +123,6 @@ fit_vb_dep <- log_model$variational(
   seed = 123
 )
 
-## Validación 
-
-library(posterior)
 
 # 
 # draws <- as_draws_df(fit_vb_dep$draws())
@@ -138,7 +132,7 @@ library(posterior)
 
 draws <- readRDS("models/draws_dep_anova.rds")
 
-results_full_2 <- summary(draws)
+# results_full_2 <- summary(draws)
 
 # fit_vb_2$cmdstan_diagnose()
 
@@ -235,6 +229,7 @@ X_test <- cbind(
 )
 
 # Calcular probabilidades predichas
+
 beta_draws <- draws[, colnames(X_test)]
 
 alpha_hat <- mean(draws$alpha) 
@@ -252,7 +247,6 @@ PRROC_obj <- roc.curve(scores.class0 = p_hat,
 plot(PRROC_obj)
 
 ### ANOVA
-## ANOVA
 remove_outliers <- function(x, na.rm = TRUE, ...) {
   qnt <- quantile(x, probs=c(.025, .975), na.rm = na.rm, ...)
   H <- 1.5 * IQR(x, na.rm = na.rm)
@@ -262,7 +256,7 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
   y
 }
 
-attach(draws)
+# attach(draws)
 
 
 
@@ -271,7 +265,7 @@ attach(draws)
 
 
 sample_data <- lapply(c(draws$S_mujer, draws$S_naturaleza, draws$S_sexo_agre, draws$S_area, draws$S_conv_agre,
-                        draws$S_escenario, draws$S_pac_hos, draws$S_pac_hos, draws$S_ciclo_vital, draws$S_departamento), 
+                        draws$S_escenario, draws$S_pac_hos,  draws$S_ciclo_vital, draws$S_departamento), 
                       function(f) {
                         data <- remove_outliers(f)
                         data <- as.data.frame(data)
@@ -282,7 +276,7 @@ sample_data <- lapply(c(draws$S_mujer, draws$S_naturaleza, draws$S_sexo_agre, dr
 # Merge data frame with final samples
 S_alphas <- do.call(rbind, sample_data)
 # Create data frame with the names of the qualitative predictors
-groups <- data.frame(rep(c("Mujer","Naturaleza","sexo_agre","S_conv_agre","S_pac_hos", "S_ciclo_vital", "S_departamento"), each = 10000))
+groups <- data.frame(rep(c("Mujer CABF (2)","Tipo violencia (4)","Sexo agresor (3)","Area (3)", "Convivencia agresor (2)","Escenario (2)", "Paciente hospitalizado (2)", "Ciclo vital (3)", "Departamento (33)"), each = 10000))
 # Combine S_alphas and groups by columns, obtaining a new data frame
 S_alphas_grup <- cbind(S_alphas,groups) 
 # Assign column names to the new data frame "S_alphas_grup"
@@ -290,16 +284,17 @@ colnames(S_alphas_grup) <- c("S_alpha","Grupo")
 
 # Plot Bayesian ANOVA
 f <- function(x) {
-  r <- quantile(x, probs = c(0, 0.05, 0.5, 0.95, 1)) 
+  r <- quantile(x, probs = c(0, 0.025, 0.5, 0.975, 1)) 
   names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
   r
 }
 
 
-Anova <- ggplot(S_alphas_grup, aes(x=Grupo, y=S_alpha)) + 
+Anova <-  ggplot(S_alphas_grup, aes(x=Grupo, y=S_alpha)) + 
   stat_summary(fun.data = f, geom="boxplot",
-               fill='steelblue',width = 0.03,position = position_dodge(width=0.8))+
-  stat_summary(fun=median, geom="point", shape=21, size=3, col = "black",bg="cadetblue2")+
+               fill='steelblue',width = 0.08,position = position_dodge(width=0.8))+
+  stat_summary(fun=median, geom="point", shape=21, size=4.5, col = "black",bg="cadetblue2")+
   theme(aspect.ratio = .6)+
   labs(y = expression(S[alpha]), x = "", title = "Bayesian ANOVA")+
   coord_flip()
+ggsave("reports/anova_dep.pdf", Anova, width = 8, height = 5)

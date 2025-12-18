@@ -113,8 +113,8 @@ generated quantities {
   row_vector[3] bCV = rep_vector(1.0, 3)';
 
   // Region (5 niveles)
-  matrix[33,33] D1;
-  row_vector[33] bD = rep_vector(1.0, 5)';
+  matrix[5,5] D1;
+  row_vector[5] bD = rep_vector(1.0, 5)';
 
   // -------------------------
   // COMPLETAR LAS MATRICES

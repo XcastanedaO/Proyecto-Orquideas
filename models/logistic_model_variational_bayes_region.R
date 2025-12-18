@@ -128,9 +128,10 @@ library(posterior)
 
 # saveRDS(fit_vb_2, "models/fit_vb_fullrank_2.rds")
 
-draws_reg <- as_draws_df(fit_vb_region$draws())
-saveRDS(draws_reg, "models/draws_region.rds")
-# draws <- readRDS("models/draws_region.rds")
+# draws<- as_draws_df(fit_vb_region$draws())
+# saveRDS(draws, "models/draws_region_anova.rds")
+
+draws <- readRDS("models/draws_region_anova.rds")
 
 results_full_2 <- summary(draws)
 
@@ -174,7 +175,7 @@ significant_params_reg <- summary_params_reg %>%
   filter(significant)
 
 significant_params
-exp(significant_params)
+
 
 
 #### Curva
@@ -246,3 +247,55 @@ PRROC_obj <- roc.curve(scores.class0 = p_hat,
                        weights.class0=test_data$ac_mental,
                        curve=TRUE)
 plot(PRROC_obj)
+
+## Anova
+
+remove_outliers <- function(x, na.rm = TRUE, ...) {
+  qnt <- quantile(x, probs=c(.025, .975), na.rm = na.rm, ...)
+  H <- 1.5 * IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- NA
+  y[x > (qnt[2] + H)] <- NA
+  y
+}
+
+
+# Remove sample values that are significantly below or above the 5% and 95% quantiles,
+# respectively, based on the interquartile range (IQR) and save results as data frames
+
+
+sample_data <- lapply(c(draws$S_mujer, draws$S_naturaleza, draws$S_sexo_agre, draws$S_area, draws$S_conv_agre,
+                        draws$S_escenario, draws$S_pac_hos,  draws$S_ciclo_vital, draws$S_region), 
+                      function(f) {
+                        data <- remove_outliers(f)
+                        data <- as.data.frame(data)
+                        colnames(data) <- "V1"
+                        data
+                      })
+
+# Merge data frame with final samples
+S_alphas <- do.call(rbind, sample_data)
+# Create data frame with the names of the qualitative predictors
+groups <- data.frame(rep(c("Mujer CABF (2)","Tipo violencia (4)","Sexo agresor (3)","Area (3)", "Convivencia agresor (2)","Escenario (2)", "Paciente hospitalizado (2)", "Ciclo vital (3)", "Región (5)"), each = 10000))
+# Combine S_alphas and groups by columns, obtaining a new data frame
+S_alphas_grup <- cbind(S_alphas,groups) 
+# Assign column names to the new data frame "S_alphas_grup"
+colnames(S_alphas_grup) <- c("S_alpha","Grupo") 
+
+# Plot Bayesian ANOVA
+f <- function(x) {
+  r <- quantile(x, probs = c(0, 0.025, 0.5, 0.975, 1)) 
+  names(r) <- c("ymin", "lower", "middle", "upper", "ymax")
+  r
+}
+
+
+Anova_reg <-  ggplot(S_alphas_grup, aes(x=Grupo, y=S_alpha)) + 
+  stat_summary(fun.data = f, geom="boxplot",
+               fill='steelblue',width = 0.08,position = position_dodge(width=0.8))+
+  stat_summary(fun=median, geom="point", shape=21, size=4.5, col = "black",bg="cadetblue2")+
+  theme(aspect.ratio = .6)+
+  labs(y = expression(S[alpha]), x = "", title = "Bayesian ANOVA")+
+  coord_flip()
+ggsave("reports/anova_reg.pdf", Anova_reg, width = 8, height = 5)
+
