@@ -124,16 +124,16 @@ fit_vb_dep <- log_model$variational(
 )
 
 
-# 
+#####  Análisis de resultados #####
+
 # draws <- as_draws_df(fit_vb_dep$draws())
 # saveRDS(draws, "models/draws_dep_anova.rds")
-
 # draws <- readRDS("models/draws_fullrank_2.rds")
 
+#### Cadenas
 draws <- readRDS("models/draws_dep_anova.rds")
 
 # results_full_2 <- summary(draws)
-
 # fit_vb_2$cmdstan_diagnose()
 
 mcmc_hist(draws, pars = c("beta_mujer[1]",  "beta_mujer[2]", "beta_naturaleza[1]")   )
@@ -145,7 +145,7 @@ mcmc_hist(draws, pars = c("beta_mujer[1]",  "beta_mujer[2]", "beta_naturaleza[1]
 # save_data(significant_params, "signif_dep", type = "interim", format = "xlsx")
 # rowMeans(as.matrix(draws[, beta_dep])) %>% sum()
 
-## Parámetros significativos 
+#### Parámetros significativos 
 check_significance <- function(x, level = 0.95) {
   alpha <- 1 - level
   ci <- quantile(x, probs = c(alpha / 2, 1 - alpha / 2))
@@ -257,9 +257,6 @@ remove_outliers <- function(x, na.rm = TRUE, ...) {
 }
 
 # attach(draws)
-
-
-
 # Remove sample values that are significantly below or above the 5% and 95% quantiles,
 # respectively, based on the interquartile range (IQR) and save results as data frames
 

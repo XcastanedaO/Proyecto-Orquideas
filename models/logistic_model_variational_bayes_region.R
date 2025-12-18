@@ -122,7 +122,7 @@ fit_vb_region <- log_model_region$variational(
   seed = 123
 )
 
-## Validación 
+#####  Análisis de resultados #####
 
 library(posterior)
 
@@ -131,6 +131,7 @@ library(posterior)
 # draws<- as_draws_df(fit_vb_region$draws())
 # saveRDS(draws, "models/draws_region_anova.rds")
 
+# Cadenas
 draws_reg <- readRDS("models/draws_region_anova.rds")
 
 results_full_2 <- summary(draws)
@@ -147,7 +148,7 @@ mcmc_hist(draws, pars = c("beta_region[1]","beta_region[2]" ,"beta_region[3]" ,"
 
 
 
-## Significancia de parámetros
+#### Significancia de parámetros
 
 check_significance <- function(x, level = 0.95) {
   alpha <- 1 - level
@@ -180,6 +181,7 @@ significant_params
 summary_params_reg$odds_mean <- exp(summary_params_reg$mean)
 summary_params_reg$odds_025 <- exp(summary_params_reg$q2.5)
 summary_params_reg$odds_075<- exp(summary_params_reg$q97.5)
+
 #### Curva
 
 # Calcular la media de los coeficientes estimados
@@ -250,7 +252,7 @@ PRROC_obj <- roc.curve(scores.class0 = p_hat,
                        curve=TRUE)
 plot(PRROC_obj)
 
-## Anova
+#### Anova
 
 remove_outliers <- function(x, na.rm = TRUE, ...) {
   qnt <- quantile(x, probs=c(.025, .975), na.rm = na.rm, ...)
