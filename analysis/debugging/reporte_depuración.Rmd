@@ -1,0 +1,17 @@
+### Selección de variables de interés
+
+Se descartan las siguientes variables porque aplican en caso de que la
+muerte haya sido de forma accidental o por eventos de tránsito
+
+-   Condición de la víctima
+-   Medio de Desplazamiento o Transporte
+-   Servicio del Vehículo
+-   Clase o Tipo de Accidente
+-   Objeto de Colisión
+-   Servicio del Objeto de Colisión
+
+Además, se elimina *id* por no ser de relevancia
+
+```{r}
+n_f_data <- n_f_data %>% select(-c(condicion_de_la_victima,medio_de_desplazamiento_o_transporte,servicio_del_vehiculo,clase_o_tipo_de_accidente,objeto_de_colision,servicio_del_objeto_de_colision, id))
+```

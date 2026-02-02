@@ -16,7 +16,7 @@ load_data <- function(file_name, type = "raw", ...) {
   
   # Definir ruta relativa con base en el directorio raíz 
   #data_dir <- file.path("data", type)
-  data_dir <- here("data", type)
+  data_dir <- here::here("data", type)
 
   # path <- dirname(getwd())
   # if(sub(".*/", "", path) != "Proyecto-Orquideas"){
@@ -34,7 +34,7 @@ load_data <- function(file_name, type = "raw", ...) {
   
   # Leer archivo según su extensión
   if (grepl("\\.csv$", file_name)) {
-    data <- read_csv(file_path, ...)
+    data <- read.csv(file_path, ...)
   } else if (grepl("\\.(xlsx|xls)$", file_name)) {
     data <- read_excel(file_path, ...)
   } else if (grepl("\\.rds$", file_name)) {

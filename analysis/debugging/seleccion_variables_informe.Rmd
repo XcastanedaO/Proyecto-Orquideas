@@ -1,0 +1,255 @@
+---
+title: "Informe de Selección de Variables para Modelado de Factores Asociados a Tipologías de Violencia de
+Género en Colombia."
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Introducción
+
+Este documento presenta el proceso de selección, depuración y transformación de variables realizado sobre la base de datos disponible por el Instituto Nacional de Medicina Legal y Ciencias Forenses (INMLCF) de violencia no fatal asociada a Violencia Basada en Género (VBG). El objetivo es garantizar que los modelos estadísticos posteriores, especialmente el modelo multinomial logístico bayesiano, utilicen predictores consistentes, interpretables y alineados con la naturaleza del fenómeno estudiado.
+
+# Informe orientado a la selección de variables
+
+La selección y transformación de variables constituye un paso fundamental para garantizar que los modelos posteriores, especialmente aquellos orientados a la identificación de tipologías de Violencia Basada en Género (VBG), se ajusten adecuadamente al contexto del problema y permitan capturar patrones significativos presentes en los registros no fatales analizados. En esta etapa se aplicaron criterios conceptuales, estadísticos y operativos que permitieron depurar, recodificar y agrupar variables con características similares, reduciendo así la complejidad dimensional del conjunto de datos y fortaleciendo su interpretabilidad.
+
+## 1. Criterios generales de depuración
+
+Se realizó una primera depuración basada en los siguientes criterios:
+
+- **Pertinencia temática**: Se filtraron únicamente casos asociados a violencias directamente relacionadas con dinámicas de VBG:
+  - Violencia sexual
+  - Violencia interpersonal
+  - Violencia intrafamiliar
+  - Violencia sociopolítica
+
+  Asimismo, se excluyeron circunstancias del hecho sin relación directa con VBG (por ejemplo: riñas, balas perdidas, accidentes, etc.).
+
+- **Consistencia poblacional**: Se conservaron únicamente registros en los que la víctima nació en Colombia, con el fin de evitar sesgos derivados de poblaciones con perfiles sociodemográficos distintos.
+
+- **Relevancia en la relación víctima–agresor**: Se definió un conjunto específico de presuntos agresores con pertinencia conceptual para la violencia basada en género: *pareja, ex–pareja, familiar, conocido*. Además, se creó un nuevo grupo denominado **Actores del conflicto** para integrar categorías asociadas a violencia sociopolítica.
+
+## 2. Variables agrupadas o recodificadas
+
+Para optimizar la estabilidad de los modelos y lograr una representación más coherente de los fenómenos estudiados, se realizaron las siguientes agrupaciones y transformaciones:
+
+### a) Ciclo vital
+
+Se construyó una nueva clasificación que agrupa edades en categorías con relevancia epidemiológica y social:
+
+- **Niñas y adolescentes** (0 a 19 años)
+- **Jóvenes** (20 a 34 años)
+- **Adultez** (35 a 59 años)
+
+Los registros correspondientes a adultos mayores fueron excluidos por su baja representación.
+
+### b) Escolaridad
+
+Se consolidaron niveles educativos con el fin de reducir dispersión y reflejar trayectorias educativas comparables:
+
+- **Educación básica primaria y secundaria**
+- **Educación superior** (técnico, tecnólogo, profesional, posgrado)
+- **Educación inicial / preescolar** y **sin escolaridad** se mantienen como categorías independientes dada su relevancia sociológica.
+
+### c) Escenario del hecho
+
+Se agruparon todas las ubicaciones distintas a *vivienda* bajo la categoría **Espacios sociales**, lo cual permite analizar diferencias entre violencia ocurrida en el hogar y en entornos comunitarios.
+
+### d) Rango de hora
+
+Se transformaron los intervalos horarios en categorías funcionales:
+
+- **Madrugada**
+- **Día (horario laboral)**
+- **Noche**
+- **Sin información**
+
+### e) Día del hecho
+
+Se consolidó esta variable en dos grupos:
+
+- **Semana**
+- **Fin de semana**
+
+### f) Agresor
+
+Se depuró la variable original y se construyó la variable **agresor_group**, diferenciando entre:
+
+- Pareja
+- Ex–pareja
+- Familiar
+- Conocido
+- Actores del conflicto
+
+Esta recategorización facilita la modelación al reducir la variabilidad y mejorar la coherencia conceptual de la relación víctima–agresor.
+
+## 3. Justificación para el modelado posterior
+
+Las transformaciones realizadas permiten:
+
+- **Reducir el ruido estadístico** asociado a categorías con baja frecuencia.
+- **Mejorar la interpretabilidad**, consolidando variables en grupos conceptualmente robustos.
+- **Favorecer la estabilidad de modelos bayesianos**, dado que las categorías dispersas o con pocas observaciones pueden generar problemas de identificabilidad en los parámetros.
+- **Alinear las variables con la literatura en VBG**, asegurando una representación válida de los determinantes sociales del fenómeno.
+
+En conjunto, las variables seleccionadas y recodificadas constituyen una base sólida para la construcción de modelos orientados a caracterizar factores asociados a las distintas manifestaciones de VBG en Colombia a partir de registros no fatales.
+
+# Código utilizado para el análisis y selección de variables:
+```{r}
+# Carga de libreías
+source("../../utils/load_data.R")
+library(here)
+library(hms)
+library(dplyr)
+library(forcats)
+library(lubridate)
+library(stringr)
+library(stringi)
+library(janitor)
+library(explore)
+library(ggplot2)
+library(sf)
+library(readr)
+```
+
+```{r}
+## Lectura datos
+nf_data <- load_data("INMLCF_no_fatales_debugged_2015_2024_v2.csv", type = "interim")
+```
+
+```{r, echo=FALSE}
+# Filtros 
+nf_data <- nf_data %>% filter(def_naturaleza %in% c("Violencia sexual","Violencia interpersonal","Violencia intrafamiliar","Violencia sociopolítica")) 
+
+nf_data <- nf_data %>% filter(!circunstancia_del_hecho %in% c("Bala perdida", "Riña")) # No correspondiente a VBG
+
+nf_data <- nf_data %>% filter(pais_de_nacimiento_de_la_victima =="Colombia") 
+```
+
+```{r, echo=FALSE, results='hide'}
+# Recodificación del vínculo del agresor
+nf_data <- nf_data %>% mutate(
+  agresor_group = case_when(
+  agresor_ag == "Delincuencia común" ~ "Actores del conflicto",
+  agresor_ag == "Miembro de grupos alzados al margen de la ley" ~ "Actores del conflicto",
+  agresor_ag == "Miembro de un grupo de la delincuencia organizada" ~  "Actores del conflicto",
+    agresor_ag == "Miembros de las fuerzas armadas, de policía, policía judicial y servicios de inteligencia" ~ "Actores del conflicto",
+  agresor_ag == "Encargado del cuidado" ~ "Conocido",
+  agresor_ag == "Amigo(a)" ~ "Conocido",
+  TRUE ~ agresor_ag
+))
+
+```
+
+```{r, echo=FALSE, warning=FALSE}
+# Aplicando el filtro de que el agresor sólo sea pareja, familiar, ex-pareja, conocido.
+nf_data <- nf_data %>% filter(agresor_group %in% c("Pareja","Familiar","Ex-pareja","Conocido", "Actores del conflicto")) 
+```
+
+```{r}
+
+# Recodificación de escolaridad
+nf_data <- nf_data %>% mutate(
+  escolaridad = case_when(
+    escolaridad == "Educación básica primaria" ~ "Educación básica primaria y secundaria",
+    escolaridad == "Educación básica secundaria o secundaria baja" ~ "Educación básica primaria y secundaria",
+    escolaridad == "Doctorado o equivalente" ~ "Educación superior",
+    escolaridad == "Educación técnica profesional y tecnológica" ~ "Educación superior",
+    escolaridad == "Especialización, maestría o equivalente" ~ "Educación superior",
+    escolaridad == "Universitario" ~ "Educación superior",
+    escolaridad == "Educación media o secundaria alta" ~ "Educación superior",
+    TRUE ~ escolaridad
+  )
+)
+```
+
+```{r, echo=FALSE}
+# Recodificación del escenario del hecho
+nf_data <- nf_data %>% mutate(
+  escenario_del_hecho = case_when(
+    escenario_del_hecho != "vivienda" ~ "Espacios sociales",
+    TRUE ~ escenario_del_hecho
+  )
+)
+```
+
+```{r, echo=FALSE}
+# Recodificación del grupo de edad de la víctima
+nf_data <- nf_data %>% mutate(
+  ciclo_vital_2 = case_when(
+    grupo_de_edad_de_la_victima %in% c("00-04", "05-09") ~ "00-09",
+    grupo_de_edad_de_la_victima %in% c("10-14", "15-17", "18-19") ~ "10-19",
+    grupo_de_edad_de_la_victima %in% c("20-24", "25-29") ~ "20-29",
+    grupo_de_edad_de_la_victima %in% c("30-34", "35-39") ~ "30-39",
+    grupo_de_edad_de_la_victima %in% c("40-44", "45-49") ~ "40-49",
+    grupo_de_edad_de_la_victima %in% c("50-54", "55-59") ~ "50-59",
+    TRUE ~ grupo_de_edad_de_la_victima
+  )
+)
+```
+
+```{r, echo=FALSE}
+nf_data <- nf_data %>% mutate(
+  ciclo_vital_ = case_when(
+    grupo_de_edad_de_la_victima %in% c("00-04", "05-09","10-14","15-17","18-19") ~ "Niñas y adolescentes",
+    grupo_de_edad_de_la_victima %in% c("20-24", "25-29","30-34") ~ "Jovenes",
+    grupo_de_edad_de_la_victima %in% c("35-39", "40-44","45-49","50-54","55-59") ~ "Adultez",
+    TRUE ~ "Adulto mayor"
+  )
+)
+```
+
+```{r}
+# Se eliminan los registros de Adultos mayores
+nf_data <- nf_data %>% filter(ciclo_vital_ %in% c("Niñas y adolescentes", "Jovenes", "Adultez"))
+```
+
+```{r}
+# Recodificación de la hora del hecho
+nf_data <- nf_data %>% mutate(
+  rango_de_hora_del_hecho_x_3_horas = case_when(
+    rango_de_hora_del_hecho_x_3_horas == "Sin información" ~ "Sin información",
+    rango_de_hora_del_hecho_x_3_horas %in% c("00:00 - 02:59", "03:00 - 05:59") ~ "Madrugada",
+    rango_de_hora_del_hecho_x_3_horas %in% c("06:00 - 08:59", "09:00 - 11:59", "12:00 - 14:59", "15:00 - 17:59") ~ "Dia",
+    TRUE ~ "Noche"
+  )
+)
+```
+
+
+```{r}
+# Recodificación del día del hecho
+nf_data <- nf_data %>% mutate(
+  dia_del_hecho = case_when(
+    dia_del_hecho %in% c("Sábado", "Domingo") ~ "Fin de semana",
+    TRUE ~ "Semana"
+  )
+)
+```
+
+En el proceso de depuración y análisis preliminar se identificó que no todas las variables disponibles en la base de datos eran adecuadas para ser incluidas en el modelo multinomial logístico con enfoque bayesiano. Dado que estos modelos son altamente costosos computacionalmente,specialmente con más de 675.000 observaciones y una matriz de diseño expandida por la codificación de variables categóricas, fue necesario realizar una selección cuidadosa.
+
+
+En primer lugar, varias variables presentaban altos niveles de valores faltantes o registros marcados como "sin información", lo cual afecta la estabilidad y precisión de los estimadores. Además, algunas variables mostraban redundancias conceptuales o un aporte limitado a la explicación del fenómeno, según la revisión realizada junto con personas expertas en el área.
+
+
+Con base en estos criterios, calidad de los datos y relevancia teórico-práctica,, se seleccionó un subconjunto reducido de variables que representan de manera más sólida el fenómeno y permiten un modelado computacionalmente viable:
+
+
+**Variables seleccionadas para el modelado inicial:**
+- `def_naturaleza`
+- `ciclo_vital_`
+- `escolaridad`
+- `dia_del_hecho`
+- `rango_de_hora_del_hecho_x_3_horas`
+- `escenario_del_hecho`
+- `zona_del_hecho`
+- `agresor_grou`
+
+
+El resto de variables no fue incluido en esta fase inicial debido a su alta proporción de valores faltantes, baja consistencia, correlación redundante con variables seleccionadas o menor pertinencia según el criterio de expertos.
+```{r}
+# Selección de variables de interés para modelamiento
+nf_data <- nf_data %>% dplyr::select(def_naturaleza, ciclo_vital_, escolaridad, dia_del_hecho, rango_de_hora_del_hecho_x_3_horas, escenario_del_hecho, zona_del_hecho, agresor_group)
+```
